@@ -59,6 +59,7 @@ dependencies {
     // Hilt
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
+    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
     
     // Credentials and Google Identity
     implementation(libs.androidx.credentials)
@@ -68,6 +69,7 @@ dependencies {
     
     // ViewModel Compose
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

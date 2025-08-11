@@ -18,17 +18,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.runtime.collectAsState
+import com.axeven.profiteer.viewmodel.HomeViewModel
+import com.axeven.profiteer.data.model.Transaction
+import com.axeven.profiteer.data.model.TransactionType
+import java.text.SimpleDateFormat
+import java.util.*
 
-data class Transaction(
-    val id: String,
-    val title: String,
-    val amount: Double,
-    val date: String,
-    val category: String,
-    val type: TransactionType
-)
-
-enum class TransactionType { INCOME, EXPENSE }
 
 data class QuickAction(
     val title: String,
@@ -38,15 +35,11 @@ data class QuickAction(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(onNavigateToSettings: () -> Unit = {}) {
-    val dummyTransactions = listOf(
-        Transaction("1", "Salary", 5000.0, "Today", "Income", TransactionType.INCOME),
-        Transaction("2", "Groceries", -150.0, "Yesterday", "Food", TransactionType.EXPENSE),
-        Transaction("3", "Coffee", -25.0, "Yesterday", "Food", TransactionType.EXPENSE),
-        Transaction("4", "Freelance", 800.0, "2 days ago", "Income", TransactionType.INCOME),
-        Transaction("5", "Gas", -60.0, "3 days ago", "Transport", TransactionType.EXPENSE),
-        Transaction("6", "Netflix", -15.0, "5 days ago", "Entertainment", TransactionType.EXPENSE)
-    )
+fun HomeScreen(
+    onNavigateToSettings: () -> Unit = {},
+    viewModel: HomeViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
 
     val quickActions = listOf(
         QuickAction("Add Income", Icons.Default.Add, Color(0xFF4CAF50)),
@@ -55,9 +48,12 @@ fun HomeScreen(onNavigateToSettings: () -> Unit = {}) {
         QuickAction("Analytics", Icons.Default.Info, Color(0xFF9C27B0))
     )
 
-    val totalIncome = dummyTransactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
-    val totalExpenses = dummyTransactions.filter { it.type == TransactionType.EXPENSE }.sumOf { kotlin.math.abs(it.amount) }
-    val balance = totalIncome - totalExpenses
+    // Show error if any
+    uiState.error?.let { error ->
+        LaunchedEffect(error) {
+            // You can show a snackbar here if needed
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -88,7 +84,12 @@ fun HomeScreen(onNavigateToSettings: () -> Unit = {}) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                BalanceCard(balance = balance, income = totalIncome, expenses = totalExpenses)
+                BalanceCard(
+                    balance = uiState.totalBalance, 
+                    income = uiState.totalIncome, 
+                    expenses = uiState.totalExpenses,
+                    currency = uiState.defaultCurrency
+                )
             }
             
             item {
@@ -117,7 +118,7 @@ fun HomeScreen(onNavigateToSettings: () -> Unit = {}) {
                 )
             }
             
-            items(dummyTransactions) { transaction ->
+            items(uiState.transactions) { transaction ->
                 TransactionItem(transaction = transaction)
             }
         }
@@ -125,7 +126,7 @@ fun HomeScreen(onNavigateToSettings: () -> Unit = {}) {
 }
 
 @Composable
-fun BalanceCard(balance: Double, income: Double, expenses: Double) {
+fun BalanceCard(balance: Double, income: Double, expenses: Double, currency: String = "USD") {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -147,7 +148,7 @@ fun BalanceCard(balance: Double, income: Double, expenses: Double) {
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                 )
                 Text(
-                    text = "$${String.format("%.2f", balance)}",
+                    text = "$currency ${String.format("%.2f", balance)}",
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -165,7 +166,7 @@ fun BalanceCard(balance: Double, income: Double, expenses: Double) {
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )
                     Text(
-                        text = "$${String.format("%.2f", income)}",
+                        text = "$currency ${String.format("%.2f", income)}",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF4CAF50)
@@ -179,7 +180,7 @@ fun BalanceCard(balance: Double, income: Double, expenses: Double) {
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )
                     Text(
-                        text = "$${String.format("%.2f", expenses)}",
+                        text = "$currency ${String.format("%.2f", expenses)}",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFFF44336)
@@ -234,6 +235,8 @@ fun QuickActionCard(action: QuickAction) {
 
 @Composable
 fun TransactionItem(transaction: Transaction) {
+    val dateFormatter = remember { SimpleDateFormat("MMM dd", Locale.getDefault()) }
+    val displayDate = transaction.createdAt?.let { dateFormatter.format(it) } ?: "Unknown"
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -285,7 +288,7 @@ fun TransactionItem(transaction: Transaction) {
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = "${transaction.category} • ${transaction.date}",
+                        text = "${transaction.category} • $displayDate",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )

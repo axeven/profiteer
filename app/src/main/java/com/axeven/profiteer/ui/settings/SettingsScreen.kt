@@ -13,39 +13,31 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.runtime.collectAsState
+import com.axeven.profiteer.viewmodel.SettingsViewModel
 
-data class Wallet(
-    val id: String,
-    val name: String,
-    val currency: String,
-    val balance: Double
-)
-
-data class CurrencyRate(
-    val fromCurrency: String,
-    val toCurrency: String,
-    val rate: Double,
-    val month: String? = null // null means default rate for all times
-)
+import com.axeven.profiteer.data.model.Wallet
+import com.axeven.profiteer.data.model.CurrencyRate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onNavigateBack: () -> Unit = {}) {
+fun SettingsScreen(
+    onNavigateBack: () -> Unit = {},
+    viewModel: SettingsViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    
     var showWalletDialog by remember { mutableStateOf(false) }
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showRateDialog by remember { mutableStateOf(false) }
-    var selectedDefaultCurrency by remember { mutableStateOf("USD") }
     
-    val dummyWallets = remember { mutableStateListOf(
-        Wallet("1", "Main Wallet", "USD", 5000.0),
-        Wallet("2", "Savings", "EUR", 2000.0)
-    )}
-    
-    val dummyRates = remember { mutableStateListOf(
-        CurrencyRate("USD", "EUR", 0.85),
-        CurrencyRate("USD", "GBP", 0.73),
-        CurrencyRate("USD", "EUR", 0.82, "January 2024")
-    )}
+    // Show error if any
+    uiState.error?.let { error ->
+        LaunchedEffect(error) {
+            // You can show a snackbar here if needed
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -85,12 +77,12 @@ fun SettingsScreen(onNavigateBack: () -> Unit = {}) {
                 )
             }
             
-            items(dummyWallets.size) { index ->
-                val wallet = dummyWallets[index]
+            items(uiState.wallets.size) { index ->
+                val wallet = uiState.wallets[index]
                 WalletItem(
                     wallet = wallet,
                     onEdit = { /* TODO: Edit wallet */ },
-                    onDelete = { dummyWallets.removeAt(index) }
+                    onDelete = { viewModel.deleteWallet(wallet.id) }
                 )
             }
             
@@ -101,8 +93,8 @@ fun SettingsScreen(onNavigateBack: () -> Unit = {}) {
             
             item {
                 CurrencySelector(
-                    selectedCurrency = selectedDefaultCurrency,
-                    onCurrencySelected = { selectedDefaultCurrency = it },
+                    selectedCurrency = uiState.defaultCurrency,
+                    onCurrencySelected = { viewModel.updateDefaultCurrency(it) },
                     onClick = { showCurrencyDialog = true }
                 )
             }
@@ -130,12 +122,12 @@ fun SettingsScreen(onNavigateBack: () -> Unit = {}) {
                 )
             }
             
-            items(dummyRates.size) { index ->
-                val rate = dummyRates[index]
+            items(uiState.currencyRates.size) { index ->
+                val rate = uiState.currencyRates[index]
                 ConversionRateItem(
                     rate = rate,
                     onEdit = { /* TODO: Edit rate */ },
-                    onDelete = { dummyRates.removeAt(index) }
+                    onDelete = { viewModel.deleteCurrencyRate(rate.id) }
                 )
             }
         }
@@ -146,25 +138,19 @@ fun SettingsScreen(onNavigateBack: () -> Unit = {}) {
         CreateWalletDialog(
             onDismiss = { showWalletDialog = false },
             onConfirm = { name, currency ->
-                dummyWallets.add(
-                    Wallet(
-                        id = (dummyWallets.size + 1).toString(),
-                        name = name,
-                        currency = currency,
-                        balance = 0.0
-                    )
-                )
+                viewModel.createWallet(name, currency)
                 showWalletDialog = false
-            }
+            },
+            defaultCurrency = uiState.defaultCurrency
         )
     }
     
     if (showCurrencyDialog) {
         CurrencySelectionDialog(
-            currentCurrency = selectedDefaultCurrency,
+            currentCurrency = uiState.defaultCurrency,
             onDismiss = { showCurrencyDialog = false },
             onConfirm = { currency ->
-                selectedDefaultCurrency = currency
+                viewModel.updateDefaultCurrency(currency)
                 showCurrencyDialog = false
             }
         )
@@ -174,11 +160,10 @@ fun SettingsScreen(onNavigateBack: () -> Unit = {}) {
         ConversionRateDialog(
             onDismiss = { showRateDialog = false },
             onConfirm = { fromCurrency, toCurrency, rate, month ->
-                dummyRates.add(
-                    CurrencyRate(fromCurrency, toCurrency, rate, month.takeIf { it.isNotBlank() })
-                )
+                viewModel.createCurrencyRate(fromCurrency, toCurrency, rate, month)
                 showRateDialog = false
-            }
+            },
+            defaultCurrency = uiState.defaultCurrency
         )
     }
 }
@@ -417,10 +402,13 @@ fun ConversionRateItem(
 @Composable
 fun CreateWalletDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String) -> Unit
+    onConfirm: (String, String) -> Unit,
+    defaultCurrency: String = "USD"
 ) {
     var walletName by remember { mutableStateOf("") }
-    var selectedCurrency by remember { mutableStateOf("USD") }
+    var selectedCurrency by remember { mutableStateOf(defaultCurrency) }
+    var showCurrencyDropdown by remember { mutableStateOf(false) }
+    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR")
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -436,12 +424,39 @@ fun CreateWalletDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 
-                OutlinedTextField(
-                    value = selectedCurrency,
-                    onValueChange = { selectedCurrency = it },
-                    label = { Text("Currency") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Box {
+                    OutlinedTextField(
+                        value = selectedCurrency,
+                        onValueChange = { },
+                        label = { Text("Currency") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showCurrencyDropdown = true },
+                        readOnly = true,
+                        trailingIcon = {
+                            Icon(
+                                imageVector = if (showCurrencyDropdown) Icons.Default.KeyboardArrowUp 
+                                            else Icons.Default.KeyboardArrowDown,
+                                contentDescription = null
+                            )
+                        }
+                    )
+                    
+                    DropdownMenu(
+                        expanded = showCurrencyDropdown,
+                        onDismissRequest = { showCurrencyDropdown = false }
+                    ) {
+                        currencies.forEach { currency ->
+                            DropdownMenuItem(
+                                text = { Text(currency) },
+                                onClick = {
+                                    selectedCurrency = currency
+                                    showCurrencyDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
@@ -509,12 +524,16 @@ fun CurrencySelectionDialog(
 @Composable
 fun ConversionRateDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String, Double, String) -> Unit
+    onConfirm: (String, String, Double, String) -> Unit,
+    defaultCurrency: String = "USD"
 ) {
-    var fromCurrency by remember { mutableStateOf("USD") }
-    var toCurrency by remember { mutableStateOf("EUR") }
+    var fromCurrency by remember { mutableStateOf(defaultCurrency) }
+    var toCurrency by remember { mutableStateOf(if (defaultCurrency == "USD") "EUR" else "USD") }
     var rateText by remember { mutableStateOf("") }
     var monthText by remember { mutableStateOf("") }
+    var showFromDropdown by remember { mutableStateOf(false) }
+    var showToDropdown by remember { mutableStateOf(false) }
+    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR")
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -526,18 +545,75 @@ fun ConversionRateDialog(
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedTextField(
-                        value = fromCurrency,
-                        onValueChange = { fromCurrency = it },
-                        label = { Text("From") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = toCurrency,
-                        onValueChange = { toCurrency = it },
-                        label = { Text("To") },
-                        modifier = Modifier.weight(1f)
-                    )
+                    // From Currency Dropdown
+                    Box(modifier = Modifier.weight(1f)) {
+                        OutlinedTextField(
+                            value = fromCurrency,
+                            onValueChange = { },
+                            label = { Text("From") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showFromDropdown = true },
+                            readOnly = true,
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = if (showFromDropdown) Icons.Default.KeyboardArrowUp 
+                                                else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null
+                                )
+                            }
+                        )
+                        
+                        DropdownMenu(
+                            expanded = showFromDropdown,
+                            onDismissRequest = { showFromDropdown = false }
+                        ) {
+                            currencies.forEach { currency ->
+                                DropdownMenuItem(
+                                    text = { Text(currency) },
+                                    onClick = {
+                                        fromCurrency = currency
+                                        showFromDropdown = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    
+                    // To Currency Dropdown
+                    Box(modifier = Modifier.weight(1f)) {
+                        OutlinedTextField(
+                            value = toCurrency,
+                            onValueChange = { },
+                            label = { Text("To") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showToDropdown = true },
+                            readOnly = true,
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = if (showToDropdown) Icons.Default.KeyboardArrowUp 
+                                                else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null
+                                )
+                            }
+                        )
+                        
+                        DropdownMenu(
+                            expanded = showToDropdown,
+                            onDismissRequest = { showToDropdown = false }
+                        ) {
+                            currencies.forEach { currency ->
+                                DropdownMenuItem(
+                                    text = { Text(currency) },
+                                    onClick = {
+                                        toCurrency = currency
+                                        showToDropdown = false
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
                 
                 OutlinedTextField(
