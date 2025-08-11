@@ -54,16 +54,18 @@ Path: `users/{userId}/wallets`
 ```json
 {
   "walletId": "string", // Auto-generated document ID
-  "name": "string", // Wallet name
-  "type": "string", // "physical" or "logical"
-  "currency": "string", // Currency code
-  "balance": "number", // Current balance
-  "description": "string", // Optional description
-  "parentWalletIds": ["string"], // For logical wallets: array of physical wallet IDs they're based on
+  "name": "string", // Wallet name (must be unique per user)
+  "walletType": "string", // "Physical" or "Logical"
+  "currency": "string", // Currency code (USD, EUR, IDR, etc.)
+  "balance": "number", // Current balance (includes transactions + initial balance)
+  "initialBalance": "number", // Initial setup balance (excluded from analytics)
+  "userId": "string", // Reference to user document
   "createdAt": "timestamp",
   "updatedAt": "timestamp"
 }
 ```
+
+**Note**: The `transactionBalance` (balance - initialBalance) represents the net change from transactions only and is used for analytics calculations.
 
 ### transaction_tags (subcollection of users)
 Path: `users/{userId}/transaction_tags`
@@ -82,20 +84,26 @@ Path: `users/{userId}/transactions`
 ```json
 {
   "transactionId": "string", // Auto-generated document ID
-  "type": "string", // "increase", "decrease", "transfer"
-  "amount": "number", // Transaction amount (always positive)
-  "currency": "string", // Transaction currency
-  "date": "timestamp", // Transaction date
-  "description": "string", // Optional description
-  
-  // For increase/decrease transactions
-  "walletId": "string", // Target wallet ID (null for transfers)
-  "tagId": "string", // Transaction tag ID (defaults to "Uncategorized")
-  
-  // For transfer transactions
-  "sourceWalletId": "string", // Source wallet ID (null for increase/decrease)
-  "destinationWalletId": "string", // Destination wallet ID (null for increase/decrease)
-  
+  "title": "string", // Transaction title/description
+  "amount": "number", // Transaction amount (positive for income, negative for expense)
+  "category": "string", // Transaction category
+  "type": "string", // "INCOME" or "EXPENSE" (enum values)
+  "walletId": "string", // Associated wallet ID
+  "userId": "string", // Reference to user document
+  "createdAt": "timestamp",
+  "updatedAt": "timestamp"
+}
+```
+
+**Current Implementation Note**: The current codebase uses a simplified transaction model with income/expense types. The original three-type system (increase/decrease/transfer) from the architecture docs is not yet implemented.
+
+### user_preferences (subcollection of users)
+Path: `users/{userId}/user_preferences`
+```json
+{
+  "preferencesId": "string", // Auto-generated document ID
+  "defaultCurrency": "string", // User's default currency (USD, EUR, IDR, etc.)
+  "userId": "string", // Reference to user document
   "createdAt": "timestamp",
   "updatedAt": "timestamp"
 }
