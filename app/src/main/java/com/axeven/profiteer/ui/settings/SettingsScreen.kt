@@ -19,6 +19,7 @@ import com.axeven.profiteer.viewmodel.SettingsViewModel
 
 import com.axeven.profiteer.data.model.Wallet
 import com.axeven.profiteer.data.model.CurrencyRate
+import com.axeven.profiteer.utils.NumberFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -287,7 +288,7 @@ fun WalletItem(
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "${wallet.walletType} • ${wallet.currency} ${String.format("%.2f", wallet.balance)}",
+                    text = "${wallet.walletType} • ${wallet.currency} ${NumberFormatter.formatCurrency(wallet.balance)}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
@@ -397,7 +398,7 @@ fun ConversionRateItem(
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "Rate: ${rate.rate}${rate.month?.let { " • $it" } ?: " • Default"}",
+                    text = "Rate: ${NumberFormatter.formatCurrency(rate.rate)}${rate.month?.let { " • $it" } ?: " • Default"}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
@@ -433,7 +434,7 @@ fun EditWalletDialog(
     var walletName by remember { mutableStateOf(wallet.name) }
     var selectedCurrency by remember { mutableStateOf(wallet.currency) }
     var selectedWalletType by remember { mutableStateOf(wallet.walletType) }
-    var initialBalanceText by remember { mutableStateOf(String.format("%.2f", wallet.initialBalance)) }
+    var initialBalanceText by remember { mutableStateOf(NumberFormatter.formatCurrency(wallet.initialBalance)) }
     var showCurrencyDropdown by remember { mutableStateOf(false) }
     var showWalletTypeDropdown by remember { mutableStateOf(false) }
     val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR")
@@ -442,8 +443,8 @@ fun EditWalletDialog(
     val isNameDuplicate = existingWallets
         .filter { it.id != wallet.id } // Exclude current wallet from check
         .any { it.name.equals(walletName, ignoreCase = true) }
-    val initialBalance = initialBalanceText.toDoubleOrNull() ?: 0.0
-    val isFormValid = walletName.isNotBlank() && !isNameDuplicate && initialBalanceText.toDoubleOrNull() != null
+    val initialBalance = NumberFormatter.parseDouble(initialBalanceText) ?: 0.0
+    val isFormValid = walletName.isNotBlank() && !isNameDuplicate && NumberFormatter.parseDouble(initialBalanceText) != null
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -537,8 +538,8 @@ fun EditWalletDialog(
                     label = { Text("Initial Balance") },
                     placeholder = { Text("0.00") },
                     modifier = Modifier.fillMaxWidth(),
-                    isError = initialBalanceText.toDoubleOrNull() == null && initialBalanceText.isNotBlank(),
-                    supportingText = if (initialBalanceText.toDoubleOrNull() == null && initialBalanceText.isNotBlank()) {
+                    isError = NumberFormatter.parseDouble(initialBalanceText) == null && initialBalanceText.isNotBlank(),
+                    supportingText = if (NumberFormatter.parseDouble(initialBalanceText) == null && initialBalanceText.isNotBlank()) {
                         { Text("Please enter a valid amount", color = MaterialTheme.colorScheme.error) }
                     } else {
                         { Text("This balance won't appear in transaction analytics") }
@@ -579,8 +580,8 @@ fun CreateWalletDialog(
     val walletTypes = listOf("Physical", "Logical")
     
     val isNameDuplicate = existingWallets.any { it.name.equals(walletName, ignoreCase = true) }
-    val initialBalance = initialBalanceText.toDoubleOrNull() ?: 0.0
-    val isFormValid = walletName.isNotBlank() && !isNameDuplicate && initialBalanceText.toDoubleOrNull() != null
+    val initialBalance = NumberFormatter.parseDouble(initialBalanceText) ?: 0.0
+    val isFormValid = walletName.isNotBlank() && !isNameDuplicate && NumberFormatter.parseDouble(initialBalanceText) != null
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -674,8 +675,8 @@ fun CreateWalletDialog(
                     label = { Text("Initial Balance") },
                     placeholder = { Text("0.00") },
                     modifier = Modifier.fillMaxWidth(),
-                    isError = initialBalanceText.toDoubleOrNull() == null && initialBalanceText.isNotBlank(),
-                    supportingText = if (initialBalanceText.toDoubleOrNull() == null && initialBalanceText.isNotBlank()) {
+                    isError = NumberFormatter.parseDouble(initialBalanceText) == null && initialBalanceText.isNotBlank(),
+                    supportingText = if (NumberFormatter.parseDouble(initialBalanceText) == null && initialBalanceText.isNotBlank()) {
                         { Text("Please enter a valid amount", color = MaterialTheme.colorScheme.error) }
                     } else {
                         { Text("This balance won't appear in transaction analytics") }

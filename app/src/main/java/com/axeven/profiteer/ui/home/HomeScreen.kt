@@ -23,6 +23,7 @@ import androidx.compose.runtime.collectAsState
 import com.axeven.profiteer.viewmodel.HomeViewModel
 import com.axeven.profiteer.data.model.Transaction
 import com.axeven.profiteer.data.model.TransactionType
+import com.axeven.profiteer.utils.NumberFormatter
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -148,7 +149,7 @@ fun BalanceCard(balance: Double, income: Double, expenses: Double, currency: Str
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                 )
                 Text(
-                    text = "$currency ${String.format("%.2f", balance)}",
+                    text = "$currency ${NumberFormatter.formatCurrency(balance)}",
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -166,7 +167,7 @@ fun BalanceCard(balance: Double, income: Double, expenses: Double, currency: Str
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )
                     Text(
-                        text = "$currency ${String.format("%.2f", income)}",
+                        text = "$currency ${NumberFormatter.formatCurrency(income)}",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF4CAF50)
@@ -180,7 +181,7 @@ fun BalanceCard(balance: Double, income: Double, expenses: Double, currency: Str
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )
                     Text(
-                        text = "$currency ${String.format("%.2f", expenses)}",
+                        text = "$currency ${NumberFormatter.formatCurrency(expenses)}",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFFF44336)
@@ -296,7 +297,7 @@ fun TransactionItem(transaction: Transaction) {
             }
             
             Text(
-                text = "${if (transaction.amount > 0) "+" else ""}$${String.format("%.2f", transaction.amount)}",
+                text = "${if (transaction.amount > 0) "+" else ""}$${NumberFormatter.formatCurrency(kotlin.math.abs(transaction.amount))}",
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = if (transaction.type == TransactionType.INCOME) 
