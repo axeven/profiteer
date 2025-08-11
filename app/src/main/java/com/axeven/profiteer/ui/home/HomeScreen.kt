@@ -38,7 +38,7 @@ data class QuickAction(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen() {
+fun HomeScreen(onNavigateToSettings: () -> Unit = {}) {
     val dummyTransactions = listOf(
         Transaction("1", "Salary", 5000.0, "Today", "Income", TransactionType.INCOME),
         Transaction("2", "Groceries", -150.0, "Yesterday", "Food", TransactionType.EXPENSE),
@@ -70,6 +70,9 @@ fun HomeScreen() {
                     ) 
                 },
                 actions = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    }
                     IconButton(onClick = { /* TODO: Profile */ }) {
                         Icon(Icons.Default.AccountCircle, contentDescription = "Profile")
                     }
