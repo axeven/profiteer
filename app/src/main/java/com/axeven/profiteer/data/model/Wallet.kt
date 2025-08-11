@@ -10,6 +10,7 @@ data class Wallet(
     val name: String = "",
     val currency: String = "",
     val balance: Double = 0.0,
+    val initialBalance: Double = 0.0,
     val walletType: String = "Physical",
     val userId: String = "",
     @ServerTimestamp
@@ -17,5 +18,13 @@ data class Wallet(
     @ServerTimestamp
     val updatedAt: Date? = null
 ) {
-    constructor() : this("", "", "", 0.0, "Physical", "", null, null)
+    constructor() : this("", "", "", 0.0, 0.0, "Physical", "", null, null)
+    
+    /**
+     * Returns the transaction-based balance (current balance minus initial balance).
+     * This represents the net change from transactions only and is used for analytics
+     * to exclude the initial balance setup.
+     */
+    val transactionBalance: Double
+        get() = balance - initialBalance
 }

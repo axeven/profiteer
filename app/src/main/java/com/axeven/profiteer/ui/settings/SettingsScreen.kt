@@ -142,8 +142,8 @@ fun SettingsScreen(
     if (showWalletDialog) {
         CreateWalletDialog(
             onDismiss = { showWalletDialog = false },
-            onConfirm = { name, walletType, currency ->
-                viewModel.createWallet(name, currency, walletType)
+            onConfirm = { name, walletType, currency, initialBalance ->
+                viewModel.createWallet(name, currency, walletType, initialBalance)
                 showWalletDialog = false
             },
             defaultCurrency = uiState.defaultCurrency,
@@ -158,8 +158,8 @@ fun SettingsScreen(
                 showEditWalletDialog = false
                 walletToEdit = null
             },
-            onConfirm = { name, walletType, currency ->
-                viewModel.updateWallet(walletToEdit!!.id, name, currency, walletType)
+            onConfirm = { name, walletType, currency, initialBalance ->
+                viewModel.updateWallet(walletToEdit!!.id, name, currency, walletType, initialBalance)
                 showEditWalletDialog = false
                 walletToEdit = null
             },
@@ -426,13 +426,14 @@ fun ConversionRateItem(
 fun EditWalletDialog(
     wallet: Wallet,
     onDismiss: () -> Unit,
-    onConfirm: (String, String, String) -> Unit,
+    onConfirm: (String, String, String, Double) -> Unit,
     defaultCurrency: String = "USD",
     existingWallets: List<Wallet> = emptyList()
 ) {
     var walletName by remember { mutableStateOf(wallet.name) }
     var selectedCurrency by remember { mutableStateOf(wallet.currency) }
     var selectedWalletType by remember { mutableStateOf(wallet.walletType) }
+    var initialBalanceText by remember { mutableStateOf(String.format("%.2f", wallet.initialBalance)) }
     var showCurrencyDropdown by remember { mutableStateOf(false) }
     var showWalletTypeDropdown by remember { mutableStateOf(false) }
     val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR")
@@ -441,7 +442,8 @@ fun EditWalletDialog(
     val isNameDuplicate = existingWallets
         .filter { it.id != wallet.id } // Exclude current wallet from check
         .any { it.name.equals(walletName, ignoreCase = true) }
-    val isFormValid = walletName.isNotBlank() && !isNameDuplicate
+    val initialBalance = initialBalanceText.toDoubleOrNull() ?: 0.0
+    val isFormValid = walletName.isNotBlank() && !isNameDuplicate && initialBalanceText.toDoubleOrNull() != null
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -528,11 +530,25 @@ fun EditWalletDialog(
                         }
                     }
                 }
+                
+                OutlinedTextField(
+                    value = initialBalanceText,
+                    onValueChange = { initialBalanceText = it },
+                    label = { Text("Initial Balance") },
+                    placeholder = { Text("0.00") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = initialBalanceText.toDoubleOrNull() == null && initialBalanceText.isNotBlank(),
+                    supportingText = if (initialBalanceText.toDoubleOrNull() == null && initialBalanceText.isNotBlank()) {
+                        { Text("Please enter a valid amount", color = MaterialTheme.colorScheme.error) }
+                    } else {
+                        { Text("This balance won't appear in transaction analytics") }
+                    }
+                )
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(walletName, selectedWalletType, selectedCurrency) },
+                onClick = { onConfirm(walletName, selectedWalletType, selectedCurrency, initialBalance) },
                 enabled = isFormValid
             ) {
                 Text("Save")
@@ -549,20 +565,22 @@ fun EditWalletDialog(
 @Composable
 fun CreateWalletDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String, String) -> Unit,
+    onConfirm: (String, String, String, Double) -> Unit,
     defaultCurrency: String = "USD",
     existingWallets: List<Wallet> = emptyList()
 ) {
     var walletName by remember { mutableStateOf("") }
     var selectedCurrency by remember { mutableStateOf(defaultCurrency) }
     var selectedWalletType by remember { mutableStateOf("Physical") }
+    var initialBalanceText by remember { mutableStateOf("0.00") }
     var showCurrencyDropdown by remember { mutableStateOf(false) }
     var showWalletTypeDropdown by remember { mutableStateOf(false) }
     val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR")
     val walletTypes = listOf("Physical", "Logical")
     
     val isNameDuplicate = existingWallets.any { it.name.equals(walletName, ignoreCase = true) }
-    val isFormValid = walletName.isNotBlank() && !isNameDuplicate
+    val initialBalance = initialBalanceText.toDoubleOrNull() ?: 0.0
+    val isFormValid = walletName.isNotBlank() && !isNameDuplicate && initialBalanceText.toDoubleOrNull() != null
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -649,11 +667,25 @@ fun CreateWalletDialog(
                         }
                     }
                 }
+                
+                OutlinedTextField(
+                    value = initialBalanceText,
+                    onValueChange = { initialBalanceText = it },
+                    label = { Text("Initial Balance") },
+                    placeholder = { Text("0.00") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = initialBalanceText.toDoubleOrNull() == null && initialBalanceText.isNotBlank(),
+                    supportingText = if (initialBalanceText.toDoubleOrNull() == null && initialBalanceText.isNotBlank()) {
+                        { Text("Please enter a valid amount", color = MaterialTheme.colorScheme.error) }
+                    } else {
+                        { Text("This balance won't appear in transaction analytics") }
+                    }
+                )
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(walletName, selectedWalletType, selectedCurrency) },
+                onClick = { onConfirm(walletName, selectedWalletType, selectedCurrency, initialBalance) },
                 enabled = isFormValid
             ) {
                 Text("Create")

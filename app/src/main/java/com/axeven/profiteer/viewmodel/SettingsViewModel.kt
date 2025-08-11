@@ -74,7 +74,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun createWallet(name: String, currency: String, walletType: String) {
+    fun createWallet(name: String, currency: String, walletType: String, initialBalance: Double) {
         if (userId.isEmpty()) return
 
         viewModelScope.launch {
@@ -83,7 +83,8 @@ class SettingsViewModel @Inject constructor(
             val wallet = Wallet(
                 name = name,
                 currency = currency,
-                balance = 0.0,
+                balance = initialBalance, // Set current balance to initial balance
+                initialBalance = initialBalance,
                 walletType = walletType,
                 userId = userId
             )
@@ -102,7 +103,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun updateWallet(walletId: String, name: String, currency: String, walletType: String) {
+    fun updateWallet(walletId: String, name: String, currency: String, walletType: String, newInitialBalance: Double) {
         if (userId.isEmpty()) return
 
         viewModelScope.launch {
@@ -112,10 +113,16 @@ class SettingsViewModel @Inject constructor(
             walletRepository.getWalletById(walletId)
                 .onSuccess { currentWallet ->
                     currentWallet?.let { wallet ->
+                        // Calculate the difference in initial balance
+                        val initialBalanceDifference = newInitialBalance - wallet.initialBalance
+                        val newCurrentBalance = wallet.balance + initialBalanceDifference
+                        
                         val updatedWallet = wallet.copy(
                             name = name,
                             currency = currency,
-                            walletType = walletType
+                            walletType = walletType,
+                            initialBalance = newInitialBalance,
+                            balance = newCurrentBalance // Adjust current balance by the difference
                         )
                         
                         walletRepository.updateWallet(updatedWallet)
