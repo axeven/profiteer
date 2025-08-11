@@ -466,7 +466,7 @@ fun CurrencySelectionDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
-    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD")
+    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR")
     var selectedCurrency by remember { mutableStateOf(currentCurrency) }
 
     AlertDialog(
