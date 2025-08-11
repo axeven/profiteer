@@ -74,7 +74,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun createWallet(name: String, currency: String) {
+    fun createWallet(name: String, currency: String, walletType: String) {
         if (userId.isEmpty()) return
 
         viewModelScope.launch {
@@ -84,6 +84,7 @@ class SettingsViewModel @Inject constructor(
                 name = name,
                 currency = currency,
                 balance = 0.0,
+                walletType = walletType,
                 userId = userId
             )
 
@@ -91,6 +92,43 @@ class SettingsViewModel @Inject constructor(
                 .onSuccess {
                     _uiState.update {
                         it.copy(isLoading = false, error = null)
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(isLoading = false, error = error.message)
+                    }
+                }
+        }
+    }
+
+    fun updateWallet(walletId: String, name: String, currency: String, walletType: String) {
+        if (userId.isEmpty()) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+
+            // First get the current wallet to preserve other fields
+            walletRepository.getWalletById(walletId)
+                .onSuccess { currentWallet ->
+                    currentWallet?.let { wallet ->
+                        val updatedWallet = wallet.copy(
+                            name = name,
+                            currency = currency,
+                            walletType = walletType
+                        )
+                        
+                        walletRepository.updateWallet(updatedWallet)
+                            .onSuccess {
+                                _uiState.update {
+                                    it.copy(isLoading = false, error = null)
+                                }
+                            }
+                            .onFailure { error ->
+                                _uiState.update {
+                                    it.copy(isLoading = false, error = error.message)
+                                }
+                            }
                     }
                 }
                 .onFailure { error ->

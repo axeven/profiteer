@@ -29,6 +29,8 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsState()
     
     var showWalletDialog by remember { mutableStateOf(false) }
+    var showEditWalletDialog by remember { mutableStateOf(false) }
+    var walletToEdit by remember { mutableStateOf<Wallet?>(null) }
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showRateDialog by remember { mutableStateOf(false) }
     
@@ -81,7 +83,10 @@ fun SettingsScreen(
                 val wallet = uiState.wallets[index]
                 WalletItem(
                     wallet = wallet,
-                    onEdit = { /* TODO: Edit wallet */ },
+                    onEdit = { 
+                        walletToEdit = wallet
+                        showEditWalletDialog = true
+                    },
                     onDelete = { viewModel.deleteWallet(wallet.id) }
                 )
             }
@@ -137,11 +142,29 @@ fun SettingsScreen(
     if (showWalletDialog) {
         CreateWalletDialog(
             onDismiss = { showWalletDialog = false },
-            onConfirm = { name, currency ->
-                viewModel.createWallet(name, currency)
+            onConfirm = { name, walletType, currency ->
+                viewModel.createWallet(name, currency, walletType)
                 showWalletDialog = false
             },
-            defaultCurrency = uiState.defaultCurrency
+            defaultCurrency = uiState.defaultCurrency,
+            existingWallets = uiState.wallets
+        )
+    }
+    
+    if (showEditWalletDialog && walletToEdit != null) {
+        EditWalletDialog(
+            wallet = walletToEdit!!,
+            onDismiss = { 
+                showEditWalletDialog = false
+                walletToEdit = null
+            },
+            onConfirm = { name, walletType, currency ->
+                viewModel.updateWallet(walletToEdit!!.id, name, currency, walletType)
+                showEditWalletDialog = false
+                walletToEdit = null
+            },
+            defaultCurrency = uiState.defaultCurrency,
+            existingWallets = uiState.wallets
         )
     }
     
@@ -264,7 +287,7 @@ fun WalletItem(
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "${wallet.currency} ${String.format("%.2f", wallet.balance)}",
+                    text = "${wallet.walletType} • ${wallet.currency} ${String.format("%.2f", wallet.balance)}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
@@ -400,19 +423,29 @@ fun ConversionRateItem(
 }
 
 @Composable
-fun CreateWalletDialog(
+fun EditWalletDialog(
+    wallet: Wallet,
     onDismiss: () -> Unit,
-    onConfirm: (String, String) -> Unit,
-    defaultCurrency: String = "USD"
+    onConfirm: (String, String, String) -> Unit,
+    defaultCurrency: String = "USD",
+    existingWallets: List<Wallet> = emptyList()
 ) {
-    var walletName by remember { mutableStateOf("") }
-    var selectedCurrency by remember { mutableStateOf(defaultCurrency) }
+    var walletName by remember { mutableStateOf(wallet.name) }
+    var selectedCurrency by remember { mutableStateOf(wallet.currency) }
+    var selectedWalletType by remember { mutableStateOf(wallet.walletType) }
     var showCurrencyDropdown by remember { mutableStateOf(false) }
+    var showWalletTypeDropdown by remember { mutableStateOf(false) }
     val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR")
+    val walletTypes = listOf("Physical", "Logical")
+    
+    val isNameDuplicate = existingWallets
+        .filter { it.id != wallet.id } // Exclude current wallet from check
+        .any { it.name.equals(walletName, ignoreCase = true) }
+    val isFormValid = walletName.isNotBlank() && !isNameDuplicate
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Create New Wallet") },
+        title = { Text("Edit Wallet") },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -421,8 +454,46 @@ fun CreateWalletDialog(
                     value = walletName,
                     onValueChange = { walletName = it },
                     label = { Text("Wallet Name") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = isNameDuplicate && walletName.isNotBlank(),
+                    supportingText = if (isNameDuplicate && walletName.isNotBlank()) {
+                        { Text("Wallet name already exists", color = MaterialTheme.colorScheme.error) }
+                    } else null
                 )
+                
+                Box {
+                    OutlinedTextField(
+                        value = selectedWalletType,
+                        onValueChange = { },
+                        label = { Text("Wallet Type") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showWalletTypeDropdown = true },
+                        readOnly = true,
+                        trailingIcon = {
+                            Icon(
+                                imageVector = if (showWalletTypeDropdown) Icons.Default.KeyboardArrowUp 
+                                            else Icons.Default.KeyboardArrowDown,
+                                contentDescription = null
+                            )
+                        }
+                    )
+                    
+                    DropdownMenu(
+                        expanded = showWalletTypeDropdown,
+                        onDismissRequest = { showWalletTypeDropdown = false }
+                    ) {
+                        walletTypes.forEach { type ->
+                            DropdownMenuItem(
+                                text = { Text(type) },
+                                onClick = {
+                                    selectedWalletType = type
+                                    showWalletTypeDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
                 
                 Box {
                     OutlinedTextField(
@@ -461,8 +532,129 @@ fun CreateWalletDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(walletName, selectedCurrency) },
-                enabled = walletName.isNotBlank()
+                onClick = { onConfirm(walletName, selectedWalletType, selectedCurrency) },
+                enabled = isFormValid
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun CreateWalletDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String, String, String) -> Unit,
+    defaultCurrency: String = "USD",
+    existingWallets: List<Wallet> = emptyList()
+) {
+    var walletName by remember { mutableStateOf("") }
+    var selectedCurrency by remember { mutableStateOf(defaultCurrency) }
+    var selectedWalletType by remember { mutableStateOf("Physical") }
+    var showCurrencyDropdown by remember { mutableStateOf(false) }
+    var showWalletTypeDropdown by remember { mutableStateOf(false) }
+    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR")
+    val walletTypes = listOf("Physical", "Logical")
+    
+    val isNameDuplicate = existingWallets.any { it.name.equals(walletName, ignoreCase = true) }
+    val isFormValid = walletName.isNotBlank() && !isNameDuplicate
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Create New Wallet") },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OutlinedTextField(
+                    value = walletName,
+                    onValueChange = { walletName = it },
+                    label = { Text("Wallet Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = isNameDuplicate && walletName.isNotBlank(),
+                    supportingText = if (isNameDuplicate && walletName.isNotBlank()) {
+                        { Text("Wallet name already exists", color = MaterialTheme.colorScheme.error) }
+                    } else null
+                )
+                
+                Box {
+                    OutlinedTextField(
+                        value = selectedWalletType,
+                        onValueChange = { },
+                        label = { Text("Wallet Type") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showWalletTypeDropdown = true },
+                        readOnly = true,
+                        trailingIcon = {
+                            Icon(
+                                imageVector = if (showWalletTypeDropdown) Icons.Default.KeyboardArrowUp 
+                                            else Icons.Default.KeyboardArrowDown,
+                                contentDescription = null
+                            )
+                        }
+                    )
+                    
+                    DropdownMenu(
+                        expanded = showWalletTypeDropdown,
+                        onDismissRequest = { showWalletTypeDropdown = false }
+                    ) {
+                        walletTypes.forEach { type ->
+                            DropdownMenuItem(
+                                text = { Text(type) },
+                                onClick = {
+                                    selectedWalletType = type
+                                    showWalletTypeDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                Box {
+                    OutlinedTextField(
+                        value = selectedCurrency,
+                        onValueChange = { },
+                        label = { Text("Currency") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showCurrencyDropdown = true },
+                        readOnly = true,
+                        trailingIcon = {
+                            Icon(
+                                imageVector = if (showCurrencyDropdown) Icons.Default.KeyboardArrowUp 
+                                            else Icons.Default.KeyboardArrowDown,
+                                contentDescription = null
+                            )
+                        }
+                    )
+                    
+                    DropdownMenu(
+                        expanded = showCurrencyDropdown,
+                        onDismissRequest = { showCurrencyDropdown = false }
+                    ) {
+                        currencies.forEach { currency ->
+                            DropdownMenuItem(
+                                text = { Text(currency) },
+                                onClick = {
+                                    selectedCurrency = currency
+                                    showCurrencyDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(walletName, selectedWalletType, selectedCurrency) },
+                enabled = isFormValid
             ) {
                 Text("Create")
             }
