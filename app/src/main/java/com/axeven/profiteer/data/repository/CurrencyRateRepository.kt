@@ -42,6 +42,16 @@ class CurrencyRateRepository @Inject constructor(
         }
     }
 
+    suspend fun getCurrencyRateById(rateId: String): Result<CurrencyRate?> {
+        return try {
+            val document = currencyRatesCollection.document(rateId).get().await()
+            val rate = document.toObject(CurrencyRate::class.java)
+            Result.success(rate)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun updateCurrencyRate(rate: CurrencyRate): Result<Unit> {
         return try {
             currencyRatesCollection.document(rate.id).set(rate).await()

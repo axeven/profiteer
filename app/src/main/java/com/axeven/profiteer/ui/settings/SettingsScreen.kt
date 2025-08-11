@@ -34,6 +34,8 @@ fun SettingsScreen(
     var walletToEdit by remember { mutableStateOf<Wallet?>(null) }
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showRateDialog by remember { mutableStateOf(false) }
+    var showEditRateDialog by remember { mutableStateOf(false) }
+    var rateToEdit by remember { mutableStateOf<CurrencyRate?>(null) }
     
     // Show error if any
     uiState.error?.let { error ->
@@ -113,7 +115,7 @@ fun SettingsScreen(
             item {
                 SettingCard(
                     title = "Add Default Conversion Rate",
-                    subtitle = "Set flat conversion rate for all times",
+                    subtitle = "Set flat conversion rate for all times (including gold price per gram)",
                     icon = Icons.Default.Refresh,
                     onClick = { showRateDialog = true }
                 )
@@ -122,7 +124,7 @@ fun SettingsScreen(
             item {
                 SettingCard(
                     title = "Add Monthly Conversion Rate",
-                    subtitle = "Set specific conversion rate for certain month",
+                    subtitle = "Set specific conversion rate for certain month (including monthly gold price)",
                     icon = Icons.Default.DateRange,
                     onClick = { showRateDialog = true }
                 )
@@ -132,7 +134,10 @@ fun SettingsScreen(
                 val rate = uiState.currencyRates[index]
                 ConversionRateItem(
                     rate = rate,
-                    onEdit = { /* TODO: Edit rate */ },
+                    onEdit = { 
+                        rateToEdit = rate
+                        showEditRateDialog = true
+                    },
                     onDelete = { viewModel.deleteCurrencyRate(rate.id) }
                 )
             }
@@ -186,6 +191,22 @@ fun SettingsScreen(
             onConfirm = { fromCurrency, toCurrency, rate, month ->
                 viewModel.createCurrencyRate(fromCurrency, toCurrency, rate, month)
                 showRateDialog = false
+            },
+            defaultCurrency = uiState.defaultCurrency
+        )
+    }
+    
+    if (showEditRateDialog && rateToEdit != null) {
+        EditConversionRateDialog(
+            rate = rateToEdit!!,
+            onDismiss = { 
+                showEditRateDialog = false
+                rateToEdit = null
+            },
+            onConfirm = { fromCurrency, toCurrency, rate, month ->
+                viewModel.updateCurrencyRate(rateToEdit!!.id, fromCurrency, toCurrency, rate, month)
+                showEditRateDialog = false
+                rateToEdit = null
             },
             defaultCurrency = uiState.defaultCurrency
         )
@@ -287,8 +308,14 @@ fun WalletItem(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium
                 )
+                val balanceDisplay = if (wallet.currency == "GOLD") {
+                    "${wallet.walletType} • ${NumberFormatter.formatCurrency(wallet.balance, "GOLD")} grams"
+                } else {
+                    "${wallet.walletType} • ${wallet.currency} ${NumberFormatter.formatCurrency(wallet.balance)}"
+                }
+                
                 Text(
-                    text = "${wallet.walletType} • ${wallet.currency} ${NumberFormatter.formatCurrency(wallet.balance)}",
+                    text = balanceDisplay,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
@@ -397,8 +424,14 @@ fun ConversionRateItem(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium
                 )
+                val rateDisplay = if (rate.fromCurrency == "GOLD" || rate.toCurrency == "GOLD") {
+                    "Price: ${NumberFormatter.formatCurrency(rate.rate)} per gram${rate.month?.let { " • $it" } ?: " • Default"}"
+                } else {
+                    "Rate: ${NumberFormatter.formatCurrency(rate.rate)}${rate.month?.let { " • $it" } ?: " • Default"}"
+                }
+                
                 Text(
-                    text = "Rate: ${NumberFormatter.formatCurrency(rate.rate)}${rate.month?.let { " • $it" } ?: " • Default"}",
+                    text = rateDisplay,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
@@ -437,7 +470,7 @@ fun EditWalletDialog(
     var initialBalanceText by remember { mutableStateOf(NumberFormatter.formatCurrency(wallet.initialBalance)) }
     var showCurrencyDropdown by remember { mutableStateOf(false) }
     var showWalletTypeDropdown by remember { mutableStateOf(false) }
-    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR")
+    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR", "GOLD")
     val walletTypes = listOf("Physical", "Logical")
     
     val isNameDuplicate = existingWallets
@@ -482,6 +515,13 @@ fun EditWalletDialog(
                         }
                     )
                     
+                    // Clickable overlay to handle dropdown opening
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clickable { showCurrencyDropdown = true }
+                    )
+                    
                     DropdownMenu(
                         expanded = showWalletTypeDropdown,
                         onDismissRequest = { showWalletTypeDropdown = false }
@@ -503,9 +543,7 @@ fun EditWalletDialog(
                         value = selectedCurrency,
                         onValueChange = { },
                         label = { Text("Currency") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showCurrencyDropdown = true },
+                        modifier = Modifier.fillMaxWidth(),
                         readOnly = true,
                         trailingIcon = {
                             Icon(
@@ -514,6 +552,13 @@ fun EditWalletDialog(
                                 contentDescription = null
                             )
                         }
+                    )
+                    
+                    // Clickable overlay to handle dropdown opening
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clickable { showCurrencyDropdown = true }
                     )
                     
                     DropdownMenu(
@@ -532,17 +577,25 @@ fun EditWalletDialog(
                     }
                 }
                 
+                val isGoldWallet = selectedCurrency == "GOLD"
+                val balanceLabel = if (isGoldWallet) "Initial Weight (grams)" else "Initial Balance"
+                val balancePlaceholder = if (isGoldWallet) "0.0" else "0.00"
+                val balanceHelpText = if (isGoldWallet) 
+                    "Weight in grams (won't appear in transaction analytics)" 
+                else 
+                    "This balance won't appear in transaction analytics"
+                
                 OutlinedTextField(
                     value = initialBalanceText,
                     onValueChange = { initialBalanceText = it },
-                    label = { Text("Initial Balance") },
-                    placeholder = { Text("0.00") },
+                    label = { Text(balanceLabel) },
+                    placeholder = { Text(balancePlaceholder) },
                     modifier = Modifier.fillMaxWidth(),
                     isError = NumberFormatter.parseDouble(initialBalanceText) == null && initialBalanceText.isNotBlank(),
                     supportingText = if (NumberFormatter.parseDouble(initialBalanceText) == null && initialBalanceText.isNotBlank()) {
                         { Text("Please enter a valid amount", color = MaterialTheme.colorScheme.error) }
                     } else {
-                        { Text("This balance won't appear in transaction analytics") }
+                        { Text(balanceHelpText) }
                     }
                 )
             }
@@ -576,7 +629,7 @@ fun CreateWalletDialog(
     var initialBalanceText by remember { mutableStateOf("0.00") }
     var showCurrencyDropdown by remember { mutableStateOf(false) }
     var showWalletTypeDropdown by remember { mutableStateOf(false) }
-    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR")
+    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR", "GOLD")
     val walletTypes = listOf("Physical", "Logical")
     
     val isNameDuplicate = existingWallets.any { it.name.equals(walletName, ignoreCase = true) }
@@ -619,6 +672,13 @@ fun CreateWalletDialog(
                         }
                     )
                     
+                    // Clickable overlay to handle dropdown opening
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clickable { showCurrencyDropdown = true }
+                    )
+                    
                     DropdownMenu(
                         expanded = showWalletTypeDropdown,
                         onDismissRequest = { showWalletTypeDropdown = false }
@@ -640,9 +700,7 @@ fun CreateWalletDialog(
                         value = selectedCurrency,
                         onValueChange = { },
                         label = { Text("Currency") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showCurrencyDropdown = true },
+                        modifier = Modifier.fillMaxWidth(),
                         readOnly = true,
                         trailingIcon = {
                             Icon(
@@ -651,6 +709,13 @@ fun CreateWalletDialog(
                                 contentDescription = null
                             )
                         }
+                    )
+                    
+                    // Clickable overlay to handle dropdown opening
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clickable { showCurrencyDropdown = true }
                     )
                     
                     DropdownMenu(
@@ -669,17 +734,25 @@ fun CreateWalletDialog(
                     }
                 }
                 
+                val isGoldWallet = selectedCurrency == "GOLD"
+                val balanceLabel = if (isGoldWallet) "Initial Weight (grams)" else "Initial Balance"
+                val balancePlaceholder = if (isGoldWallet) "0.0" else "0.00"
+                val balanceHelpText = if (isGoldWallet) 
+                    "Weight in grams (won't appear in transaction analytics)" 
+                else 
+                    "This balance won't appear in transaction analytics"
+                
                 OutlinedTextField(
                     value = initialBalanceText,
                     onValueChange = { initialBalanceText = it },
-                    label = { Text("Initial Balance") },
-                    placeholder = { Text("0.00") },
+                    label = { Text(balanceLabel) },
+                    placeholder = { Text(balancePlaceholder) },
                     modifier = Modifier.fillMaxWidth(),
                     isError = NumberFormatter.parseDouble(initialBalanceText) == null && initialBalanceText.isNotBlank(),
                     supportingText = if (NumberFormatter.parseDouble(initialBalanceText) == null && initialBalanceText.isNotBlank()) {
                         { Text("Please enter a valid amount", color = MaterialTheme.colorScheme.error) }
                     } else {
-                        { Text("This balance won't appear in transaction analytics") }
+                        { Text(balanceHelpText) }
                     }
                 )
             }
@@ -706,7 +779,7 @@ fun CurrencySelectionDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
-    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR")
+    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR", "GOLD")
     var selectedCurrency by remember { mutableStateOf(currentCurrency) }
 
     AlertDialog(
@@ -755,14 +828,23 @@ fun ConversionRateDialog(
     var fromCurrency by remember { mutableStateOf(defaultCurrency) }
     var toCurrency by remember { mutableStateOf(if (defaultCurrency == "USD") "EUR" else "USD") }
     var rateText by remember { mutableStateOf("") }
-    var monthText by remember { mutableStateOf("") }
+    var selectedYear by remember { mutableStateOf("Default") }
+    var selectedMonth by remember { mutableStateOf("All Months") }
     var showFromDropdown by remember { mutableStateOf(false) }
     var showToDropdown by remember { mutableStateOf(false) }
-    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR")
+    var showYearDropdown by remember { mutableStateOf(false) }
+    var showMonthDropdown by remember { mutableStateOf(false) }
+    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR", "GOLD")
+    val years = listOf("Default", "2024", "2025", "2026")
+    val months = listOf("All Months", "January", "February", "March", "April", "May", "June", 
+                       "July", "August", "September", "October", "November", "December")
+
+    val isGoldRate = fromCurrency == "GOLD" || toCurrency == "GOLD"
+    val titleText = if (isGoldRate) "Add Gold Price" else "Add Conversion Rate"
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Conversion Rate") },
+        title = { Text(titleText) },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -776,9 +858,7 @@ fun ConversionRateDialog(
                             value = fromCurrency,
                             onValueChange = { },
                             label = { Text("From") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { showFromDropdown = true },
+                            modifier = Modifier.fillMaxWidth(),
                             readOnly = true,
                             trailingIcon = {
                                 Icon(
@@ -787,6 +867,13 @@ fun ConversionRateDialog(
                                     contentDescription = null
                                 )
                             }
+                        )
+                        
+                        // Clickable overlay to handle dropdown opening
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable { showFromDropdown = true }
                         )
                         
                         DropdownMenu(
@@ -811,9 +898,7 @@ fun ConversionRateDialog(
                             value = toCurrency,
                             onValueChange = { },
                             label = { Text("To") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { showToDropdown = true },
+                            modifier = Modifier.fillMaxWidth(),
                             readOnly = true,
                             trailingIcon = {
                                 Icon(
@@ -822,6 +907,13 @@ fun ConversionRateDialog(
                                     contentDescription = null
                                 )
                             }
+                        )
+                        
+                        // Clickable overlay to handle dropdown opening
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable { showToDropdown = true }
                         )
                         
                         DropdownMenu(
@@ -841,20 +933,103 @@ fun ConversionRateDialog(
                     }
                 }
                 
+                val rateLabel = if (isGoldRate) {
+                    if (fromCurrency == "GOLD") "Price per gram in $toCurrency" else "Price per gram in $fromCurrency"
+                } else {
+                    "Conversion Rate"
+                }
+                
                 OutlinedTextField(
                     value = rateText,
                     onValueChange = { rateText = it },
-                    label = { Text("Conversion Rate") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text(rateLabel) },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text(if (isGoldRate) "e.g., 65.50" else "e.g., 1.25") }
                 )
                 
-                OutlinedTextField(
-                    value = monthText,
-                    onValueChange = { monthText = it },
-                    label = { Text("Month (optional)") },
-                    placeholder = { Text("e.g., January 2024") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Year Dropdown
+                    Box(modifier = Modifier.weight(1f)) {
+                        OutlinedTextField(
+                            value = selectedYear,
+                            onValueChange = { },
+                            label = { Text("Year") },
+                            modifier = Modifier.fillMaxWidth(),
+                            readOnly = true,
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = if (showYearDropdown) Icons.Default.KeyboardArrowUp 
+                                                else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null
+                                )
+                            }
+                        )
+                        
+                        // Clickable overlay to handle dropdown opening
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable { showYearDropdown = true }
+                        )
+                        
+                        DropdownMenu(
+                            expanded = showYearDropdown,
+                            onDismissRequest = { showYearDropdown = false }
+                        ) {
+                            years.forEach { year ->
+                                DropdownMenuItem(
+                                    text = { Text(year) },
+                                    onClick = {
+                                        selectedYear = year
+                                        showYearDropdown = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Month Dropdown
+                    Box(modifier = Modifier.weight(1f)) {
+                        OutlinedTextField(
+                            value = selectedMonth,
+                            onValueChange = { },
+                            label = { Text("Month") },
+                            modifier = Modifier.fillMaxWidth(),
+                            readOnly = true,
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = if (showMonthDropdown) Icons.Default.KeyboardArrowUp 
+                                                else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null
+                                )
+                            }
+                        )
+                        
+                        // Clickable overlay to handle dropdown opening
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable { showMonthDropdown = true }
+                        )
+                        
+                        DropdownMenu(
+                            expanded = showMonthDropdown,
+                            onDismissRequest = { showMonthDropdown = false }
+                        ) {
+                            months.forEach { month ->
+                                DropdownMenuItem(
+                                    text = { Text(month) },
+                                    onClick = {
+                                        selectedMonth = month
+                                        showMonthDropdown = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
@@ -862,12 +1037,270 @@ fun ConversionRateDialog(
                 onClick = { 
                     val rate = rateText.toDoubleOrNull()
                     if (rate != null) {
-                        onConfirm(fromCurrency, toCurrency, rate, monthText)
+                        val monthValue = if (selectedYear == "Default" || selectedMonth == "All Months") {
+                            ""
+                        } else {
+                            "$selectedMonth $selectedYear"
+                        }
+                        onConfirm(fromCurrency, toCurrency, rate, monthValue)
                     }
                 },
                 enabled = fromCurrency.isNotBlank() && toCurrency.isNotBlank() && rateText.toDoubleOrNull() != null
             ) {
                 Text("Add")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun EditConversionRateDialog(
+    rate: CurrencyRate,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String, Double, String) -> Unit,
+    defaultCurrency: String = "USD"
+) {
+    var fromCurrency by remember { mutableStateOf(rate.fromCurrency) }
+    var toCurrency by remember { mutableStateOf(rate.toCurrency) }
+    var rateText by remember { mutableStateOf(rate.rate.toString()) }
+    
+    // Parse existing month value to separate year and month
+    val (initialYear, initialMonth) = if (rate.month.isNullOrEmpty()) {
+        "Default" to "All Months"
+    } else {
+        val parts = rate.month.split(" ")
+        if (parts.size == 2) {
+            parts[1] to parts[0] // "January 2024" -> "2024" to "January"
+        } else {
+            "Default" to "All Months"
+        }
+    }
+    
+    var selectedYear by remember { mutableStateOf(initialYear) }
+    var selectedMonth by remember { mutableStateOf(initialMonth) }
+    var showFromDropdown by remember { mutableStateOf(false) }
+    var showToDropdown by remember { mutableStateOf(false) }
+    var showYearDropdown by remember { mutableStateOf(false) }
+    var showMonthDropdown by remember { mutableStateOf(false) }
+    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR", "GOLD")
+    val years = listOf("Default", "2024", "2025", "2026")
+    val months = listOf("All Months", "January", "February", "March", "April", "May", "June", 
+                       "July", "August", "September", "October", "November", "December")
+
+    val isGoldRate = fromCurrency == "GOLD" || toCurrency == "GOLD"
+    val titleText = if (isGoldRate) "Edit Gold Price" else "Edit Conversion Rate"
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(titleText) },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // From Currency Dropdown
+                    Box(modifier = Modifier.weight(1f)) {
+                        OutlinedTextField(
+                            value = fromCurrency,
+                            onValueChange = { },
+                            label = { Text("From") },
+                            modifier = Modifier.fillMaxWidth(),
+                            readOnly = true,
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = if (showFromDropdown) Icons.Default.KeyboardArrowUp 
+                                                else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null
+                                )
+                            }
+                        )
+                        
+                        // Clickable overlay to handle dropdown opening
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable { showFromDropdown = true }
+                        )
+                        
+                        DropdownMenu(
+                            expanded = showFromDropdown,
+                            onDismissRequest = { showFromDropdown = false }
+                        ) {
+                            currencies.forEach { currency ->
+                                DropdownMenuItem(
+                                    text = { Text(currency) },
+                                    onClick = {
+                                        fromCurrency = currency
+                                        showFromDropdown = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    
+                    // To Currency Dropdown
+                    Box(modifier = Modifier.weight(1f)) {
+                        OutlinedTextField(
+                            value = toCurrency,
+                            onValueChange = { },
+                            label = { Text("To") },
+                            modifier = Modifier.fillMaxWidth(),
+                            readOnly = true,
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = if (showToDropdown) Icons.Default.KeyboardArrowUp 
+                                                else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null
+                                )
+                            }
+                        )
+                        
+                        // Clickable overlay to handle dropdown opening
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable { showToDropdown = true }
+                        )
+                        
+                        DropdownMenu(
+                            expanded = showToDropdown,
+                            onDismissRequest = { showToDropdown = false }
+                        ) {
+                            currencies.forEach { currency ->
+                                DropdownMenuItem(
+                                    text = { Text(currency) },
+                                    onClick = {
+                                        toCurrency = currency
+                                        showToDropdown = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                val rateLabel = if (isGoldRate) {
+                    if (fromCurrency == "GOLD") "Price per gram in $toCurrency" else "Price per gram in $fromCurrency"
+                } else {
+                    "Conversion Rate"
+                }
+                
+                OutlinedTextField(
+                    value = rateText,
+                    onValueChange = { rateText = it },
+                    label = { Text(rateLabel) },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text(if (isGoldRate) "e.g., 65.50" else "e.g., 1.25") }
+                )
+                
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Year Dropdown
+                    Box(modifier = Modifier.weight(1f)) {
+                        OutlinedTextField(
+                            value = selectedYear,
+                            onValueChange = { },
+                            label = { Text("Year") },
+                            modifier = Modifier.fillMaxWidth(),
+                            readOnly = true,
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = if (showYearDropdown) Icons.Default.KeyboardArrowUp 
+                                                else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null
+                                )
+                            }
+                        )
+                        
+                        // Clickable overlay to handle dropdown opening
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable { showYearDropdown = true }
+                        )
+                        
+                        DropdownMenu(
+                            expanded = showYearDropdown,
+                            onDismissRequest = { showYearDropdown = false }
+                        ) {
+                            years.forEach { year ->
+                                DropdownMenuItem(
+                                    text = { Text(year) },
+                                    onClick = {
+                                        selectedYear = year
+                                        showYearDropdown = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Month Dropdown
+                    Box(modifier = Modifier.weight(1f)) {
+                        OutlinedTextField(
+                            value = selectedMonth,
+                            onValueChange = { },
+                            label = { Text("Month") },
+                            modifier = Modifier.fillMaxWidth(),
+                            readOnly = true,
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = if (showMonthDropdown) Icons.Default.KeyboardArrowUp 
+                                                else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null
+                                )
+                            }
+                        )
+                        
+                        // Clickable overlay to handle dropdown opening
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable { showMonthDropdown = true }
+                        )
+                        
+                        DropdownMenu(
+                            expanded = showMonthDropdown,
+                            onDismissRequest = { showMonthDropdown = false }
+                        ) {
+                            months.forEach { month ->
+                                DropdownMenuItem(
+                                    text = { Text(month) },
+                                    onClick = {
+                                        selectedMonth = month
+                                        showMonthDropdown = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { 
+                    val rateValue = rateText.toDoubleOrNull()
+                    if (rateValue != null) {
+                        val monthValue = if (selectedYear == "Default" || selectedMonth == "All Months") {
+                            ""
+                        } else {
+                            "$selectedMonth $selectedYear"
+                        }
+                        onConfirm(fromCurrency, toCurrency, rateValue, monthValue)
+                    }
+                },
+                enabled = fromCurrency.isNotBlank() && toCurrency.isNotBlank() && rateText.toDoubleOrNull() != null
+            ) {
+                Text("Save")
             }
         },
         dismissButton = {

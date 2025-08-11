@@ -216,6 +216,44 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun updateCurrencyRate(rateId: String, fromCurrency: String, toCurrency: String, rate: Double, month: String?) {
+        if (userId.isEmpty()) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+
+            // First get the current rate to preserve other fields
+            currencyRateRepository.getCurrencyRateById(rateId)
+                .onSuccess { currentRate ->
+                    currentRate?.let { existingRate ->
+                        val updatedRate = existingRate.copy(
+                            fromCurrency = fromCurrency,
+                            toCurrency = toCurrency,
+                            rate = rate,
+                            month = month.takeIf { it?.isNotBlank() == true }
+                        )
+                        
+                        currencyRateRepository.updateCurrencyRate(updatedRate)
+                            .onSuccess {
+                                _uiState.update {
+                                    it.copy(isLoading = false, error = null)
+                                }
+                            }
+                            .onFailure { error ->
+                                _uiState.update {
+                                    it.copy(isLoading = false, error = error.message)
+                                }
+                            }
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(isLoading = false, error = error.message)
+                    }
+                }
+        }
+    }
+
     fun deleteCurrencyRate(rateId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }

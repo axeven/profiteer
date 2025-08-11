@@ -9,7 +9,7 @@ object NumberFormatter {
     /**
      * Formats a double value as currency with thousands separators
      * @param amount The amount to format
-     * @param currency The currency symbol (e.g., "USD", "EUR")
+     * @param currency The currency symbol (e.g., "USD", "EUR", "GOLD")
      * @param showSymbol Whether to show the currency symbol
      * @return Formatted string with thousands separators (e.g., "1,234.56")
      */
@@ -18,9 +18,17 @@ object NumberFormatter {
         currency: String = "", 
         showSymbol: Boolean = false
     ): String {
-        val formatter = NumberFormat.getNumberInstance(Locale.US).apply {
-            minimumFractionDigits = 2
-            maximumFractionDigits = 2
+        val formatter = if (currency == "GOLD") {
+            // Gold uses more precision for weight (grams)
+            NumberFormat.getNumberInstance(Locale.US).apply {
+                minimumFractionDigits = 1
+                maximumFractionDigits = 3
+            }
+        } else {
+            NumberFormat.getNumberInstance(Locale.US).apply {
+                minimumFractionDigits = 2
+                maximumFractionDigits = 2
+            }
         }
         
         val formattedAmount = formatter.format(amount)
