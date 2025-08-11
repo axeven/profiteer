@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.axeven.profiteer.ui.home.HomeScreen
 import com.axeven.profiteer.ui.login.AuthState
 import com.axeven.profiteer.ui.login.LoginScreen
 import com.axeven.profiteer.ui.theme.ProfiteerTheme
@@ -58,9 +59,7 @@ fun ProfiteerApp(authViewModel: AuthViewModel = viewModel()) {
     when (authState) {
         is AuthState.Authenticated -> {
             // Show main app content
-            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                HomeContent(modifier = Modifier.padding(innerPadding))
-            }
+            HomeScreen()
         }
         else -> {
             // Show login screen
@@ -74,13 +73,6 @@ fun ProfiteerApp(authViewModel: AuthViewModel = viewModel()) {
     }
 }
 
-@Composable
-fun HomeContent(modifier: Modifier = Modifier) {
-    Text(
-        text = "Welcome to Profiteer!\nYou are now logged in.",
-        modifier = modifier
-    )
-}
 
 @Preview(showBackground = true)
 @Composable
