@@ -67,7 +67,10 @@ class HomeViewModel @Inject constructor(
                         .filter { it.type == TransactionType.EXPENSE }
                         .sumOf { abs(it.amount) }
                     
-                    val totalBalance = totalIncome - totalExpenses
+                    // Calculate total balance as sum of physical wallet balances only
+                    val totalBalance = wallets
+                        .filter { it.walletType == "Physical" }
+                        .sumOf { it.balance }
 
                     _uiState.update {
                         it.copy(

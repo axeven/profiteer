@@ -144,7 +144,7 @@ fun BalanceCard(balance: Double, income: Double, expenses: Double, currency: Str
         ) {
             Column {
                 Text(
-                    text = "Total Balance",
+                    text = "Physical Wallet Balance",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                 )
