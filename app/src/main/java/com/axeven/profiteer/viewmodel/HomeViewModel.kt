@@ -49,6 +49,8 @@ class HomeViewModel @Inject constructor(
     private fun loadUserData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
+            
+            android.util.Log.d("HomeViewModel", "Starting loadUserData for user: $userId")
 
             try {
                 combine(
@@ -58,6 +60,7 @@ class HomeViewModel @Inject constructor(
                 ) { transactions, wallets, preferences ->
                     Triple(transactions, wallets, preferences)
                 }.collect { (transactions, wallets, preferences) ->
+                    android.util.Log.d("HomeViewModel", "Data update received - transactions: ${transactions.size}, wallets: ${wallets.size}")
                     
                     val totalIncome = transactions
                         .filter { it.type == TransactionType.INCOME }
@@ -84,6 +87,8 @@ class HomeViewModel @Inject constructor(
                             error = null
                         )
                     }
+                    
+                    android.util.Log.d("HomeViewModel", "UI state updated - balance: $totalBalance, income: $totalIncome, expenses: $totalExpenses")
                 }
             } catch (e: Exception) {
                 _uiState.update {
@@ -174,8 +179,11 @@ class HomeViewModel @Inject constructor(
     }
 
     fun refreshData() {
+        android.util.Log.d("HomeViewModel", "refreshData called for user: $userId")
         if (userId.isNotEmpty()) {
             loadUserData()
+        } else {
+            android.util.Log.w("HomeViewModel", "refreshData called but userId is empty")
         }
     }
 

@@ -18,8 +18,12 @@ import com.axeven.profiteer.ui.home.HomeScreen
 import com.axeven.profiteer.ui.login.AuthState
 import com.axeven.profiteer.ui.login.LoginScreen
 import com.axeven.profiteer.ui.settings.SettingsScreen
+import com.axeven.profiteer.ui.transaction.CreateTransactionScreen
+import com.axeven.profiteer.ui.transaction.EditTransactionScreen
 import com.axeven.profiteer.ui.theme.ProfiteerTheme
 import com.axeven.profiteer.viewmodel.AuthViewModel
+import com.axeven.profiteer.data.model.Transaction
+import com.axeven.profiteer.data.model.TransactionType
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -36,7 +40,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class AppScreen {
-    HOME, SETTINGS
+    HOME, SETTINGS, CREATE_TRANSACTION, EDIT_TRANSACTION
 }
 
 @Composable
@@ -44,6 +48,9 @@ fun ProfiteerApp(authViewModel: AuthViewModel = viewModel()) {
     val authState by authViewModel.authState.collectAsState()
     val googleSignInIntent by authViewModel.googleSignInIntent.collectAsState()
     var currentScreen by remember { mutableStateOf(AppScreen.HOME) }
+    var selectedTransaction by remember { mutableStateOf<Transaction?>(null) }
+    var initialTransactionType by remember { mutableStateOf<TransactionType?>(null) }
+    var homeRefreshTrigger by remember { mutableStateOf(0) }
     
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -65,13 +72,43 @@ fun ProfiteerApp(authViewModel: AuthViewModel = viewModel()) {
             when (currentScreen) {
                 AppScreen.HOME -> {
                     HomeScreen(
-                        onNavigateToSettings = { currentScreen = AppScreen.SETTINGS }
+                        onNavigateToSettings = { currentScreen = AppScreen.SETTINGS },
+                        onNavigateToCreateTransaction = { transactionType ->
+                            initialTransactionType = transactionType
+                            currentScreen = AppScreen.CREATE_TRANSACTION
+                        },
+                        onEditTransaction = { transaction ->
+                            selectedTransaction = transaction
+                            currentScreen = AppScreen.EDIT_TRANSACTION
+                        },
+                        refreshTrigger = homeRefreshTrigger
                     )
                 }
                 AppScreen.SETTINGS -> {
                     SettingsScreen(
                         onNavigateBack = { currentScreen = AppScreen.HOME }
                     )
+                }
+                AppScreen.CREATE_TRANSACTION -> {
+                    CreateTransactionScreen(
+                        initialTransactionType = initialTransactionType,
+                        onNavigateBack = { 
+                            initialTransactionType = null
+                            homeRefreshTrigger++ // Trigger refresh
+                            currentScreen = AppScreen.HOME 
+                        }
+                    )
+                }
+                AppScreen.EDIT_TRANSACTION -> {
+                    selectedTransaction?.let { transaction ->
+                        EditTransactionScreen(
+                            transaction = transaction,
+                            onNavigateBack = { 
+                                homeRefreshTrigger++ // Trigger refresh
+                                currentScreen = AppScreen.HOME 
+                            }
+                        )
+                    }
                 }
             }
         }

@@ -1,6 +1,7 @@
 package com.axeven.profiteer.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -38,9 +39,19 @@ data class QuickAction(
 @Composable
 fun HomeScreen(
     onNavigateToSettings: () -> Unit = {},
+    onNavigateToCreateTransaction: (TransactionType) -> Unit = {},
+    onEditTransaction: (Transaction) -> Unit = {},
+    refreshTrigger: Int = 0, // Add refresh trigger parameter
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Refresh data when refreshTrigger changes
+    LaunchedEffect(refreshTrigger) {
+        if (refreshTrigger > 0) {
+            viewModel.refreshData()
+        }
+    }
 
     val quickActions = listOf(
         QuickAction("Add Income", Icons.Default.Add, Color(0xFF4CAF50)),
@@ -106,7 +117,17 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(quickActions) { action ->
-                        QuickActionCard(action = action)
+                        QuickActionCard(
+                            action = action,
+                            onClick = {
+                                when (action.title) {
+                                    "Add Income" -> onNavigateToCreateTransaction(TransactionType.INCOME)
+                                    "Add Expense" -> onNavigateToCreateTransaction(TransactionType.EXPENSE)
+                                    "Transfer" -> onNavigateToCreateTransaction(TransactionType.TRANSFER)
+                                    // Other actions can be implemented later
+                                }
+                            }
+                        )
                     }
                 }
             }
@@ -120,7 +141,10 @@ fun HomeScreen(
             }
             
             items(uiState.transactions) { transaction ->
-                TransactionItem(transaction = transaction)
+                TransactionItem(
+                    transaction = transaction,
+                    onClick = { onEditTransaction(transaction) }
+                )
             }
         }
     }
@@ -193,10 +217,11 @@ fun BalanceCard(balance: Double, income: Double, expenses: Double, currency: Str
 }
 
 @Composable
-fun QuickActionCard(action: QuickAction) {
+fun QuickActionCard(action: QuickAction, onClick: () -> Unit = {}) {
     Card(
         modifier = Modifier
-            .size(120.dp, 100.dp),
+            .size(120.dp, 100.dp)
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
@@ -235,11 +260,13 @@ fun QuickActionCard(action: QuickAction) {
 }
 
 @Composable
-fun TransactionItem(transaction: Transaction) {
+fun TransactionItem(transaction: Transaction, onClick: () -> Unit = {}) {
     val dateFormatter = remember { SimpleDateFormat("MMM dd", Locale.getDefault()) }
     val displayDate = transaction.createdAt?.let { dateFormatter.format(it) } ?: "Unknown"
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
@@ -259,23 +286,26 @@ fun TransactionItem(transaction: Transaction) {
                         .size(48.dp)
                         .clip(RoundedCornerShape(24.dp))
                         .background(
-                            if (transaction.type == TransactionType.INCOME) 
-                                Color(0xFF4CAF50).copy(alpha = 0.1f)
-                            else 
-                                Color(0xFFF44336).copy(alpha = 0.1f)
+                            when (transaction.type) {
+                                TransactionType.INCOME -> Color(0xFF4CAF50).copy(alpha = 0.1f)
+                                TransactionType.EXPENSE -> Color(0xFFF44336).copy(alpha = 0.1f)
+                                TransactionType.TRANSFER -> Color(0xFF2196F3).copy(alpha = 0.1f)
+                            }
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = if (transaction.type == TransactionType.INCOME) 
-                            Icons.Default.KeyboardArrowUp 
-                        else 
-                            Icons.Default.KeyboardArrowDown,
+                        imageVector = when (transaction.type) {
+                            TransactionType.INCOME -> Icons.Default.KeyboardArrowUp
+                            TransactionType.EXPENSE -> Icons.Default.KeyboardArrowDown
+                            TransactionType.TRANSFER -> Icons.Default.Refresh
+                        },
                         contentDescription = null,
-                        tint = if (transaction.type == TransactionType.INCOME) 
-                            Color(0xFF4CAF50) 
-                        else 
-                            Color(0xFFF44336),
+                        tint = when (transaction.type) {
+                            TransactionType.INCOME -> Color(0xFF4CAF50)
+                            TransactionType.EXPENSE -> Color(0xFFF44336)
+                            TransactionType.TRANSFER -> Color(0xFF2196F3)
+                        },
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -300,10 +330,11 @@ fun TransactionItem(transaction: Transaction) {
                 text = "${if (transaction.amount > 0) "+" else ""}$${NumberFormatter.formatCurrency(kotlin.math.abs(transaction.amount))}",
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = if (transaction.type == TransactionType.INCOME) 
-                    Color(0xFF4CAF50) 
-                else 
-                    Color(0xFFF44336)
+                color = when (transaction.type) {
+                    TransactionType.INCOME -> Color(0xFF4CAF50)
+                    TransactionType.EXPENSE -> Color(0xFFF44336)
+                    TransactionType.TRANSFER -> Color(0xFF2196F3)
+                }
             )
         }
     }
