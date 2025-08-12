@@ -14,12 +14,14 @@ This document tracks the current implementation status of Profiteer features aga
 
 ### Wallet System
 - ✅ **Wallet Data Model**: Complete with all properties (name, type, currency, balances)
-- ✅ **Physical/Logical Wallet Types**: Dropdown selection in create/edit forms
+- ✅ **Physical/Investment Wallet Types**: Dropdown selection in create/edit forms
 - ✅ **Initial Balance Tracking**: Separate from transaction-based balance changes
-- ✅ **Multi-currency Support**: USD, EUR, GBP, JPY, CAD, AUD, IDR
+- ✅ **Multi-currency Support**: USD, EUR, GBP, JPY, CAD, AUD, IDR, GOLD, BTC
 - ✅ **Wallet CRUD Operations**: Create, read, update, delete with Firebase sync
 - ✅ **Name Uniqueness Validation**: Case-insensitive duplicate prevention
 - ✅ **Form Validation**: Real-time validation with error states and messages
+- ✅ **Currency Conversion**: Automatic balance aggregation with conversion rates
+- ✅ **Missing Rate Warnings**: User alerts when conversion rates are not set
 
 ### Transaction System
 - ✅ **Transaction Data Model**: Basic income/expense transaction support
@@ -37,16 +39,27 @@ This document tracks the current implementation status of Profiteer features aga
 
 ### Data Management
 - ✅ **User Preferences**: Default currency storage and management
-- ✅ **Currency Rates**: Flat and monthly conversion rate support
+- ✅ **Currency Rates**: Default and monthly conversion rate support with smart fallback
 - ✅ **User Data Isolation**: Complete separation of user data in Firestore
 - ✅ **Error Handling**: Graceful error management with user feedback
+- ✅ **Document ID Mapping**: Proper Firestore document mapping for real-time sync
+- ✅ **Real-time Listeners**: Live data synchronization without composite indexes
 
 ### Number Formatting System
-- ✅ **NumberFormatter Utility**: Centralized formatting logic
+- ✅ **NumberFormatter Utility**: Centralized formatting logic with currency-specific precision
 - ✅ **Thousands Separators**: All amounts display as 1,234.56
 - ✅ **Smart Input Parsing**: Handles both formatted and plain number input
-- ✅ **Currency Display**: Consistent currency code prefixes
+- ✅ **Multi-currency Display**: BTC (8 decimals), GOLD (3 decimals), standard (2 decimals)
+- ✅ **Currency-specific Formatting**: Proper display for GOLD grams and BTC satoshis
 - ✅ **Validation Integration**: Proper parsing of user-formatted input
+
+### Currency System
+- ✅ **Standard Currencies**: Full support for major world currencies
+- ✅ **Precious Metals**: GOLD with gram-based pricing and 3-decimal precision
+- ✅ **Cryptocurrency**: BTC with 8-decimal precision support
+- ✅ **Smart Rate Lookup**: Bi-directional conversion with default→monthly fallback
+- ✅ **Rate Management UI**: Create, edit conversion rates with monthly/default options
+- ✅ **Balance Aggregation**: Home screen converts all wallets to default currency
 
 ## 🚧 Partially Implemented
 
@@ -93,11 +106,12 @@ This document tracks the current implementation status of Profiteer features aga
 
 ## 📊 Implementation Statistics
 
-- **Core Features**: 90% complete
-- **UI/UX**: 75% complete
-- **Data Layer**: 85% complete
-- **Advanced Features**: 10% complete
-- **Overall Progress**: ~70% complete
+- **Core Features**: 95% complete
+- **UI/UX**: 85% complete  
+- **Data Layer**: 95% complete
+- **Currency System**: 100% complete
+- **Advanced Features**: 15% complete
+- **Overall Progress**: ~80% complete
 
 ## 🎯 Next Priority Items
 
@@ -121,14 +135,24 @@ This document tracks the current implementation status of Profiteer features aga
 
 ## 🔄 Recent Completions
 
-### Latest Sprint (Current)
-- ✅ Initial balance tracking for wallets
-- ✅ Thousands separator formatting across all UI
-- ✅ Smart number input parsing with validation
-- ✅ Wallet name uniqueness validation
-- ✅ Enhanced form validation with real-time feedback
-- ✅ Complete settings page with currency management
-- ✅ MaterialApp 3 design system implementation
+### Latest Sprint (August 2025)
+- ✅ **Multi-currency wallet balance aggregation** on home screen
+- ✅ **BTC cryptocurrency support** with 8-decimal precision
+- ✅ **GOLD precious metal support** with gram-based pricing  
+- ✅ **Smart currency conversion** with default→monthly rate fallback
+- ✅ **Missing rate warnings** for transparent balance calculations
+- ✅ **Wallet type dropdown fix** - now shows wallet types instead of currencies
+- ✅ **Firestore document ID mapping** for proper real-time synchronization
+- ✅ **Enhanced currency rate dialogs** with BTC and GOLD specific labels
+- ✅ **Bi-directional rate conversion** (direct and inverse rate lookup)
+
+### Previous Sprint
+- ✅ **Firebase Firestore Native Mode setup** with proper authentication
+- ✅ **Google Sign-in configuration** with Web Client ID management
+- ✅ **Real-time data synchronization** without composite index requirements
+- ✅ **Comprehensive error handling** for Google Play Services warnings
+- ✅ **Transaction deletion system** with proper verification
+- ✅ **ProGuard configuration** for Google Play Services compatibility
 
 ### Previous Sprints
 - ✅ Firebase authentication and configuration
