@@ -27,6 +27,7 @@ Interactive card-based navigation to key features:
 - **Top Bar**: App title "Profiteer" with settings and profile access
 - **Settings Access**: Direct navigation to settings page via gear icon
 - **Profile Menu**: User account access (planned feature)
+- **Wallets**: Click sum of wallet balance
 
 ## Data Sources
 

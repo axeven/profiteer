@@ -39,6 +39,7 @@ data class QuickAction(
 @Composable
 fun HomeScreen(
     onNavigateToSettings: () -> Unit = {},
+    onNavigateToWalletList: () -> Unit = {},
     onNavigateToCreateTransaction: (TransactionType) -> Unit = {},
     onEditTransaction: (Transaction) -> Unit = {},
     refreshTrigger: Int = 0, // Add refresh trigger parameter
@@ -100,7 +101,8 @@ fun HomeScreen(
                     balance = uiState.totalBalance, 
                     income = uiState.totalIncome, 
                     expenses = uiState.totalExpenses,
-                    currency = uiState.defaultCurrency
+                    currency = uiState.defaultCurrency,
+                    onBalanceClick = onNavigateToWalletList
                 )
             }
             
@@ -183,11 +185,18 @@ fun HomeScreen(
 }
 
 @Composable
-fun BalanceCard(balance: Double, income: Double, expenses: Double, currency: String = "USD") {
+fun BalanceCard(
+    balance: Double, 
+    income: Double, 
+    expenses: Double, 
+    currency: String = "USD",
+    onBalanceClick: () -> Unit = {}
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(160.dp),
+            .height(160.dp)
+            .clickable { onBalanceClick() },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         )
@@ -199,11 +208,22 @@ fun BalanceCard(balance: Double, income: Double, expenses: Double, currency: Str
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                Text(
-                    text = "Physical Wallet Balance",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Physical Wallet Balance",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    )
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowRight,
+                        contentDescription = "View wallets",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    )
+                }
                 Text(
                     text = "$currency ${NumberFormatter.formatCurrency(balance)}",
                     style = MaterialTheme.typography.headlineLarge,

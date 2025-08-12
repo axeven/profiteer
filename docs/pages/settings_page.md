@@ -4,21 +4,6 @@ The Settings page is where users can manage their wallet configurations, currenc
 
 ## Current Features
 
-### 🏦 Wallet Configuration
-- **Create New Wallet**
-  - Wallet name (with uniqueness validation)
-  - Wallet type selection (Physical or Logical)
-  - Currency selection (USD, EUR, GBP, JPY, CAD, AUD, IDR)
-  - Initial balance setup (with thousands separator formatting)
-  - Real-time form validation with error messages
-
-- **Existing Wallet Management**
-  - List of all user wallets with balance display
-  - Each wallet shows: Name, Type, Currency, and formatted balance
-  - Edit wallet functionality (modify name, type, currency, initial balance)
-  - Delete wallet capability
-  - Real-time balance updates
-
 ### 💱 Currency Configuration
 - **Default Currency Setting**
   - Set user's preferred display currency
