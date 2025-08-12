@@ -307,10 +307,10 @@ fun WalletItem(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium
                 )
-                val balanceDisplay = if (wallet.currency == "GOLD") {
-                    "${wallet.walletType} • ${NumberFormatter.formatCurrency(wallet.balance, "GOLD")} grams"
-                } else {
-                    "${wallet.walletType} • ${wallet.currency} ${NumberFormatter.formatCurrency(wallet.balance)}"
+                val balanceDisplay = when (wallet.currency) {
+                    "GOLD" -> "${wallet.walletType} • ${NumberFormatter.formatCurrency(wallet.balance, "GOLD")} grams"
+                    "BTC" -> "${wallet.walletType} • ${NumberFormatter.formatCurrency(wallet.balance, "BTC")} BTC"
+                    else -> "${wallet.walletType} • ${wallet.currency} ${NumberFormatter.formatCurrency(wallet.balance)}"
                 }
                 
                 Text(
@@ -469,7 +469,7 @@ fun EditWalletDialog(
     var initialBalanceText by remember { mutableStateOf(NumberFormatter.formatCurrency(wallet.initialBalance)) }
     var showCurrencyDropdown by remember { mutableStateOf(false) }
     var showWalletTypeDropdown by remember { mutableStateOf(false) }
-    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR", "GOLD")
+    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR", "GOLD", "BTC")
     val walletTypes = listOf("Physical", "Logical")
     
     val isNameDuplicate = existingWallets
@@ -518,7 +518,7 @@ fun EditWalletDialog(
                     Box(
                         modifier = Modifier
                             .matchParentSize()
-                            .clickable { showCurrencyDropdown = true }
+                            .clickable { showWalletTypeDropdown = true }
                     )
                     
                     DropdownMenu(
@@ -576,13 +576,21 @@ fun EditWalletDialog(
                     }
                 }
                 
-                val isGoldWallet = selectedCurrency == "GOLD"
-                val balanceLabel = if (isGoldWallet) "Initial Weight (grams)" else "Initial Balance"
-                val balancePlaceholder = if (isGoldWallet) "0.0" else "0.00"
-                val balanceHelpText = if (isGoldWallet) 
-                    "Weight in grams (won't appear in transaction analytics)" 
-                else 
-                    "This balance won't appear in transaction analytics"
+                val balanceLabel = when (selectedCurrency) {
+                    "GOLD" -> "Initial Weight (grams)"
+                    "BTC" -> "Initial Amount (BTC)"
+                    else -> "Initial Balance"
+                }
+                val balancePlaceholder = when (selectedCurrency) {
+                    "GOLD" -> "0.0"
+                    "BTC" -> "0.00000000"
+                    else -> "0.00"
+                }
+                val balanceHelpText = when (selectedCurrency) {
+                    "GOLD" -> "Weight in grams (won't appear in transaction analytics)"
+                    "BTC" -> "Amount in Bitcoin (won't appear in transaction analytics)"
+                    else -> "This balance won't appear in transaction analytics"
+                }
                 
                 OutlinedTextField(
                     value = initialBalanceText,
@@ -628,7 +636,7 @@ fun CreateWalletDialog(
     var initialBalanceText by remember { mutableStateOf("0.00") }
     var showCurrencyDropdown by remember { mutableStateOf(false) }
     var showWalletTypeDropdown by remember { mutableStateOf(false) }
-    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR", "GOLD")
+    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR", "GOLD", "BTC")
     val walletTypes = listOf("Physical", "Logical")
     
     val isNameDuplicate = existingWallets.any { it.name.equals(walletName, ignoreCase = true) }
@@ -675,7 +683,7 @@ fun CreateWalletDialog(
                     Box(
                         modifier = Modifier
                             .matchParentSize()
-                            .clickable { showCurrencyDropdown = true }
+                            .clickable { showWalletTypeDropdown = true }
                     )
                     
                     DropdownMenu(
@@ -733,13 +741,21 @@ fun CreateWalletDialog(
                     }
                 }
                 
-                val isGoldWallet = selectedCurrency == "GOLD"
-                val balanceLabel = if (isGoldWallet) "Initial Weight (grams)" else "Initial Balance"
-                val balancePlaceholder = if (isGoldWallet) "0.0" else "0.00"
-                val balanceHelpText = if (isGoldWallet) 
-                    "Weight in grams (won't appear in transaction analytics)" 
-                else 
-                    "This balance won't appear in transaction analytics"
+                val balanceLabel = when (selectedCurrency) {
+                    "GOLD" -> "Initial Weight (grams)"
+                    "BTC" -> "Initial Amount (BTC)"
+                    else -> "Initial Balance"
+                }
+                val balancePlaceholder = when (selectedCurrency) {
+                    "GOLD" -> "0.0"
+                    "BTC" -> "0.00000000"
+                    else -> "0.00"
+                }
+                val balanceHelpText = when (selectedCurrency) {
+                    "GOLD" -> "Weight in grams (won't appear in transaction analytics)"
+                    "BTC" -> "Amount in Bitcoin (won't appear in transaction analytics)"
+                    else -> "This balance won't appear in transaction analytics"
+                }
                 
                 OutlinedTextField(
                     value = initialBalanceText,
@@ -778,7 +794,7 @@ fun CurrencySelectionDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
-    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR", "GOLD")
+    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR", "GOLD", "BTC")
     var selectedCurrency by remember { mutableStateOf(currentCurrency) }
 
     AlertDialog(
@@ -833,13 +849,17 @@ fun ConversionRateDialog(
     var showToDropdown by remember { mutableStateOf(false) }
     var showYearDropdown by remember { mutableStateOf(false) }
     var showMonthDropdown by remember { mutableStateOf(false) }
-    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR", "GOLD")
+    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR", "GOLD", "BTC")
     val years = listOf("Default", "2024", "2025", "2026")
     val months = listOf("All Months", "January", "February", "March", "April", "May", "June", 
                        "July", "August", "September", "October", "November", "December")
 
-    val isGoldRate = fromCurrency == "GOLD" || toCurrency == "GOLD"
-    val titleText = if (isGoldRate) "Add Gold Price" else "Add Conversion Rate"
+    val isSpecialRate = fromCurrency == "GOLD" || toCurrency == "GOLD" || fromCurrency == "BTC" || toCurrency == "BTC"
+    val titleText = when {
+        fromCurrency == "GOLD" || toCurrency == "GOLD" -> "Add Gold Price"
+        fromCurrency == "BTC" || toCurrency == "BTC" -> "Add Bitcoin Rate"
+        else -> "Add Conversion Rate"
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -932,10 +952,14 @@ fun ConversionRateDialog(
                     }
                 }
                 
-                val rateLabel = if (isGoldRate) {
-                    if (fromCurrency == "GOLD") "Price per gram in $toCurrency" else "Price per gram in $fromCurrency"
-                } else {
-                    "Conversion Rate"
+                val rateLabel = when {
+                    fromCurrency == "GOLD" || toCurrency == "GOLD" -> {
+                        if (fromCurrency == "GOLD") "Price per gram in $toCurrency" else "Price per gram in $fromCurrency"
+                    }
+                    fromCurrency == "BTC" || toCurrency == "BTC" -> {
+                        if (fromCurrency == "BTC") "Price per BTC in $toCurrency" else "Price per BTC in $fromCurrency"
+                    }
+                    else -> "Conversion Rate"
                 }
                 
                 OutlinedTextField(
@@ -943,7 +967,11 @@ fun ConversionRateDialog(
                     onValueChange = { rateText = it },
                     label = { Text(rateLabel) },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text(if (isGoldRate) "e.g., 65.50" else "e.g., 1.25") }
+                    placeholder = { Text(when {
+                        fromCurrency == "GOLD" || toCurrency == "GOLD" -> "e.g., 65.50"
+                        fromCurrency == "BTC" || toCurrency == "BTC" -> "e.g., 45000.00"
+                        else -> "e.g., 1.25"
+                    }) }
                 )
                 
                 Row(
@@ -1086,13 +1114,17 @@ fun EditConversionRateDialog(
     var showToDropdown by remember { mutableStateOf(false) }
     var showYearDropdown by remember { mutableStateOf(false) }
     var showMonthDropdown by remember { mutableStateOf(false) }
-    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR", "GOLD")
+    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR", "GOLD", "BTC")
     val years = listOf("Default", "2024", "2025", "2026")
     val months = listOf("All Months", "January", "February", "March", "April", "May", "June", 
                        "July", "August", "September", "October", "November", "December")
 
-    val isGoldRate = fromCurrency == "GOLD" || toCurrency == "GOLD"
-    val titleText = if (isGoldRate) "Edit Gold Price" else "Edit Conversion Rate"
+    val isSpecialRate = fromCurrency == "GOLD" || toCurrency == "GOLD" || fromCurrency == "BTC" || toCurrency == "BTC"
+    val titleText = when {
+        fromCurrency == "GOLD" || toCurrency == "GOLD" -> "Edit Gold Price"
+        fromCurrency == "BTC" || toCurrency == "BTC" -> "Edit Bitcoin Price"
+        else -> "Edit Conversion Rate"
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1185,10 +1217,14 @@ fun EditConversionRateDialog(
                     }
                 }
                 
-                val rateLabel = if (isGoldRate) {
-                    if (fromCurrency == "GOLD") "Price per gram in $toCurrency" else "Price per gram in $fromCurrency"
-                } else {
-                    "Conversion Rate"
+                val rateLabel = when {
+                    fromCurrency == "GOLD" || toCurrency == "GOLD" -> {
+                        if (fromCurrency == "GOLD") "Price per gram in $toCurrency" else "Price per gram in $fromCurrency"
+                    }
+                    fromCurrency == "BTC" || toCurrency == "BTC" -> {
+                        if (fromCurrency == "BTC") "Price per BTC in $toCurrency" else "Price per BTC in $fromCurrency"
+                    }
+                    else -> "Conversion Rate"
                 }
                 
                 OutlinedTextField(
@@ -1196,7 +1232,11 @@ fun EditConversionRateDialog(
                     onValueChange = { rateText = it },
                     label = { Text(rateLabel) },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text(if (isGoldRate) "e.g., 65.50" else "e.g., 1.25") }
+                    placeholder = { Text(when {
+                        fromCurrency == "GOLD" || toCurrency == "GOLD" -> "e.g., 65.50"
+                        fromCurrency == "BTC" || toCurrency == "BTC" -> "e.g., 45000.00"
+                        else -> "e.g., 1.25"
+                    }) }
                 )
                 
                 Row(

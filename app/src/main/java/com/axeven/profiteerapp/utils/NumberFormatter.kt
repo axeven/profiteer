@@ -17,16 +17,26 @@ object NumberFormatter {
         currency: String = "", 
         showSymbol: Boolean = false
     ): String {
-        val formatter = if (currency == "GOLD") {
-            // Gold uses more precision for weight (grams)
-            NumberFormat.getNumberInstance(Locale.US).apply {
-                minimumFractionDigits = 1
-                maximumFractionDigits = 3
+        val formatter = when (currency) {
+            "GOLD" -> {
+                // Gold uses more precision for weight (grams)
+                NumberFormat.getNumberInstance(Locale.US).apply {
+                    minimumFractionDigits = 1
+                    maximumFractionDigits = 3
+                }
             }
-        } else {
-            NumberFormat.getNumberInstance(Locale.US).apply {
-                minimumFractionDigits = 2
-                maximumFractionDigits = 2
+            "BTC" -> {
+                // Bitcoin uses high precision (up to 8 decimal places)
+                NumberFormat.getNumberInstance(Locale.US).apply {
+                    minimumFractionDigits = 4
+                    maximumFractionDigits = 8
+                }
+            }
+            else -> {
+                NumberFormat.getNumberInstance(Locale.US).apply {
+                    minimumFractionDigits = 2
+                    maximumFractionDigits = 2
+                }
             }
         }
         
