@@ -8,11 +8,11 @@ plugins {
 }
 
 android {
-    namespace = "com.axeven.profiteer"
+    namespace = "com.axeven.profiteerapp"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.axeven.profiteer"
+        applicationId = "com.axeven.profiteerapp"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
