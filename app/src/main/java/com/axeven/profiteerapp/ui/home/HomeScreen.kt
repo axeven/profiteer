@@ -371,7 +371,7 @@ fun TransactionItem(transaction: Transaction, onClick: () -> Unit = {}) {
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = "${transaction.category} • $displayDate",
+                        text = "${if (transaction.tags.isNotEmpty()) transaction.tags.joinToString(", ") else "Untagged"} • $displayDate",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
