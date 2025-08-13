@@ -32,7 +32,9 @@ The codebase follows MVVM (Model-View-ViewModel) architecture with these key pac
   - `repository/` - Repository pattern implementations for data access
 - **`com.axeven.profiteerapp.viewmodel`** - ViewModels for business logic and state management
 - **`com.axeven.profiteerapp.ui`** - UI components built with Jetpack Compose
-  - `home/` - Home screen with wallet balance aggregation
+  - `home/` - Home screen with wallet balance aggregation and recent transactions
+  - `wallet/` - Wallet list screen with multi-wallet management and unallocated balance tracking
+  - `transaction/` - Transaction creation and editing screens with tag-based categorization
   - `settings/` - Settings screen with currency rate management
   - `theme/` - Material 3 theming system
 - **`com.axeven.profiteerapp.utils`** - Utility classes and helper functions
@@ -54,13 +56,15 @@ The codebase follows MVVM (Model-View-ViewModel) architecture with these key pac
 ## Core Features
 
 ### Multi-Currency Wallet Management
-- Support for multiple wallet types (Physical, Investment, etc.)
+- Support for Physical and Logical wallet types with distinct management
 - Comprehensive currency support including:
   - Standard currencies: USD, EUR, GBP, JPY, CAD, AUD, IDR
   - Precious metals: GOLD (gram-based pricing)
   - Cryptocurrency: BTC (8-decimal precision)
 - Automatic currency conversion for balance aggregation
 - Warning system for missing conversion rates
+- Unallocated balance tracking (Physical wallet balance minus allocated Logical wallet balance)
+- Dedicated wallet list page with separate Physical and Logical wallet sections
 
 ### Currency Rate Management
 - Default rates for consistent conversion across time periods
@@ -69,9 +73,16 @@ The codebase follows MVVM (Model-View-ViewModel) architecture with these key pac
 - Smart rate fallback: Default → Monthly when rates missing
 
 ### Transaction Management
-- Income, Expense, and Transfer transaction types
-- Real-time wallet balance updates
+- Three transaction types: Income, Expense, and Transfer
+- **Tag-based Categorization**: Unified tag system (replaced category field)
+  - Multiple tags per transaction supported
+  - Auto-completion after 3+ characters based on historical tags
+  - Default "Untagged" for transactions without tags
+- **Single Wallet Selection**: Each transaction affects exactly one Physical and one Logical wallet
+- **Transfer Validation**: Source and destination must have same wallet type AND currency
+- Real-time wallet balance updates with proper multi-wallet support
 - Firestore real-time synchronization with proper document ID mapping
+- Enhanced transaction editing with backward compatibility for existing data
 
 ## Development Notes
 
@@ -107,8 +118,34 @@ Non-critical SecurityException warnings may appear in logcat. These are handled 
 - Falls back to inverse rate calculation when direct rates unavailable
 - Warns users when rates are missing for proper balance calculation
 
+## Recent Improvements & Bug Fixes
+
+### Wallet Management Enhancements
+- **Dedicated Wallet List Page**: Complete wallet management interface with Physical/Logical separation
+- **Unallocated Balance Tracking**: Shows unallocated Physical wallet balance when viewing Logical wallets
+- **Enhanced Navigation**: Direct navigation from home page to wallet list
+
+### Transaction System Overhaul
+- **Tag Unification**: Merged category and tag concepts into unified tagging system
+- **Single Wallet Selection**: Simplified from multi-wallet to single wallet selection per transaction type
+- **Smart Auto-completion**: Tag suggestions based on historical data with 3+ character trigger
+- **Transfer Validation**: Enhanced validation requiring same wallet type AND currency
+- **UI Consistency**: Tag display fixed across all screens (home page, transaction screens)
+
+### Data Model Updates
+- **Transaction Model**: Enhanced with `affectedWalletIds` and `tags` fields
+- **Backward Compatibility**: Maintains support for existing transaction formats
+- **Default Values**: Updated default category from "Uncategorized" to "Untagged"
+
+### User Experience Improvements
+- **Separate Wallet Type Selection**: Physical and Logical wallet selection in dedicated UI sections
+- **Enhanced Validation**: Real-time validation with clear error messages
+- **Consistent Tag Display**: Tags properly displayed throughout the application
+
 ## Testing Strategy
 
 - Unit tests in `src/test/` using JUnit
 - Instrumented tests in `src/androidTest/` using Espresso and Compose testing
 - UI tests should use Compose testing utilities from `androidx.compose.ui.test`
+- **Test Coverage**: All major features have corresponding unit tests
+- **Continuous Integration**: Tests run on every build to ensure stability

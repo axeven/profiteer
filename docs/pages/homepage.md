@@ -12,22 +12,24 @@ The Homepage serves as the main dashboard providing users with an overview of th
 
 ### 🎯 Quick Actions
 Interactive card-based navigation to key features:
-- **Add Income**: Quick access to record income transactions
-- **Add Expense**: Quick access to record expense transactions  
-- **Transfer**: Money movement between wallets (planned feature)
+- **Add Income**: Quick access to record income transactions with tag-based categorization
+- **Add Expense**: Quick access to record expense transactions with tag-based categorization  
+- **Transfer**: Money movement between wallets with same-type and same-currency validation
 - **Analytics**: Financial analysis and reporting (planned feature)
 
 ### 📋 Recent Transactions
 - **Transaction List**: Displays recent transactions with formatted amounts
-- **Transaction Details**: Shows title, category, date, and amount for each transaction
-- **Visual Indicators**: Color-coded icons for income (green up arrow) vs expenses (red down arrow)
+- **Transaction Details**: Shows title, tags, date, and amount for each transaction
+- **Tag Display**: Shows all transaction tags as comma-separated list, with "Untagged" fallback
+- **Visual Indicators**: Color-coded icons and amounts (green up arrow for income, red down arrow for expenses, blue refresh for transfers)
 - **Thousands Separators**: All amounts display with proper formatting (1,234.56)
+- **Click to Edit**: Tap any transaction to open edit screen
 
 ### 🧭 Navigation
 - **Top Bar**: App title "Profiteer" with settings and profile access
 - **Settings Access**: Direct navigation to settings page via gear icon
 - **Profile Menu**: User account access (planned feature)
-- **Wallets**: Click sum of wallet balance
+- **Wallet Navigation**: Click balance card to access dedicated wallet list page
 
 ## Data Sources
 
@@ -72,10 +74,13 @@ Interactive card-based navigation to key features:
 - Notification system for discrepancy alerts
 - Detailed discrepancy amount display
 
-### Wallet Lists
-- Grouped wallet display (Physical vs Logical)
-- Individual wallet balance display with navigation to detail pages
-- Real-time balance updates
+### Enhanced Transaction Features
+- ~~Grouped wallet display (Physical vs Logical)~~ **IMPLEMENTED**
+- ~~Individual wallet balance display with navigation to detail pages~~ **IMPLEMENTED**
+- ~~Real-time balance updates~~ **IMPLEMENTED**
+- Advanced transaction filtering by tags
+- Transaction search functionality
+- Bulk transaction operations
 
 ### Advanced Analytics
 - Monthly expense tracking

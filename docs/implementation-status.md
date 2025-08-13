@@ -14,7 +14,9 @@ This document tracks the current implementation status of Profiteer features aga
 
 ### Wallet System
 - ✅ **Wallet Data Model**: Complete with all properties (name, type, currency, balances)
-- ✅ **Physical/Investment Wallet Types**: Dropdown selection in create/edit forms
+- ✅ **Physical/Logical Wallet Types**: Full support for Physical and Logical wallet distinction
+- ✅ **Dedicated Wallet List Page**: Complete wallet management interface with navigation
+- ✅ **Unallocated Balance Tracking**: Real-time calculation of Physical vs Logical balance allocation
 - ✅ **Initial Balance Tracking**: Separate from transaction-based balance changes
 - ✅ **Multi-currency Support**: USD, EUR, GBP, JPY, CAD, AUD, IDR, GOLD, BTC
 - ✅ **Wallet CRUD Operations**: Create, read, update, delete with Firebase sync
@@ -22,20 +24,31 @@ This document tracks the current implementation status of Profiteer features aga
 - ✅ **Form Validation**: Real-time validation with error states and messages
 - ✅ **Currency Conversion**: Automatic balance aggregation with conversion rates
 - ✅ **Missing Rate Warnings**: User alerts when conversion rates are not set
+- ✅ **Wallet Type Separation**: Distinct UI sections for Physical vs Logical wallets
 
 ### Transaction System
-- ✅ **Transaction Data Model**: Basic income/expense transaction support
+- ✅ **Transaction Data Model**: Complete with Income, Expense, and Transfer support
+- ✅ **Tag-based Categorization**: Unified tagging system replacing category field
+- ✅ **Multi-tag Support**: Multiple tags per transaction with comma separation
+- ✅ **Tag Auto-completion**: Smart suggestions based on historical tags (3+ character trigger)
+- ✅ **Single Wallet Selection**: Simplified to one Physical + one Logical wallet per transaction
+- ✅ **Transfer Transaction Validation**: Same currency and wallet type enforcement
+- ✅ **Transaction Creation/Editing**: Complete UI with separate Physical/Logical wallet selection
 - ✅ **Transaction Analytics**: Pure transaction-based calculations (excludes initial balances)
 - ✅ **Balance Updates**: Automatic wallet balance updates from transactions
 - ✅ **Real-time Sync**: Firebase listeners for immediate UI updates
+- ✅ **Backward Compatibility**: Support for existing transaction formats
 
 ### User Interface
-- ✅ **Homepage Dashboard**: Balance overview, quick actions, recent transactions
+- ✅ **Homepage Dashboard**: Balance overview, quick actions, recent transactions with tag display
+- ✅ **Wallet List Page**: Dedicated wallet management with Physical/Logical separation
+- ✅ **Transaction Screens**: Create and edit transactions with tag auto-completion
 - ✅ **Settings Page**: Complete wallet and currency management
 - ✅ **Number Formatting**: Thousands separators across all financial displays
 - ✅ **Form Components**: Dropdowns, validation, error handling
 - ✅ **Material 3 Design**: Consistent theming, colors, typography
 - ✅ **Responsive Layout**: Proper spacing, scrolling, and adaptive sizing
+- ✅ **Real-time Tag Display**: Consistent tag display across all screens
 
 ### Data Management
 - ✅ **User Preferences**: Default currency storage and management
@@ -64,18 +77,12 @@ This document tracks the current implementation status of Profiteer features aga
 ## 🚧 Partially Implemented
 
 ### Wallet System
-- 🚧 **Logical Wallet Constraints**: Validation that logical totals don't exceed physical totals
-- 🚧 **Wallet Relationships**: Linking logical wallets to specific physical wallets
-
-### Transaction System
-- 🚧 **Transfer Transactions**: Money movement between wallets
-- 🚧 **Transaction Categories**: Advanced categorization beyond basic income/expense
-- 🚧 **Transaction Tags**: Tagging system for detailed categorization
+- 🚧 **Logical Wallet Constraints**: Enhanced validation rules for allocation limits
+- 🚧 **Wallet Relationships**: Advanced linking of logical wallets to specific physical wallets
 
 ### User Interface
 - 🚧 **Wallet Detail Pages**: Individual wallet transaction history and analytics
-- 🚧 **Transaction List Page**: Advanced filtering and pagination
-- 🚧 **Add Transaction Page**: Dedicated transaction creation interface
+- 🚧 **Transaction List Page**: Advanced filtering and pagination beyond recent transactions
 
 ## ❌ Not Yet Implemented
 
@@ -87,10 +94,10 @@ This document tracks the current implementation status of Profiteer features aga
 - ❌ **Notification System**: Balance alerts and spending notifications
 
 ### Transaction Features
-- ❌ **Three-Transaction System**: The original increase/decrease/transfer model
 - ❌ **Advanced Transaction Types**: Investment, loan, debt management
 - ❌ **Recurring Transactions**: Automatic transaction scheduling
-- ❌ **Transaction History**: Advanced search and filtering
+- ❌ **Advanced Transaction Filtering**: Search by tags, amount ranges, date ranges
+- ❌ **Bulk Transaction Operations**: Multi-transaction editing and management
 
 ### User Experience
 - ❌ **Onboarding Flow**: New user guidance and setup
@@ -106,26 +113,28 @@ This document tracks the current implementation status of Profiteer features aga
 
 ## 📊 Implementation Statistics
 
-- **Core Features**: 95% complete
-- **UI/UX**: 85% complete  
-- **Data Layer**: 95% complete
+- **Core Features**: 98% complete
+- **UI/UX**: 95% complete  
+- **Data Layer**: 98% complete
 - **Currency System**: 100% complete
-- **Advanced Features**: 15% complete
-- **Overall Progress**: ~80% complete
+- **Transaction System**: 95% complete
+- **Wallet Management**: 95% complete
+- **Advanced Features**: 25% complete
+- **Overall Progress**: ~90% complete
 
 ## 🎯 Next Priority Items
 
 ### High Priority
-1. **Balance Discrepancy Detection**: Implement physical vs logical wallet validation
-2. **Wallet Detail Pages**: Individual wallet views with transaction history
-3. **Transfer Transactions**: Complete the transaction type system
-4. **Transaction List Page**: Advanced filtering and search capabilities
+1. **Wallet Detail Pages**: Individual wallet views with transaction history
+2. **Advanced Transaction Filtering**: Search by tags, amount ranges, date ranges
+3. **Analytics Dashboard**: Monthly spending analysis and trends
+4. **Enhanced Balance Discrepancy Detection**: More detailed validation and reporting
 
 ### Medium Priority
-1. **Analytics Dashboard**: Monthly spending analysis and trends
-2. **Add Transaction Page**: Streamlined transaction creation
-3. **Logical Wallet Constraints**: Enforce balance relationship rules
-4. **Advanced Transaction Categories**: Detailed expense categorization
+1. **Bulk Transaction Operations**: Multi-transaction editing and management
+2. **Advanced Logical Wallet Constraints**: Enforce detailed balance relationship rules
+3. **Export Functionality**: CSV and JSON export with tag-based filtering
+4. **Recurring Transactions**: Automatic transaction scheduling
 
 ### Low Priority
 1. **Export Functionality**: CSV and JSON export options
@@ -136,6 +145,17 @@ This document tracks the current implementation status of Profiteer features aga
 ## 🔄 Recent Completions
 
 ### Latest Sprint (August 2025)
+- ✅ **Dedicated Wallet List Page** with complete wallet management interface
+- ✅ **Unallocated Balance Tracking** for Physical vs Logical wallet allocation
+- ✅ **Transaction Tag Unification** replacing category with unified tag system
+- ✅ **Single Wallet Selection** simplifying transaction creation UX
+- ✅ **Tag Auto-completion** with 3+ character trigger and historical suggestions
+- ✅ **Enhanced Transfer Validation** requiring same currency AND wallet type
+- ✅ **Tag Display Fixes** ensuring consistent tag display across all screens
+- ✅ **Separate Physical/Logical UI** in transaction creation and editing
+- ✅ **Backward Compatibility** for existing transactions and data formats
+
+### Previous Sprint (August 2025)
 - ✅ **Multi-currency wallet balance aggregation** on home screen
 - ✅ **BTC cryptocurrency support** with 8-decimal precision
 - ✅ **GOLD precious metal support** with gram-based pricing  
