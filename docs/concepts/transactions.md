@@ -9,6 +9,6 @@ will be automatically tagged as "Uncategorized"
 
 For the third balance transaction, user may select whether he want to move balance between physical 
 or logical wallets, and then he need to choose the source wallet and destination wallet. The source
-and destination wallets must have the same currency.
+and destination wallets must have the same currency and wallet type.
 
 Each transaction has transaction date.

@@ -32,24 +32,30 @@ fun CreateTransactionScreen(
     var amount by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf(initialTransactionType ?: TransactionType.EXPENSE) }
-    var selectedWallet by remember { mutableStateOf<Wallet?>(null) }
+    var selectedPhysicalWallet by remember { mutableStateOf<Wallet?>(null) }
+    var selectedLogicalWallet by remember { mutableStateOf<Wallet?>(null) }
+    var tags by remember { mutableStateOf("") }
     var selectedSourceWallet by remember { mutableStateOf<Wallet?>(null) }
     var selectedDestinationWallet by remember { mutableStateOf<Wallet?>(null) }
     var selectedDate by remember { mutableStateOf(Date()) }
     var showDatePicker by remember { mutableStateOf(false) }
-    var showWalletPicker by remember { mutableStateOf(false) }
+    var showPhysicalWalletPicker by remember { mutableStateOf(false) }
+    var showLogicalWalletPicker by remember { mutableStateOf(false) }
     var showSourceWalletPicker by remember { mutableStateOf(false) }
     var showDestinationWalletPicker by remember { mutableStateOf(false) }
     
+    val allSelectedWallets = listOfNotNull(selectedPhysicalWallet, selectedLogicalWallet)
+    
     val isFormValid = when (selectedType) {
         TransactionType.INCOME, TransactionType.EXPENSE -> {
-            title.isNotBlank() && amount.isNotBlank() && selectedWallet != null && amount.toDoubleOrNull() != null
+            title.isNotBlank() && amount.isNotBlank() && allSelectedWallets.isNotEmpty() && amount.toDoubleOrNull() != null
         }
         TransactionType.TRANSFER -> {
             title.isNotBlank() && amount.isNotBlank() && 
             selectedSourceWallet != null && selectedDestinationWallet != null && 
             selectedSourceWallet != selectedDestinationWallet &&
             selectedSourceWallet?.currency == selectedDestinationWallet?.currency &&
+            selectedSourceWallet?.walletType == selectedDestinationWallet?.walletType &&
             amount.toDoubleOrNull() != null
         }
     }
@@ -146,13 +152,26 @@ fun CreateTransactionScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
+                
+                // Tags Field
+                item {
+                    OutlinedTextField(
+                        value = tags,
+                        onValueChange = { tags = it },
+                        label = { Text("Tags (optional)") },
+                        placeholder = { Text("Add tags separated by commas") },
+                        modifier = Modifier.fillMaxWidth(),
+                        supportingText = { Text("Separate multiple tags with commas") }
+                    )
+                }
             }
             
             // Wallet Selection for Income/Expense
             if (selectedType == TransactionType.INCOME || selectedType == TransactionType.EXPENSE) {
+                // Physical Wallets Section
                 item {
                     Text(
-                        text = "Select Wallet",
+                        text = "Physical Wallet",
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Medium
                     )
@@ -160,36 +179,101 @@ fun CreateTransactionScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { showWalletPicker = true },
+                            .clickable { showPhysicalWalletPicker = true },
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surface
                         )
                     ) {
-                        Row(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                                .padding(16.dp)
                         ) {
-                            Column {
-                                Text(
-                                    text = selectedWallet?.name ?: "Choose wallet",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                selectedWallet?.let { wallet ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = "${wallet.walletType} • ${wallet.currency}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                        text = selectedPhysicalWallet?.name ?: "Choose physical wallet",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium
                                     )
+                                    selectedPhysicalWallet?.let { wallet ->
+                                        Text(
+                                            text = "${wallet.walletType} • ${wallet.currency}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                        )
+                                    } ?: run {
+                                        Text(
+                                            text = "Select physical wallet to be affected",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                        )
+                                    }
                                 }
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowRight,
+                                    contentDescription = null
+                                )
                             }
-                            Icon(
-                                imageVector = Icons.Default.KeyboardArrowRight,
-                                contentDescription = null
-                            )
+                        }
+                    }
+                }
+                
+                // Logical Wallets Section
+                item {
+                    Text(
+                        text = "Logical Wallet",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                    
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showLogicalWalletPicker = true },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = selectedLogicalWallet?.name ?: "Choose logical wallet",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    selectedLogicalWallet?.let { wallet ->
+                                        Text(
+                                            text = "${wallet.walletType} • ${wallet.currency}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                        )
+                                    } ?: run {
+                                        Text(
+                                            text = "Select logical wallet to be affected",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                }
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowRight,
+                                    contentDescription = null
+                                )
+                            }
                         }
                     }
                 }
@@ -285,32 +369,62 @@ fun CreateTransactionScreen(
                     }
                 }
                 
-                // Currency mismatch warning
-                if (selectedSourceWallet != null && selectedDestinationWallet != null && 
-                    selectedSourceWallet?.currency != selectedDestinationWallet?.currency) {
-                    item {
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                // Currency and wallet type mismatch warnings
+                if (selectedSourceWallet != null && selectedDestinationWallet != null) {
+                    if (selectedSourceWallet?.currency != selectedDestinationWallet?.currency) {
+                        item {
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer
+                                )
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Warning,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Source and destination wallets must have the same currency",
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (selectedSourceWallet?.walletType != selectedDestinationWallet?.walletType) {
+                        item {
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Source and destination wallets must have the same currency",
-                                    color = MaterialTheme.colorScheme.onErrorContainer,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Source and destination wallets must have the same wallet type",
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
                             }
                         }
                     }
@@ -359,15 +473,19 @@ fun CreateTransactionScreen(
                         val finalCategory = if (category.isBlank()) "Uncategorized" else category
                         val amountValue = amount.toDoubleOrNull() ?: 0.0
                         
+                        val tagsList = if (tags.isBlank()) emptyList() 
+                                       else tags.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                        
                         when (selectedType) {
                             TransactionType.INCOME, TransactionType.EXPENSE -> {
-                                selectedWallet?.let { wallet ->
+                                if (allSelectedWallets.isNotEmpty()) {
                                     viewModel.createTransaction(
                                         title = title,
                                         amount = amountValue,
                                         category = finalCategory,
                                         type = selectedType,
-                                        walletId = wallet.id,
+                                        affectedWalletIds = allSelectedWallets.map { it.id },
+                                        tags = tagsList,
                                         transactionDate = selectedDate
                                     )
                                 }
@@ -407,14 +525,28 @@ fun CreateTransactionScreen(
         )
     }
     
-    // Wallet Picker Dialog
-    if (showWalletPicker) {
+    // Physical Wallet Picker Dialog
+    if (showPhysicalWalletPicker) {
         WalletPickerDialog(
-            wallets = uiState.wallets,
-            onDismiss = { showWalletPicker = false },
+            wallets = uiState.wallets.filter { it.walletType == "Physical" },
+            title = "Select Physical Wallet",
+            onDismiss = { showPhysicalWalletPicker = false },
             onWalletSelected = { wallet ->
-                selectedWallet = wallet
-                showWalletPicker = false
+                selectedPhysicalWallet = wallet
+                showPhysicalWalletPicker = false
+            }
+        )
+    }
+    
+    // Logical Wallet Picker Dialog
+    if (showLogicalWalletPicker) {
+        WalletPickerDialog(
+            wallets = uiState.wallets.filter { it.walletType == "Logical" },
+            title = "Select Logical Wallet",
+            onDismiss = { showLogicalWalletPicker = false },
+            onWalletSelected = { wallet ->
+                selectedLogicalWallet = wallet
+                showLogicalWalletPicker = false
             }
         )
     }
@@ -531,5 +663,118 @@ fun TransactionDatePickerDialog(
             state = datePickerState,
             modifier = Modifier.padding(16.dp)
         )
+    }
+}
+
+@Composable
+fun WalletTypePickerDialog(
+    wallets: List<Wallet>,
+    selectedWallets: List<Wallet>,
+    title: String,
+    onDismiss: () -> Unit,
+    onWalletsSelected: (List<Wallet>) -> Unit
+) {
+    var currentSelection by remember { mutableStateOf(selectedWallets.toSet()) }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            LazyColumn {
+                items(wallets) { wallet ->
+                    WalletSelectionItem(
+                        wallet = wallet,
+                        isSelected = currentSelection.contains(wallet),
+                        onSelectionChanged = { isSelected ->
+                            currentSelection = if (isSelected) {
+                                currentSelection + wallet
+                            } else {
+                                currentSelection - wallet
+                            }
+                        }
+                    )
+                }
+                
+                if (wallets.isEmpty()) {
+                    item {
+                        Text(
+                            text = "No wallets available for this type",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onWalletsSelected(currentSelection.toList()) }
+            ) {
+                Text("Select (${currentSelection.size})")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun WalletSelectionItem(
+    wallet: Wallet,
+    isSelected: Boolean,
+    onSelectionChanged: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onSelectionChanged(!isSelected) }
+            .padding(vertical = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = isSelected,
+                onCheckedChange = onSelectionChanged
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = wallet.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    }
+                )
+                Text(
+                    text = "${wallet.walletType} • ${wallet.currency}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    } else {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    }
+                )
+            }
+        }
     }
 }

@@ -76,7 +76,8 @@ class TransactionViewModel @Inject constructor(
         amount: Double,
         category: String,
         type: TransactionType,
-        walletId: String,
+        affectedWalletIds: List<String>,
+        tags: List<String> = emptyList(),
         transactionDate: Date
     ) {
         if (userId.isEmpty()) return
@@ -89,15 +90,19 @@ class TransactionViewModel @Inject constructor(
                 amount = if (type == TransactionType.EXPENSE) -abs(amount) else abs(amount),
                 category = category,
                 type = type,
-                walletId = walletId,
+                walletId = affectedWalletIds.firstOrNull() ?: "", // For backward compatibility
+                affectedWalletIds = affectedWalletIds,
+                tags = tags,
                 transactionDate = transactionDate,
                 userId = userId
             )
 
             transactionRepository.createTransaction(transaction)
                 .onSuccess {
-                    // Update wallet balance
-                    updateWalletBalance(walletId, transaction.amount)
+                    // Update all affected wallet balances
+                    affectedWalletIds.forEach { walletId ->
+                        updateWalletBalance(walletId, transaction.amount)
+                    }
                 }
                 .onFailure { error ->
                     _uiState.update {
@@ -105,6 +110,26 @@ class TransactionViewModel @Inject constructor(
                     }
                 }
         }
+    }
+
+    // Keep the old method for backward compatibility
+    fun createTransaction(
+        title: String,
+        amount: Double,
+        category: String,
+        type: TransactionType,
+        walletId: String,
+        transactionDate: Date
+    ) {
+        createTransaction(
+            title = title,
+            amount = amount,
+            category = category,
+            type = type,
+            affectedWalletIds = listOf(walletId),
+            tags = emptyList(),
+            transactionDate = transactionDate
+        )
     }
 
     fun createTransferTransaction(
@@ -144,6 +169,79 @@ class TransactionViewModel @Inject constructor(
         }
     }
 
+    fun updateTransactionWithMultipleWallets(
+        transactionId: String,
+        title: String,
+        amount: Double,
+        category: String,
+        type: TransactionType,
+        affectedWalletIds: List<String>,
+        transactionDate: Date
+    ) {
+        if (userId.isEmpty()) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+
+            // First get the original transaction to reverse its wallet effects
+            transactionRepository.getTransactionById(transactionId)
+                .onSuccess { originalTransaction ->
+                    originalTransaction?.let { original ->
+                        // Reverse the original transaction's wallet effects
+                        when (original.type) {
+                            TransactionType.INCOME, TransactionType.EXPENSE -> {
+                                // Handle both old single wallet and new multiple wallets format
+                                val walletsToReverse = if (original.affectedWalletIds.isNotEmpty()) {
+                                    original.affectedWalletIds
+                                } else {
+                                    listOf(original.walletId)
+                                }
+                                
+                                walletsToReverse.forEach { walletId ->
+                                    updateWalletBalance(walletId, -original.amount)
+                                }
+                            }
+                            TransactionType.TRANSFER -> {
+                                updateWalletBalance(original.sourceWalletId, abs(original.amount)) // Add back to source
+                                updateWalletBalance(original.destinationWalletId, -abs(original.amount)) // Remove from destination
+                            }
+                        }
+
+                        // Create updated transaction
+                        val updatedTransaction = original.copy(
+                            title = title,
+                            amount = if (type == TransactionType.EXPENSE) -abs(amount) else abs(amount),
+                            category = category,
+                            type = type,
+                            walletId = affectedWalletIds.firstOrNull() ?: "", // For backward compatibility
+                            affectedWalletIds = affectedWalletIds,
+                            sourceWalletId = "",
+                            destinationWalletId = "",
+                            transactionDate = transactionDate
+                        )
+
+                        transactionRepository.updateTransaction(updatedTransaction)
+                            .onSuccess {
+                                // Apply new transaction's wallet effects
+                                affectedWalletIds.forEach { walletId ->
+                                    updateWalletBalance(walletId, updatedTransaction.amount)
+                                }
+                            }
+                            .onFailure { error ->
+                                _uiState.update {
+                                    it.copy(isLoading = false, error = error.message)
+                                }
+                            }
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(isLoading = false, error = error.message)
+                    }
+                }
+        }
+    }
+
     fun updateTransaction(
         transactionId: String,
         title: String,
@@ -167,7 +265,16 @@ class TransactionViewModel @Inject constructor(
                         // Reverse the original transaction's wallet effects
                         when (original.type) {
                             TransactionType.INCOME, TransactionType.EXPENSE -> {
-                                updateWalletBalance(original.walletId, -original.amount)
+                                // Handle both old single wallet and new multiple wallets format
+                                val walletsToReverse = if (original.affectedWalletIds.isNotEmpty()) {
+                                    original.affectedWalletIds
+                                } else {
+                                    listOf(original.walletId)
+                                }
+                                
+                                walletsToReverse.forEach { walletId ->
+                                    updateWalletBalance(walletId, -original.amount)
+                                }
                             }
                             TransactionType.TRANSFER -> {
                                 updateWalletBalance(original.sourceWalletId, abs(original.amount)) // Add back to source
@@ -266,12 +373,21 @@ class TransactionViewModel @Inject constructor(
                 // Reverse wallet effects
                 when (transaction.type) {
                     TransactionType.INCOME, TransactionType.EXPENSE -> {
-                        val result = reverseWalletBalance(transaction.walletId, -transaction.amount)
-                        if (result.isFailure) {
-                            _uiState.update {
-                                it.copy(isLoading = false, error = "Failed to update wallet balance: ${result.exceptionOrNull()?.message}")
+                        // Handle both old single wallet and new multiple wallets format
+                        val walletsToReverse = if (transaction.affectedWalletIds.isNotEmpty()) {
+                            transaction.affectedWalletIds
+                        } else {
+                            listOf(transaction.walletId)
+                        }
+                        
+                        for (walletId in walletsToReverse) {
+                            val result = reverseWalletBalance(walletId, -transaction.amount)
+                            if (result.isFailure) {
+                                _uiState.update {
+                                    it.copy(isLoading = false, error = "Failed to update wallet balance: ${result.exceptionOrNull()?.message}")
+                                }
+                                return@launch
                             }
-                            return@launch
                         }
                     }
                     TransactionType.TRANSFER -> {
