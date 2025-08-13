@@ -4,8 +4,8 @@ There are 3 types of transactions.
 3. A transaction that move balance from one wallet to another.
 
 For the first and second transaction types, user must select which physical and logical wallets 
-that will be increased or decreased. User also can define a specific transaction tag, otherwise it
-will be automatically tagged as "Uncategorized"
+that will be increased or decreased. User also can define specific transaction tags, otherwise it
+will be automatically tagged as "Untagged"
 
 For the third balance transaction, user may select whether he want to move balance between physical 
 or logical wallets, and then he need to choose the source wallet and destination wallet. The source

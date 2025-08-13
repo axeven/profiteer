@@ -19,7 +19,8 @@ data class TransactionUiState(
     val transactions: List<Transaction> = emptyList(),
     val wallets: List<Wallet> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val availableTags: List<String> = emptyList()
 )
 
 @HiltViewModel
@@ -51,10 +52,16 @@ class TransactionViewModel @Inject constructor(
                 ) { transactions, wallets ->
                     Pair(transactions, wallets)
                 }.collect { (transactions, wallets) ->
+                    val uniqueTags = transactions.flatMap { it.tags }
+                        .filter { it.isNotBlank() && it != "Untagged" }
+                        .distinct()
+                        .sorted()
+                    
                     _uiState.update {
                         it.copy(
                             transactions = transactions,
                             wallets = wallets,
+                            availableTags = uniqueTags,
                             isLoading = false,
                             error = null
                         )
@@ -176,6 +183,7 @@ class TransactionViewModel @Inject constructor(
         category: String,
         type: TransactionType,
         affectedWalletIds: List<String>,
+        tags: List<String> = emptyList(),
         transactionDate: Date
     ) {
         if (userId.isEmpty()) return
@@ -215,6 +223,7 @@ class TransactionViewModel @Inject constructor(
                             type = type,
                             walletId = affectedWalletIds.firstOrNull() ?: "", // For backward compatibility
                             affectedWalletIds = affectedWalletIds,
+                            tags = tags,
                             sourceWalletId = "",
                             destinationWalletId = "",
                             transactionDate = transactionDate
@@ -483,5 +492,13 @@ class TransactionViewModel @Inject constructor(
         if (userId.isNotEmpty()) {
             loadData()
         }
+    }
+    
+    fun getTagSuggestions(input: String): List<String> {
+        if (input.length < 3) return emptyList()
+        
+        return uiState.value.availableTags.filter { 
+            it.contains(input, ignoreCase = true) 
+        }.take(5) // Limit to 5 suggestions
     }
 }

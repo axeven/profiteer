@@ -50,7 +50,7 @@ fun EditTransactionScreen(
     
     var title by remember { mutableStateOf(transaction.title) }
     var amount by remember { mutableStateOf(Math.abs(transaction.amount).toString()) }
-    var category by remember { mutableStateOf(transaction.category) }
+    var tags by remember { mutableStateOf(transaction.tags.joinToString(", ")) }
     var selectedType by remember { mutableStateOf(transaction.type) }
     var selectedPhysicalWallet by remember { mutableStateOf<Wallet?>(null) }
     var selectedLogicalWallet by remember { mutableStateOf<Wallet?>(null) }
@@ -229,14 +229,13 @@ fun EditTransactionScreen(
                 )
             }
             
-            // Category Field (not for transfers)
+            // Tags Field (not for transfers)
             if (selectedType != TransactionType.TRANSFER) {
                 item {
-                    OutlinedTextField(
-                        value = category,
-                        onValueChange = { category = it },
-                        label = { Text("Category (optional)") },
-                        placeholder = { Text("Uncategorized") },
+                    TagInputField(
+                        value = tags,
+                        onValueChange = { tags = it },
+                        availableTags = uiState.availableTags,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -546,8 +545,10 @@ fun EditTransactionScreen(
             item {
                 Button(
                     onClick = {
-                        val finalCategory = if (category.isBlank()) "Uncategorized" else category
                         val amountValue = amount.toDoubleOrNull() ?: 0.0
+                        
+                        val tagsList = if (tags.isBlank()) listOf("Untagged") 
+                                       else tags.split(",").map { it.trim() }.filter { it.isNotEmpty() }
                         
                         when (selectedType) {
                             TransactionType.INCOME, TransactionType.EXPENSE -> {
@@ -556,9 +557,10 @@ fun EditTransactionScreen(
                                         transactionId = transaction.id,
                                         title = title,
                                         amount = amountValue,
-                                        category = finalCategory,
+                                        category = "Untagged", // Default category, will be replaced by tags
                                         type = selectedType,
                                         affectedWalletIds = allSelectedWallets.map { it.id },
+                                        tags = tagsList,
                                         transactionDate = selectedDate
                                     )
                                 }

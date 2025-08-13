@@ -141,27 +141,14 @@ fun CreateTransactionScreen(
                 )
             }
             
-            // Category Field (not for transfers)
+            // Tags Field (not for transfers)
             if (selectedType != TransactionType.TRANSFER) {
                 item {
-                    OutlinedTextField(
-                        value = category,
-                        onValueChange = { category = it },
-                        label = { Text("Category (optional)") },
-                        placeholder = { Text("Uncategorized") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                
-                // Tags Field
-                item {
-                    OutlinedTextField(
+                    TagInputField(
                         value = tags,
                         onValueChange = { tags = it },
-                        label = { Text("Tags (optional)") },
-                        placeholder = { Text("Add tags separated by commas") },
-                        modifier = Modifier.fillMaxWidth(),
-                        supportingText = { Text("Separate multiple tags with commas") }
+                        availableTags = uiState.availableTags,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
@@ -470,10 +457,9 @@ fun CreateTransactionScreen(
             item {
                 Button(
                     onClick = {
-                        val finalCategory = if (category.isBlank()) "Uncategorized" else category
                         val amountValue = amount.toDoubleOrNull() ?: 0.0
                         
-                        val tagsList = if (tags.isBlank()) emptyList() 
+                        val tagsList = if (tags.isBlank()) listOf("Untagged") 
                                        else tags.split(",").map { it.trim() }.filter { it.isNotEmpty() }
                         
                         when (selectedType) {
@@ -482,7 +468,7 @@ fun CreateTransactionScreen(
                                     viewModel.createTransaction(
                                         title = title,
                                         amount = amountValue,
-                                        category = finalCategory,
+                                        category = "Untagged", // Default category, will be replaced by tags
                                         type = selectedType,
                                         affectedWalletIds = allSelectedWallets.map { it.id },
                                         tags = tagsList,
@@ -774,6 +760,92 @@ fun WalletSelectionItem(
                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     }
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun TagInputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    availableTags: List<String>,
+    modifier: Modifier = Modifier
+) {
+    var showSuggestions by remember { mutableStateOf(false) }
+    
+    // Get current input being typed (last tag after comma)
+    val currentInput = value.split(",").lastOrNull()?.trim() ?: ""
+    val suggestions = if (currentInput.length >= 3) {
+        availableTags.filter { it.contains(currentInput, ignoreCase = true) }.take(5)
+    } else {
+        emptyList()
+    }
+    
+    Column(modifier = modifier) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = { newValue ->
+                onValueChange(newValue)
+                showSuggestions = suggestions.isNotEmpty()
+            },
+            label = { Text("Tags (optional)") },
+            placeholder = { Text("Add tags separated by commas") },
+            modifier = Modifier.fillMaxWidth(),
+            supportingText = { Text("Separate multiple tags with commas") },
+            trailingIcon = {
+                if (suggestions.isNotEmpty()) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Show suggestions"
+                    )
+                }
+            }
+        )
+        
+        // Show suggestions dropdown
+        if (showSuggestions && suggestions.isNotEmpty()) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(8.dp)
+                ) {
+                    Text(
+                        text = "Suggestions:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                    
+                    suggestions.forEach { suggestion ->
+                        TextButton(
+                            onClick = {
+                                // Replace the current input with the suggestion
+                                val existingTags = value.split(",").dropLast(1).map { it.trim() }
+                                val newValue = (existingTags + suggestion).joinToString(", ")
+                                onValueChange(newValue + ", ")
+                                showSuggestions = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Start
+                            ) {
+                                Text(
+                                    text = suggestion,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }

@@ -13,7 +13,7 @@ data class Transaction(
     val id: String = "",
     val title: String = "",
     val amount: Double = 0.0,
-    val category: String = "Uncategorized",
+    val category: String = "Untagged",
     val type: TransactionType = TransactionType.EXPENSE,
     val walletId: String = "", // For backward compatibility - primary wallet for INCOME/EXPENSE
     val affectedWalletIds: List<String> = emptyList(), // Multiple wallets affected (physical + logical)
@@ -27,5 +27,5 @@ data class Transaction(
     @ServerTimestamp
     val updatedAt: Date? = null
 ) {
-    constructor() : this("", "", 0.0, "Uncategorized", TransactionType.EXPENSE, "", emptyList(), "", "", emptyList(), null, "", null, null)
+    constructor() : this("", "", 0.0, "Untagged", TransactionType.EXPENSE, "", emptyList(), "", "", emptyList(), null, "", null, null)
 }

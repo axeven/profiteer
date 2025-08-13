@@ -18,7 +18,7 @@ class TransactionDeletionTest {
         assertEquals("", transaction.id)
         assertEquals("", transaction.title)
         assertEquals(0.0, transaction.amount, 0.0)
-        assertEquals("Uncategorized", transaction.category)
+        assertEquals("Untagged", transaction.category)
         assertEquals(TransactionType.EXPENSE, transaction.type)
     }
     
