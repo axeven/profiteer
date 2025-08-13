@@ -129,6 +129,16 @@ fun WalletListScreen(
                         .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    // Show unallocated balance when viewing logical wallets
+                    if (!uiState.showPhysicalWallets) {
+                        item {
+                            UnallocatedBalanceCard(
+                                unallocatedBalance = uiState.unallocatedBalance,
+                                defaultCurrency = uiState.defaultCurrency
+                            )
+                        }
+                    }
+                    
                     if (uiState.wallets.isEmpty()) {
                         item {
                             EmptyWalletState(
@@ -694,4 +704,91 @@ fun EditWalletDialog(
             }
         }
     )
+}
+
+@Composable
+fun UnallocatedBalanceCard(
+    unallocatedBalance: Double,
+    defaultCurrency: String
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (unallocatedBalance >= 0) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.errorContainer
+            }
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = if (unallocatedBalance >= 0) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onErrorContainer
+                    }
+                )
+                Text(
+                    text = "Unallocated Physical Balance",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (unallocatedBalance >= 0) {
+                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    } else {
+                        MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+                    }
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "$defaultCurrency ${NumberFormatter.formatCurrency(unallocatedBalance)}",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (unallocatedBalance >= 0) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onErrorContainer
+                }
+            )
+            
+            if (unallocatedBalance < 0) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "You have over-allocated your logical wallets",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+                )
+            } else if (unallocatedBalance > 0) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Available for allocation to logical wallets",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                )
+            } else {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "All physical balance is allocated",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                )
+            }
+        }
+    }
 }

@@ -19,7 +19,8 @@ data class WalletListUiState(
     val error: String? = null,
     val showPhysicalWallets: Boolean = true,
     val conversionRates: Map<String, Double> = emptyMap(),
-    val existingWalletNames: Set<String> = emptySet()
+    val existingWalletNames: Set<String> = emptySet(),
+    val unallocatedBalance: Double = 0.0
 )
 
 @HiltViewModel
@@ -73,6 +74,9 @@ class WalletListViewModel @Inject constructor(
                     // Get existing wallet names for validation
                     val existingNames = wallets.map { it.name.lowercase() }.toSet()
 
+                    // Calculate unallocated balance (physical - logical)
+                    val unallocatedBalance = calculateUnallocatedBalance(wallets, defaultCurrency, conversionRatesMap)
+
                     _uiState.update {
                         it.copy(
                             wallets = filteredWallets,
@@ -80,7 +84,8 @@ class WalletListViewModel @Inject constructor(
                             isLoading = false,
                             error = null,
                             conversionRates = conversionRatesMap,
-                            existingWalletNames = existingNames
+                            existingWalletNames = existingNames,
+                            unallocatedBalance = unallocatedBalance
                         )
                     }
                 }
@@ -269,5 +274,24 @@ class WalletListViewModel @Inject constructor(
         }
         
         return null
+    }
+    
+    private fun calculateUnallocatedBalance(
+        wallets: List<Wallet>,
+        defaultCurrency: String,
+        conversionRates: Map<String, Double>
+    ): Double {
+        val physicalWallets = wallets.filter { it.walletType == "Physical" }
+        val logicalWallets = wallets.filter { it.walletType == "Logical" }
+        
+        val totalPhysicalBalance = physicalWallets.sumOf { wallet ->
+            convertToDefaultCurrency(wallet.balance, wallet.currency, defaultCurrency, conversionRates)
+        }
+        
+        val totalLogicalBalance = logicalWallets.sumOf { wallet ->
+            convertToDefaultCurrency(wallet.balance, wallet.currency, defaultCurrency, conversionRates)
+        }
+        
+        return totalPhysicalBalance - totalLogicalBalance
     }
 }
