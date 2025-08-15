@@ -7,6 +7,7 @@ import com.axeven.profiteerapp.data.model.TransactionType
 import com.axeven.profiteerapp.data.model.Wallet
 import com.axeven.profiteerapp.data.repository.AuthRepository
 import com.axeven.profiteerapp.data.repository.TransactionRepository
+import com.axeven.profiteerapp.data.repository.UserPreferencesRepository
 import com.axeven.profiteerapp.data.repository.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -18,6 +19,7 @@ import kotlin.math.abs
 data class TransactionUiState(
     val transactions: List<Transaction> = emptyList(),
     val wallets: List<Wallet> = emptyList(),
+    val defaultCurrency: String = "USD",
     val isLoading: Boolean = false,
     val error: String? = null,
     val availableTags: List<String> = emptyList()
@@ -27,7 +29,8 @@ data class TransactionUiState(
 class TransactionViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val transactionRepository: TransactionRepository,
-    private val walletRepository: WalletRepository
+    private val walletRepository: WalletRepository,
+    private val userPreferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TransactionUiState())
@@ -48,19 +51,23 @@ class TransactionViewModel @Inject constructor(
             try {
                 combine(
                     transactionRepository.getUserTransactions(userId),
-                    walletRepository.getUserWallets(userId)
-                ) { transactions, wallets ->
-                    Pair(transactions, wallets)
-                }.collect { (transactions, wallets) ->
+                    walletRepository.getUserWallets(userId),
+                    userPreferencesRepository.getUserPreferences(userId)
+                ) { transactions, wallets, preferences ->
+                    Triple(transactions, wallets, preferences)
+                }.collect { (transactions, wallets, preferences) ->
                     val uniqueTags = transactions.flatMap { it.tags }
                         .filter { it.isNotBlank() && it != "Untagged" }
                         .distinct()
                         .sorted()
                     
+                    val defaultCurrency = preferences?.defaultCurrency ?: "USD"
+                    
                     _uiState.update {
                         it.copy(
                             transactions = transactions,
                             wallets = wallets,
+                            defaultCurrency = defaultCurrency,
                             availableTags = uniqueTags,
                             isLoading = false,
                             error = null

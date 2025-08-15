@@ -24,6 +24,7 @@ import androidx.compose.runtime.collectAsState
 import com.axeven.profiteerapp.viewmodel.HomeViewModel
 import com.axeven.profiteerapp.data.model.Transaction
 import com.axeven.profiteerapp.data.model.TransactionType
+import com.axeven.profiteerapp.data.model.Wallet
 import com.axeven.profiteerapp.utils.NumberFormatter
 import java.text.SimpleDateFormat
 import java.util.*
@@ -177,6 +178,7 @@ fun HomeScreen(
             items(uiState.transactions) { transaction ->
                 TransactionItem(
                     transaction = transaction,
+                    wallets = uiState.wallets,
                     onClick = { onEditTransaction(transaction) }
                 )
             }
@@ -225,7 +227,7 @@ fun BalanceCard(
                     )
                 }
                 Text(
-                    text = "$currency ${NumberFormatter.formatCurrency(balance)}",
+                    text = NumberFormatter.formatCurrency(balance, currency, showSymbol = true),
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -243,7 +245,7 @@ fun BalanceCard(
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )
                     Text(
-                        text = "$currency ${NumberFormatter.formatCurrency(income)}",
+                        text = NumberFormatter.formatCurrency(income, currency, showSymbol = true),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF4CAF50)
@@ -257,7 +259,7 @@ fun BalanceCard(
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )
                     Text(
-                        text = "$currency ${NumberFormatter.formatCurrency(expenses)}",
+                        text = NumberFormatter.formatCurrency(expenses, currency, showSymbol = true),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFFF44336)
@@ -312,9 +314,29 @@ fun QuickActionCard(action: QuickAction, onClick: () -> Unit = {}) {
 }
 
 @Composable
-fun TransactionItem(transaction: Transaction, onClick: () -> Unit = {}) {
+fun TransactionItem(
+    transaction: Transaction, 
+    wallets: List<Wallet> = emptyList(),
+    onClick: () -> Unit = {}
+) {
     val dateFormatter = remember { SimpleDateFormat("MMM dd", Locale.getDefault()) }
     val displayDate = transaction.createdAt?.let { dateFormatter.format(it) } ?: "Unknown"
+    
+    // Find currency from associated wallets
+    val currency = when (transaction.type) {
+        TransactionType.TRANSFER -> {
+            wallets.find { it.id == transaction.sourceWalletId }?.currency ?: "USD"
+        }
+        else -> {
+            // For Income/Expense, try to find from affected wallets or fallback to primary wallet
+            val affectedWallets = if (transaction.affectedWalletIds.isNotEmpty()) {
+                wallets.filter { it.id in transaction.affectedWalletIds }
+            } else {
+                wallets.filter { it.id == transaction.walletId }
+            }
+            affectedWallets.firstOrNull()?.currency ?: "USD"
+        }
+    }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -379,7 +401,7 @@ fun TransactionItem(transaction: Transaction, onClick: () -> Unit = {}) {
             }
             
             Text(
-                text = "${if (transaction.amount > 0) "+" else ""}$${NumberFormatter.formatCurrency(kotlin.math.abs(transaction.amount))}",
+                text = "${if (transaction.amount > 0) "+" else ""}${NumberFormatter.formatCompactCurrency(kotlin.math.abs(transaction.amount), currency)}",
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = when (transaction.type) {

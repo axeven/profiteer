@@ -127,6 +127,18 @@ fun CreateTransactionScreen(
             
             // Amount Field
             item {
+                val currencySymbol = when (selectedType) {
+                    TransactionType.TRANSFER -> selectedSourceWallet?.currency?.let { 
+                        com.axeven.profiteerapp.utils.NumberFormatter.getCurrencySymbol(it)
+                    } ?: com.axeven.profiteerapp.utils.NumberFormatter.getCurrencySymbol(uiState.defaultCurrency)
+                    else -> {
+                        // For Income/Expense, use the currency from any selected wallet
+                        (selectedPhysicalWallet?.currency ?: selectedLogicalWallet?.currency)?.let {
+                            com.axeven.profiteerapp.utils.NumberFormatter.getCurrencySymbol(it)
+                        } ?: com.axeven.profiteerapp.utils.NumberFormatter.getCurrencySymbol(uiState.defaultCurrency)
+                    }
+                }
+                
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it },
@@ -137,7 +149,7 @@ fun CreateTransactionScreen(
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    prefix = { Text("$") }
+                    prefix = { Text(currencySymbol) }
                 )
             }
             

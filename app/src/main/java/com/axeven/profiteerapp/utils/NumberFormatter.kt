@@ -6,6 +6,89 @@ import java.util.Locale
 object NumberFormatter {
     
     /**
+     * Map of currency codes to their symbols
+     */
+    private val currencySymbols = mapOf(
+        "USD" to "$",
+        "EUR" to "€",
+        "GBP" to "£",
+        "JPY" to "¥",
+        "CAD" to "C$",
+        "AUD" to "A$",
+        "IDR" to "Rp",
+        "GOLD" to "Au",
+        "BTC" to "₿"
+    )
+    
+    /**
+     * Get currency symbol for a given currency code
+     * @param currency The currency code (e.g., "USD", "EUR", "GOLD")
+     * @return Currency symbol or the currency code if no symbol exists
+     */
+    fun getCurrencySymbol(currency: String): String {
+        return currencySymbols[currency] ?: currency
+    }
+    
+    /**
+     * Format large amounts with K/M suffixes to save space
+     * @param amount The amount to format
+     * @param currency The currency code
+     * @return Compact formatted string (e.g., "1.2M", "150K")
+     */
+    fun formatCompactCurrency(amount: Double, currency: String = ""): String {
+        val absAmount = kotlin.math.abs(amount)
+        val symbol = getCurrencySymbol(currency)
+        
+        val (compactAmount, suffix) = when {
+            absAmount >= 1_000_000 -> {
+                val millions = absAmount / 1_000_000
+                if (millions % 1.0 == 0.0) {
+                    Pair("${millions.toInt()}", "M")
+                } else {
+                    Pair(String.format("%.1f", millions), "M")
+                }
+            }
+            absAmount >= 1_000 -> {
+                val thousands = absAmount / 1_000
+                if (thousands % 1.0 == 0.0) {
+                    Pair("${thousands.toInt()}", "K")
+                } else {
+                    Pair(String.format("%.1f", thousands), "K")
+                }
+            }
+            else -> {
+                val formatter = when (currency) {
+                    "GOLD" -> {
+                        NumberFormat.getNumberInstance(Locale.US).apply {
+                            minimumFractionDigits = 1
+                            maximumFractionDigits = 3
+                        }
+                    }
+                    "BTC" -> {
+                        NumberFormat.getNumberInstance(Locale.US).apply {
+                            minimumFractionDigits = 4
+                            maximumFractionDigits = 8
+                        }
+                    }
+                    else -> {
+                        NumberFormat.getNumberInstance(Locale.US).apply {
+                            minimumFractionDigits = if (absAmount % 1.0 == 0.0) 0 else 2
+                            maximumFractionDigits = 2
+                        }
+                    }
+                }
+                Pair(formatter.format(absAmount), "")
+            }
+        }
+        
+        return if (currency.isNotEmpty()) {
+            "$symbol$compactAmount$suffix"
+        } else {
+            "$compactAmount$suffix"
+        }
+    }
+    
+    /**
      * Formats a double value as currency with thousands separators
      * @param amount The amount to format
      * @param currency The currency symbol (e.g., "USD", "EUR", "GOLD")
@@ -43,7 +126,7 @@ object NumberFormatter {
         val formattedAmount = formatter.format(amount)
         
         return if (showSymbol && currency.isNotEmpty()) {
-            "$currency $formattedAmount"
+            "${getCurrencySymbol(currency)} $formattedAmount"
         } else {
             formattedAmount
         }
