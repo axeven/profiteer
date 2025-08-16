@@ -23,6 +23,7 @@ import java.util.*
 @Composable
 fun CreateTransactionScreen(
     initialTransactionType: TransactionType? = null,
+    preSelectedWalletId: String? = null,
     onNavigateBack: () -> Unit = {},
     viewModel: TransactionViewModel = hiltViewModel()
 ) {
@@ -45,6 +46,23 @@ fun CreateTransactionScreen(
     var showDestinationWalletPicker by remember { mutableStateOf(false) }
     
     val allSelectedWallets = listOfNotNull(selectedPhysicalWallet, selectedLogicalWallet)
+    
+    // Handle wallet pre-selection
+    LaunchedEffect(preSelectedWalletId, uiState.wallets) {
+        if (preSelectedWalletId != null && uiState.wallets.isNotEmpty()) {
+            val preSelectedWallet = uiState.wallets.find { it.id == preSelectedWalletId }
+            preSelectedWallet?.let { wallet ->
+                when (wallet.walletType) {
+                    "Physical" -> selectedPhysicalWallet = wallet
+                    "Logical" -> selectedLogicalWallet = wallet
+                }
+                // For transfer transactions, pre-select as source wallet
+                if (selectedType == TransactionType.TRANSFER) {
+                    selectedSourceWallet = wallet
+                }
+            }
+        }
+    }
     
     val isFormValid = when (selectedType) {
         TransactionType.INCOME, TransactionType.EXPENSE -> {
