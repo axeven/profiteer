@@ -41,7 +41,7 @@ class TransactionRepository @Inject constructor(
                         null
                     }
                 }?.filter { it.id.isNotEmpty() }
-                ?.sortedByDescending { it.createdAt ?: java.util.Date(0) } ?: emptyList()
+                ?.sortedByDescending { it.transactionDate ?: it.createdAt ?: java.util.Date(0) } ?: emptyList()
                 
                 android.util.Log.d("TransactionRepo", "Total transactions retrieved: ${transactions.size}")
                 trySend(transactions)
@@ -90,7 +90,7 @@ class TransactionRepository @Inject constructor(
                         // Combine and deduplicate transactions
                         val allTransactions = (primaryWalletTransactions + affectedWalletTransactions)
                             .distinctBy { it.id }
-                            .sortedByDescending { it.createdAt ?: java.util.Date(0) }
+                            .sortedByDescending { it.transactionDate ?: it.createdAt ?: java.util.Date(0) }
                         
                         trySend(allTransactions)
                     }

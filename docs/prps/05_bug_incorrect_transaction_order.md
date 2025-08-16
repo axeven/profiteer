@@ -1,7 +1,7 @@
 # Product Requirement Prompt (PRP) Template
 
 ## 1. Overview
-**Brief Description**: Transaction creation date displayed instead of transaction date
+**Brief Description**: Recent transaction list is ordered by transaction creation date instead of transaction date
 
 **Priority**: Low
 
@@ -9,9 +9,9 @@
 
 ## 2. Context & Background
 **Current State**: 
-- In the home page, in the list of recent transaction, we display transaction creation date instead of the transaction date inputted by the user
+- In the home page, in the list of recent transaction, we list transaction ordered by creation date instead of the transaction date inputted by the user
 
-**Problem Statement**: The miss match between the displayed date and transaction date inputted by the user will cause confusion
+**Problem Statement**: The list will appear as unordered since the user does not really care about creation date.
 
 ## 3. Detailed Requirements
 
