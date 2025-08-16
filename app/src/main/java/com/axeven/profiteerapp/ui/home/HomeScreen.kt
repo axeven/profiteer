@@ -320,7 +320,7 @@ fun TransactionItem(
     onClick: () -> Unit = {}
 ) {
     val dateFormatter = remember { SimpleDateFormat("MMM dd", Locale.getDefault()) }
-    val displayDate = transaction.createdAt?.let { dateFormatter.format(it) } ?: "Unknown"
+    val displayDate = transaction.transactionDate?.let { dateFormatter.format(it) } ?: "Unknown"
     
     // Find currency from associated wallets
     val currency = when (transaction.type) {
