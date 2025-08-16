@@ -17,6 +17,10 @@ import java.util.*
 import javax.inject.Inject
 import kotlin.math.abs
 
+enum class TransferDirection {
+    INCOMING, OUTGOING
+}
+
 data class WalletDetailUiState(
     val wallet: Wallet? = null,
     val transactions: List<Transaction> = emptyList(),
@@ -92,12 +96,24 @@ class WalletDetailViewModel @Inject constructor(
                     }
                     
                     val monthlyIncome = monthlyTransactions
-                        .filter { it.type == TransactionType.INCOME }
-                        .sumOf { convertAmount(it.amount, getTransactionCurrency(it, wallets), displayCurrency, currencyRates) }
+                        .filter { 
+                            it.type == TransactionType.INCOME || 
+                            (it.type == TransactionType.TRANSFER && isTransferIncome(it, walletId))
+                        }
+                        .sumOf { 
+                            val amount = if (it.type == TransactionType.TRANSFER) abs(it.amount) else it.amount
+                            convertAmount(amount, getTransactionCurrency(it, wallets), displayCurrency, currencyRates) 
+                        }
                     
                     val monthlyExpenses = monthlyTransactions
-                        .filter { it.type == TransactionType.EXPENSE }
-                        .sumOf { abs(convertAmount(it.amount, getTransactionCurrency(it, wallets), displayCurrency, currencyRates)) }
+                        .filter { 
+                            it.type == TransactionType.EXPENSE || 
+                            (it.type == TransactionType.TRANSFER && isTransferExpense(it, walletId))
+                        }
+                        .sumOf { 
+                            val amount = if (it.type == TransactionType.TRANSFER) abs(it.amount) else abs(it.amount)
+                            convertAmount(amount, getTransactionCurrency(it, wallets), displayCurrency, currencyRates) 
+                        }
                     
                     // Convert wallet balance if needed
                     val convertedBalance = if (wallet != null) {
@@ -246,6 +262,50 @@ class WalletDetailViewModel @Inject constructor(
         }
         
         return null
+    }
+    
+    private fun isTransferIncome(transaction: Transaction, walletId: String): Boolean {
+        return transaction.type == TransactionType.TRANSFER && transaction.destinationWalletId == walletId
+    }
+    
+    private fun isTransferExpense(transaction: Transaction, walletId: String): Boolean {
+        return transaction.type == TransactionType.TRANSFER && transaction.sourceWalletId == walletId
+    }
+    
+    fun getTransferDirection(transaction: Transaction, walletId: String): TransferDirection? {
+        return when {
+            transaction.type != TransactionType.TRANSFER -> null
+            transaction.sourceWalletId == walletId -> TransferDirection.OUTGOING
+            transaction.destinationWalletId == walletId -> TransferDirection.INCOMING
+            else -> null
+        }
+    }
+    
+    fun getEffectiveTransactionType(transaction: Transaction, walletId: String): TransactionType {
+        return when {
+            transaction.type != TransactionType.TRANSFER -> transaction.type
+            transaction.sourceWalletId == walletId -> TransactionType.EXPENSE
+            transaction.destinationWalletId == walletId -> TransactionType.INCOME
+            else -> transaction.type
+        }
+    }
+    
+    fun getTransferDisplayAmount(transaction: Transaction, walletId: String): Double {
+        return when {
+            transaction.type != TransactionType.TRANSFER -> transaction.amount
+            transaction.sourceWalletId == walletId -> -abs(transaction.amount) // Outgoing: negative
+            transaction.destinationWalletId == walletId -> abs(transaction.amount) // Incoming: positive
+            else -> transaction.amount
+        }
+    }
+    
+    fun getTransferCounterpartWallet(transaction: Transaction, walletId: String, allWallets: List<Wallet>): Wallet? {
+        return when {
+            transaction.type != TransactionType.TRANSFER -> null
+            transaction.sourceWalletId == walletId -> allWallets.find { it.id == transaction.destinationWalletId }
+            transaction.destinationWalletId == walletId -> allWallets.find { it.id == transaction.sourceWalletId }
+            else -> null
+        }
     }
 }
 

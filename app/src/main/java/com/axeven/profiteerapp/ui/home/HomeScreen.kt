@@ -317,10 +317,29 @@ fun QuickActionCard(action: QuickAction, onClick: () -> Unit = {}) {
 fun TransactionItem(
     transaction: Transaction, 
     wallets: List<Wallet> = emptyList(),
+    currentWalletId: String? = null,
     onClick: () -> Unit = {}
 ) {
     val dateFormatter = remember { SimpleDateFormat("MMM dd", Locale.getDefault()) }
     val displayDate = transaction.transactionDate?.let { dateFormatter.format(it) } ?: "Unknown"
+    
+    // Determine effective transaction type and styling based on transfer direction
+    val (effectiveType, isTransferBased, counterpartWallet) = when {
+        transaction.type == TransactionType.TRANSFER && currentWalletId != null -> {
+            val counterpart = when {
+                transaction.sourceWalletId == currentWalletId -> wallets.find { it.id == transaction.destinationWalletId }
+                transaction.destinationWalletId == currentWalletId -> wallets.find { it.id == transaction.sourceWalletId }
+                else -> null
+            }
+            val effectiveType = when {
+                transaction.sourceWalletId == currentWalletId -> TransactionType.EXPENSE
+                transaction.destinationWalletId == currentWalletId -> TransactionType.INCOME
+                else -> TransactionType.TRANSFER
+            }
+            Triple(effectiveType, true, counterpart)
+        }
+        else -> Triple(transaction.type, false, null)
+    }
     
     // Find currency from associated wallets
     val currency = when (transaction.type) {
@@ -336,6 +355,18 @@ fun TransactionItem(
             }
             affectedWallets.firstOrNull()?.currency ?: "USD"
         }
+    }
+    
+    // Calculate display amount for transfers
+    val displayAmount = when {
+        transaction.type == TransactionType.TRANSFER && currentWalletId != null -> {
+            when {
+                transaction.sourceWalletId == currentWalletId -> -kotlin.math.abs(transaction.amount)
+                transaction.destinationWalletId == currentWalletId -> kotlin.math.abs(transaction.amount)
+                else -> transaction.amount
+            }
+        }
+        else -> transaction.amount
     }
     Card(
         modifier = Modifier
@@ -360,7 +391,7 @@ fun TransactionItem(
                         .size(48.dp)
                         .clip(RoundedCornerShape(24.dp))
                         .background(
-                            when (transaction.type) {
+                            when (effectiveType) {
                                 TransactionType.INCOME -> Color(0xFF4CAF50).copy(alpha = 0.1f)
                                 TransactionType.EXPENSE -> Color(0xFFF44336).copy(alpha = 0.1f)
                                 TransactionType.TRANSFER -> Color(0xFF2196F3).copy(alpha = 0.1f)
@@ -368,32 +399,76 @@ fun TransactionItem(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
+                    // Main transaction icon
                     Icon(
-                        imageVector = when (transaction.type) {
+                        imageVector = when (effectiveType) {
                             TransactionType.INCOME -> Icons.Default.KeyboardArrowUp
                             TransactionType.EXPENSE -> Icons.Default.KeyboardArrowDown
                             TransactionType.TRANSFER -> Icons.Default.Refresh
                         },
                         contentDescription = null,
-                        tint = when (transaction.type) {
+                        tint = when (effectiveType) {
                             TransactionType.INCOME -> Color(0xFF4CAF50)
                             TransactionType.EXPENSE -> Color(0xFFF44336)
                             TransactionType.TRANSFER -> Color(0xFF2196F3)
                         },
                         modifier = Modifier.size(24.dp)
                     )
+                    
+                    // Transfer indicator badge
+                    if (isTransferBased) {
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF2196F3))
+                                .align(Alignment.BottomEnd),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Transfer",
+                                tint = Color.White,
+                                modifier = Modifier.size(10.dp)
+                            )
+                        }
+                    }
                 }
                 
                 Spacer(modifier = Modifier.width(12.dp))
                 
                 Column {
+                    val displayTitle = if (isTransferBased && counterpartWallet != null) {
+                        when (effectiveType) {
+                            TransactionType.INCOME -> "Transfer from ${counterpartWallet.name}"
+                            TransactionType.EXPENSE -> "Transfer to ${counterpartWallet.name}"
+                            else -> transaction.title
+                        }
+                    } else {
+                        transaction.title
+                    }
+                    
                     Text(
-                        text = transaction.title,
+                        text = displayTitle,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium
                     )
+                    
+                    val subtitleText = buildString {
+                        if (transaction.tags.isNotEmpty()) {
+                            append(transaction.tags.joinToString(", "))
+                        } else {
+                            append("Untagged")
+                        }
+                        append(" • ")
+                        append(displayDate)
+                        if (isTransferBased) {
+                            append(" • Transfer")
+                        }
+                    }
+                    
                     Text(
-                        text = "${if (transaction.tags.isNotEmpty()) transaction.tags.joinToString(", ") else "Untagged"} • $displayDate",
+                        text = subtitleText,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
@@ -401,10 +476,10 @@ fun TransactionItem(
             }
             
             Text(
-                text = "${if (transaction.amount > 0) "+" else ""}${NumberFormatter.formatCompactCurrency(kotlin.math.abs(transaction.amount), currency)}",
+                text = "${if (displayAmount > 0) "+" else ""}${NumberFormatter.formatCompactCurrency(kotlin.math.abs(displayAmount), currency)}",
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = when (transaction.type) {
+                color = when (effectiveType) {
                     TransactionType.INCOME -> Color(0xFF4CAF50)
                     TransactionType.EXPENSE -> Color(0xFFF44336)
                     TransactionType.TRANSFER -> Color(0xFF2196F3)

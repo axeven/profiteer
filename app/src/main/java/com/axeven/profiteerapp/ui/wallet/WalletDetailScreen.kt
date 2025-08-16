@@ -226,6 +226,7 @@ fun WalletDetailScreen(
                         TransactionItem(
                             transaction = transaction,
                             wallets = uiState.allWallets,
+                            currentWalletId = walletId,
                             onClick = { onEditTransaction(transaction) }
                         )
                     }

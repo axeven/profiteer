@@ -51,7 +51,25 @@ class TransactionRepository @Inject constructor(
     }
 
     fun getWalletTransactions(walletId: String): Flow<List<Transaction>> = callbackFlow {
-        // Query for transactions where wallet is either the primary wallet or in affectedWalletIds
+        var primaryWalletTransactions = emptyList<Transaction>()
+        var affectedWalletTransactions = emptyList<Transaction>()
+        var sourceWalletTransactions = emptyList<Transaction>()
+        var destinationWalletTransactions = emptyList<Transaction>()
+        
+        fun combineAndEmitTransactions() {
+            val allTransactions = (primaryWalletTransactions + affectedWalletTransactions + 
+                                  sourceWalletTransactions + destinationWalletTransactions)
+                .distinctBy { it.id }
+                .sortedByDescending { it.transactionDate ?: it.createdAt ?: java.util.Date(0) }
+            
+            android.util.Log.d("TransactionRepo", "Combined transactions for wallet $walletId: ${allTransactions.size} " +
+                "(primary: ${primaryWalletTransactions.size}, affected: ${affectedWalletTransactions.size}, " +
+                "source: ${sourceWalletTransactions.size}, destination: ${destinationWalletTransactions.size})")
+            
+            trySend(allTransactions)
+        }
+        
+        // Query 1: Transactions where wallet is the primary wallet
         val listener1 = transactionsCollection
             .whereEqualTo("walletId", walletId)
             .addSnapshotListener { snapshot, error ->
@@ -60,7 +78,7 @@ class TransactionRepository @Inject constructor(
                     return@addSnapshotListener
                 }
                 
-                val primaryWalletTransactions = snapshot?.documents?.mapNotNull { document ->
+                primaryWalletTransactions = snapshot?.documents?.mapNotNull { document ->
                     try {
                         document.toObject(Transaction::class.java)?.copy(id = document.id)
                     } catch (e: Exception) {
@@ -69,36 +87,79 @@ class TransactionRepository @Inject constructor(
                     }
                 }?.filter { it.id.isNotEmpty() } ?: emptyList()
                 
-                // Query for transactions where wallet is in affectedWalletIds
-                val listener2 = transactionsCollection
-                    .whereArrayContains("affectedWalletIds", walletId)
-                    .addSnapshotListener { snapshot2, error2 ->
-                        if (error2 != null) {
-                            android.util.Log.e("TransactionRepo", "Error in affected wallets query", error2)
-                            return@addSnapshotListener
-                        }
-                        
-                        val affectedWalletTransactions = snapshot2?.documents?.mapNotNull { document ->
-                            try {
-                                document.toObject(Transaction::class.java)?.copy(id = document.id)
-                            } catch (e: Exception) {
-                                android.util.Log.e("TransactionRepo", "Error parsing affected wallet transaction: ${document.id}", e)
-                                null
-                            }
-                        }?.filter { it.id.isNotEmpty() } ?: emptyList()
-                        
-                        // Combine and deduplicate transactions
-                        val allTransactions = (primaryWalletTransactions + affectedWalletTransactions)
-                            .distinctBy { it.id }
-                            .sortedByDescending { it.transactionDate ?: it.createdAt ?: java.util.Date(0) }
-                        
-                        trySend(allTransactions)
+                combineAndEmitTransactions()
+            }
+        
+        // Query 2: Transactions where wallet is in affectedWalletIds
+        val listener2 = transactionsCollection
+            .whereArrayContains("affectedWalletIds", walletId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    android.util.Log.e("TransactionRepo", "Error in affected wallets query", error)
+                    return@addSnapshotListener
+                }
+                
+                affectedWalletTransactions = snapshot?.documents?.mapNotNull { document ->
+                    try {
+                        document.toObject(Transaction::class.java)?.copy(id = document.id)
+                    } catch (e: Exception) {
+                        android.util.Log.e("TransactionRepo", "Error parsing affected wallet transaction: ${document.id}", e)
+                        null
                     }
+                }?.filter { it.id.isNotEmpty() } ?: emptyList()
+                
+                combineAndEmitTransactions()
+            }
+        
+        // Query 3: Transfer transactions where wallet is the source
+        val listener3 = transactionsCollection
+            .whereEqualTo("sourceWalletId", walletId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    android.util.Log.e("TransactionRepo", "Error in source wallet query", error)
+                    return@addSnapshotListener
+                }
+                
+                sourceWalletTransactions = snapshot?.documents?.mapNotNull { document ->
+                    try {
+                        document.toObject(Transaction::class.java)?.copy(id = document.id)
+                    } catch (e: Exception) {
+                        android.util.Log.e("TransactionRepo", "Error parsing source wallet transaction: ${document.id}", e)
+                        null
+                    }
+                }?.filter { it.id.isNotEmpty() } ?: emptyList()
+                
+                android.util.Log.d("TransactionRepo", "Source wallet transactions for $walletId: ${sourceWalletTransactions.size}")
+                combineAndEmitTransactions()
+            }
+        
+        // Query 4: Transfer transactions where wallet is the destination
+        val listener4 = transactionsCollection
+            .whereEqualTo("destinationWalletId", walletId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    android.util.Log.e("TransactionRepo", "Error in destination wallet query", error)
+                    return@addSnapshotListener
+                }
+                
+                destinationWalletTransactions = snapshot?.documents?.mapNotNull { document ->
+                    try {
+                        document.toObject(Transaction::class.java)?.copy(id = document.id)
+                    } catch (e: Exception) {
+                        android.util.Log.e("TransactionRepo", "Error parsing destination wallet transaction: ${document.id}", e)
+                        null
+                    }
+                }?.filter { it.id.isNotEmpty() } ?: emptyList()
+                
+                android.util.Log.d("TransactionRepo", "Destination wallet transactions for $walletId: ${destinationWalletTransactions.size}")
+                combineAndEmitTransactions()
             }
         
         awaitClose { 
-            // Note: In a real implementation, you'd need to track both listeners
-            // For simplicity, we're only removing the first one here
+            listener1.remove()
+            listener2.remove()
+            listener3.remove()
+            listener4.remove()
         }
     }
 
