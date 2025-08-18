@@ -115,7 +115,9 @@ fun WalletDetailScreen(
                         wallet = uiState.wallet,
                         monthlyIncome = uiState.monthlyIncome,
                         monthlyExpenses = uiState.monthlyExpenses,
-                        currency = uiState.displayCurrency
+                        currency = uiState.displayCurrency,
+                        selectedMonth = uiState.selectedMonth,
+                        selectedYear = uiState.selectedYear
                     )
                 }
                 
@@ -179,6 +181,25 @@ fun WalletDetailScreen(
                 }
                 
                 item {
+                    MonthSelector(
+                        selectedMonth = uiState.selectedMonth,
+                        selectedYear = uiState.selectedYear,
+                        transactionCount = uiState.transactionCount,
+                        canNavigatePrevious = viewModel.canNavigateToPrevious(),
+                        canNavigateNext = viewModel.canNavigateToNext(),
+                        onMonthSelected = { month, year ->
+                            viewModel.setSelectedMonth(month, year)
+                        },
+                        onNavigatePrevious = {
+                            viewModel.navigateToPreviousMonth()
+                        },
+                        onNavigateNext = {
+                            viewModel.navigateToNextMonth()
+                        }
+                    )
+                }
+                
+                item {
                     Text(
                         text = "Transactions",
                         style = MaterialTheme.typography.headlineSmall,
@@ -186,7 +207,7 @@ fun WalletDetailScreen(
                     )
                 }
                 
-                if (uiState.transactions.isEmpty()) {
+                if (uiState.filteredTransactions.isEmpty()) {
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -208,13 +229,16 @@ fun WalletDetailScreen(
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
-                                    text = "No transactions yet",
+                                    text = if (uiState.transactions.isEmpty()) "No transactions yet" else "No transactions for selected month",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    text = "Use the quick actions above to add your first transaction",
+                                    text = if (uiState.transactions.isEmpty()) 
+                                        "Use the quick actions above to add your first transaction" 
+                                    else 
+                                        "Try selecting a different month or add new transactions",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                                 )
@@ -222,7 +246,7 @@ fun WalletDetailScreen(
                         }
                     }
                 } else {
-                    items(uiState.transactions) { transaction ->
+                    items(uiState.filteredTransactions) { transaction ->
                         TransactionItem(
                             transaction = transaction,
                             wallets = uiState.allWallets,
@@ -241,8 +265,20 @@ fun WalletBalanceCard(
     wallet: Wallet?, 
     monthlyIncome: Double, 
     monthlyExpenses: Double, 
-    currency: String = "USD"
+    currency: String = "USD",
+    selectedMonth: Int = Calendar.getInstance().get(Calendar.MONTH),
+    selectedYear: Int = Calendar.getInstance().get(Calendar.YEAR)
 ) {
+    val monthFormatter = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+    val calendar = Calendar.getInstance().apply {
+        set(Calendar.MONTH, selectedMonth)
+        set(Calendar.YEAR, selectedYear)
+    }
+    val selectedMonthName = monthFormatter.format(calendar.time)
+    
+    val currentCalendar = Calendar.getInstance()
+    val isCurrentMonth = selectedMonth == currentCalendar.get(Calendar.MONTH) && 
+                        selectedYear == currentCalendar.get(Calendar.YEAR)
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -290,7 +326,7 @@ fun WalletBalanceCard(
             ) {
                 Column {
                     Text(
-                        text = "This Month Income",
+                        text = if (isCurrentMonth) "This Month Income" else "$selectedMonthName Income",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )
@@ -304,7 +340,7 @@ fun WalletBalanceCard(
                 
                 Column {
                     Text(
-                        text = "This Month Expenses",
+                        text = if (isCurrentMonth) "This Month Expenses" else "$selectedMonthName Expenses",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )

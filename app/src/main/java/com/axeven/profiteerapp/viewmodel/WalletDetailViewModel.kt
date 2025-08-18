@@ -32,7 +32,11 @@ data class WalletDetailUiState(
     val useWalletCurrency: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
-    val conversionWarning: String? = null
+    val conversionWarning: String? = null,
+    val selectedMonth: Int = Calendar.getInstance().get(Calendar.MONTH),
+    val selectedYear: Int = Calendar.getInstance().get(Calendar.YEAR),
+    val filteredTransactions: List<Transaction> = emptyList(),
+    val transactionCount: Int = 0
 )
 
 @HiltViewModel
@@ -81,21 +85,13 @@ class WalletDetailViewModel @Inject constructor(
                         defaultCurrency
                     }
                     
-                    // Calculate monthly income and expenses for current month
-                    val currentDate = Calendar.getInstance()
-                    val currentMonth = currentDate.get(Calendar.MONTH)
-                    val currentYear = currentDate.get(Calendar.YEAR)
+                    // Use selected month for filtering (defaults to current month)
+                    val selectedMonth = currentState.selectedMonth
+                    val selectedYear = currentState.selectedYear
                     
-                    val monthlyTransactions = transactions.filter { transaction ->
-                        val transactionDate = transaction.transactionDate ?: transaction.createdAt
-                        if (transactionDate != null) {
-                            val transactionCal = Calendar.getInstance().apply { time = transactionDate }
-                            transactionCal.get(Calendar.MONTH) == currentMonth && 
-                            transactionCal.get(Calendar.YEAR) == currentYear
-                        } else false
-                    }
+                    val filteredTransactions = filterTransactionsByMonth(transactions, selectedMonth, selectedYear)
                     
-                    val monthlyIncome = monthlyTransactions
+                    val monthlyIncome = filteredTransactions
                         .filter { 
                             it.type == TransactionType.INCOME || 
                             (it.type == TransactionType.TRANSFER && isTransferIncome(it, walletId))
@@ -105,7 +101,7 @@ class WalletDetailViewModel @Inject constructor(
                             convertAmount(amount, getTransactionCurrency(it, wallets), displayCurrency, currencyRates) 
                         }
                     
-                    val monthlyExpenses = monthlyTransactions
+                    val monthlyExpenses = filteredTransactions
                         .filter { 
                             it.type == TransactionType.EXPENSE || 
                             (it.type == TransactionType.TRANSFER && isTransferExpense(it, walletId))
@@ -138,7 +134,9 @@ class WalletDetailViewModel @Inject constructor(
                             defaultCurrency = defaultCurrency,
                             isLoading = false,
                             error = null,
-                            conversionWarning = conversionWarning
+                            conversionWarning = conversionWarning,
+                            filteredTransactions = filteredTransactions,
+                            transactionCount = filteredTransactions.size
                         )
                     }
                     
@@ -305,6 +303,102 @@ class WalletDetailViewModel @Inject constructor(
             transaction.sourceWalletId == walletId -> allWallets.find { it.id == transaction.destinationWalletId }
             transaction.destinationWalletId == walletId -> allWallets.find { it.id == transaction.sourceWalletId }
             else -> null
+        }
+    }
+    
+    fun setSelectedMonth(month: Int, year: Int) {
+        android.util.Log.d("WalletDetailViewModel", "Setting selected month: $month/$year")
+        _uiState.update { 
+            it.copy(selectedMonth = month, selectedYear = year) 
+        }
+        
+        // Recompute filtered data with new month selection
+        if (currentWalletId.isNotEmpty()) {
+            recomputeFilteredData()
+        }
+    }
+    
+    fun navigateToPreviousMonth() {
+        val currentState = _uiState.value
+        val calendar = Calendar.getInstance().apply {
+            set(Calendar.MONTH, currentState.selectedMonth)
+            set(Calendar.YEAR, currentState.selectedYear)
+            add(Calendar.MONTH, -1)
+        }
+        setSelectedMonth(calendar.get(Calendar.MONTH), calendar.get(Calendar.YEAR))
+    }
+    
+    fun navigateToNextMonth() {
+        val currentState = _uiState.value
+        val calendar = Calendar.getInstance().apply {
+            set(Calendar.MONTH, currentState.selectedMonth)
+            set(Calendar.YEAR, currentState.selectedYear)
+            add(Calendar.MONTH, 1)
+        }
+        setSelectedMonth(calendar.get(Calendar.MONTH), calendar.get(Calendar.YEAR))
+    }
+    
+    fun canNavigateToPrevious(): Boolean {
+        // Check if there are any transactions before the selected month
+        val currentState = _uiState.value
+        val selectedMonthStart = getMonthStart(currentState.selectedMonth, currentState.selectedYear)
+        return currentState.transactions.any { transaction ->
+            val transactionDate = transaction.transactionDate ?: transaction.createdAt
+            transactionDate != null && transactionDate.before(selectedMonthStart)
+        }
+    }
+    
+    fun canNavigateToNext(): Boolean {
+        // Don't allow navigation to future months
+        val currentState = _uiState.value
+        val calendar = Calendar.getInstance()
+        val currentMonth = calendar.get(Calendar.MONTH)
+        val currentYear = calendar.get(Calendar.YEAR)
+        
+        return currentState.selectedMonth < currentMonth || currentState.selectedYear < currentYear
+    }
+    
+    private fun getMonthStart(month: Int, year: Int): Date {
+        return Calendar.getInstance().apply {
+            set(Calendar.YEAR, year)
+            set(Calendar.MONTH, month)
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.time
+    }
+    
+    private fun getMonthEnd(month: Int, year: Int): Date {
+        return Calendar.getInstance().apply {
+            set(Calendar.YEAR, year)
+            set(Calendar.MONTH, month)
+            set(Calendar.DAY_OF_MONTH, getActualMaximum(Calendar.DAY_OF_MONTH))
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }.time
+    }
+    
+    private fun filterTransactionsByMonth(transactions: List<Transaction>, month: Int, year: Int): List<Transaction> {
+        val monthStart = getMonthStart(month, year)
+        val monthEnd = getMonthEnd(month, year)
+        
+        return transactions.filter { transaction ->
+            val transactionDate = transaction.transactionDate ?: transaction.createdAt
+            transactionDate != null && 
+            !transactionDate.before(monthStart) && 
+            !transactionDate.after(monthEnd)
+        }
+    }
+    
+    private fun recomputeFilteredData() {
+        // This will be called when month selection changes
+        // The main data loading logic will handle filtering and calculations
+        if (currentWalletId.isNotEmpty()) {
+            loadWalletDetails(currentWalletId)
         }
     }
 }
