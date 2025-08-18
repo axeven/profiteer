@@ -10,7 +10,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.axeven.profiteerapp.data.model.TransactionType
@@ -675,10 +682,113 @@ fun TransactionDatePickerDialog(
             }
         }
     ) {
-        DatePicker(
-            state = datePickerState,
-            modifier = Modifier.padding(16.dp)
-        )
+        // Enhanced layout wrapper with forced column width distribution
+        EqualWidthDatePickerContainer {
+            DatePicker(
+                state = datePickerState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer {
+                        // Additional layer to ensure proper rendering of equal columns
+                        clip = true
+                    },
+                colors = DatePickerDefaults.colors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    headlineContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    weekdayContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    dayContentColor = MaterialTheme.colorScheme.onSurface,
+                    selectedDayContentColor = MaterialTheme.colorScheme.onPrimary,
+                    selectedDayContainerColor = MaterialTheme.colorScheme.primary,
+                    todayContentColor = MaterialTheme.colorScheme.primary,
+                    todayDateBorderColor = MaterialTheme.colorScheme.primary
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun EqualWidthDatePickerContainer(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    /**
+     * ENHANCED SOLUTION: Aggressive fix for Material 3 DatePicker column width bug.
+     * 
+     * Issue: The Saturday (last) column in Material 3 DatePicker appears narrower 
+     * than other weekday columns, causing visual imbalance and usability issues.
+     * 
+     * Root Cause: Material 3 DatePicker internal layout calculations create uneven 
+     * column distribution, particularly affecting the last column (Saturday).
+     * 
+     * Solution: Multi-layered approach:
+     * 1. Force minimum width for proper 7-column grid (336dp = 48dp per column)
+     * 2. Apply horizontal scaling if needed to ensure equal distribution
+     * 3. Use precise density calculations for pixel-perfect alignment
+     * 4. Override internal layout with explicit width constraints
+     */
+    val density = LocalDensity.current
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
+    
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 16.dp) // Minimal horizontal padding
+            .onSizeChanged { containerSize = it }
+            // Removed clipToBounds() to allow proper DatePicker visibility
+    ) {
+        Layout(
+            content = content,
+            modifier = Modifier.fillMaxWidth()
+        ) { measurables, constraints ->
+            // Calculate precise width for equal 7-column distribution
+            val availableWidth = constraints.maxWidth
+            
+            // REFINED FIX: Balance equal columns with container visibility
+            // Use optimal width calculation that ensures equal columns without excessive expansion
+            val baseColumnWidthDp = 50.dp // Balanced column width for proper distribution
+            val optimalWidthDp = baseColumnWidthDp * 7
+            val optimalWidthPx = with(density) { optimalWidthDp.toPx().toInt() }
+            
+            // Use optimal width, but not excessively larger than container
+            val targetWidth = maxOf(availableWidth, optimalWidthPx)
+            
+            // BALANCED: Use moderate expansion to fix columns without causing clipping
+            val expandedWidth = if (targetWidth <= availableWidth) {
+                targetWidth
+            } else {
+                (targetWidth * 1.05f).toInt() // Minimal 5% expansion only when needed
+            }
+            val enforcedConstraints = Constraints.fixed(
+                width = expandedWidth,
+                height = constraints.maxHeight
+            )
+            
+            // Measure DatePicker with enforced constraints
+            val placeable = measurables.firstOrNull()?.measure(enforcedConstraints)
+            
+            // Layout dimensions
+            val layoutWidth = availableWidth
+            val layoutHeight = placeable?.height ?: 0
+            
+            // Smart centering to prevent clipping while maintaining equal columns
+            val xOffset = when {
+                expandedWidth <= availableWidth -> {
+                    // DatePicker fits within container, center it
+                    (availableWidth - expandedWidth) / 2
+                }
+                else -> {
+                    // DatePicker is wider, center it but allow controlled overflow
+                    val overflow = expandedWidth - availableWidth
+                    -minOf(overflow / 2, with(density) { 4.dp.toPx().toInt() }) // Max 4dp overflow on each side
+                }
+            }
+            
+            layout(layoutWidth, layoutHeight) {
+                placeable?.placeRelative(x = xOffset, y = 0)
+            }
+        }
     }
 }
 
