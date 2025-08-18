@@ -13,6 +13,7 @@ import com.axeven.profiteerapp.data.repository.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.*
 import javax.inject.Inject
 import kotlin.math.abs
 
@@ -62,25 +63,45 @@ class HomeViewModel @Inject constructor(
             android.util.Log.d("HomeViewModel", "Starting loadUserData for user: $userId")
 
             try {
+                // Get current month start and end dates for filtering calculations
+                val calendar = Calendar.getInstance()
+                val currentMonthStart = Calendar.getInstance().apply {
+                    set(Calendar.DAY_OF_MONTH, 1)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.time
+                
+                val currentMonthEnd = Calendar.getInstance().apply {
+                    set(Calendar.DAY_OF_MONTH, getActualMaximum(Calendar.DAY_OF_MONTH))
+                    set(Calendar.HOUR_OF_DAY, 23)
+                    set(Calendar.MINUTE, 59)
+                    set(Calendar.SECOND, 59)
+                    set(Calendar.MILLISECOND, 999)
+                }.time
+                
                 combine(
-                    transactionRepository.getUserTransactions(userId),
+                    transactionRepository.getUserTransactions(userId), // Limited for display
+                    transactionRepository.getUserTransactionsForCalculations(userId, currentMonthStart, currentMonthEnd), // Unlimited for calculations
                     walletRepository.getUserWallets(userId),
                     userPreferencesRepository.getUserPreferences(userId),
                     currencyRateRepository.getUserCurrencyRates(userId)
-                ) { transactions, wallets, preferences, currencyRates ->
-                    Quadruple(transactions, wallets, preferences, currencyRates)
-                }.collect { (transactions, wallets, preferences, currencyRates) ->
-                    android.util.Log.d("HomeViewModel", "Data update received - transactions: ${transactions.size}, wallets: ${wallets.size}")
+                ) { displayTransactions, calculationTransactions, wallets, preferences, currencyRates ->
+                    QuintTransactions(displayTransactions, calculationTransactions, wallets, preferences, currencyRates)
+                }.collect { (displayTransactions, calculationTransactions, wallets, preferences, currencyRates) ->
+                    android.util.Log.d("HomeViewModel", "Data update received - display: ${displayTransactions.size}, calculation: ${calculationTransactions.size}, wallets: ${wallets.size}")
                     
                     val defaultCurrency = preferences?.defaultCurrency ?: "USD"
                     
-                    val totalIncome = transactions
+                    // Use calculation transactions for accurate totals (current month only)
+                    val totalIncome = calculationTransactions
                         .filter { it.type == TransactionType.INCOME }
-                        .sumOf { it.amount }
+                        .sumOf { convertAmount(it.amount, getTransactionCurrency(it, wallets), defaultCurrency, currencyRates) }
                     
-                    val totalExpenses = transactions
+                    val totalExpenses = calculationTransactions
                         .filter { it.type == TransactionType.EXPENSE }
-                        .sumOf { abs(it.amount) }
+                        .sumOf { abs(convertAmount(it.amount, getTransactionCurrency(it, wallets), defaultCurrency, currencyRates)) }
                     
                     // Calculate total balance with currency conversion
                     val physicalWallets = wallets.filter { it.walletType == "Physical" }
@@ -92,11 +113,11 @@ class HomeViewModel @Inject constructor(
 
                     _uiState.update {
                         it.copy(
-                            transactions = transactions,
+                            transactions = displayTransactions, // Use limited transactions for UI display
                             wallets = wallets,
                             totalBalance = totalBalance,
-                            totalIncome = totalIncome,
-                            totalExpenses = totalExpenses,
+                            totalIncome = totalIncome, // Calculated from all current month transactions
+                            totalExpenses = totalExpenses, // Calculated from all current month transactions
                             defaultCurrency = defaultCurrency,
                             isLoading = false,
                             error = null,
@@ -289,4 +310,47 @@ class HomeViewModel @Inject constructor(
         
         return null
     }
+    
+    private fun convertAmount(
+        amount: Double,
+        fromCurrency: String,
+        toCurrency: String,
+        currencyRates: List<com.axeven.profiteerapp.data.model.CurrencyRate>
+    ): Double {
+        if (fromCurrency == toCurrency || fromCurrency.isBlank()) {
+            return amount
+        }
+        
+        val conversionRate = findConversionRate(fromCurrency, toCurrency, currencyRates)
+        return if (conversionRate != null) {
+            amount * conversionRate
+        } else {
+            amount // Return original amount if no conversion rate available
+        }
+    }
+    
+    private fun getTransactionCurrency(transaction: Transaction, wallets: List<Wallet>): String {
+        return when (transaction.type) {
+            TransactionType.TRANSFER -> {
+                wallets.find { it.id == transaction.sourceWalletId }?.currency ?: "USD"
+            }
+            else -> {
+                // For Income/Expense, try to find from affected wallets or fallback to primary wallet
+                val affectedWallets = if (transaction.affectedWalletIds.isNotEmpty()) {
+                    wallets.filter { it.id in transaction.affectedWalletIds }
+                } else {
+                    wallets.filter { it.id == transaction.walletId }
+                }
+                affectedWallets.firstOrNull()?.currency ?: "USD"
+            }
+        }
+    }
 }
+
+data class QuintTransactions<A, B, C, D, E>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D,
+    val fifth: E
+)

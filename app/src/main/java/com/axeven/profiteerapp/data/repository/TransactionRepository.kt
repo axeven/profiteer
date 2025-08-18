@@ -8,6 +8,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -46,6 +47,51 @@ class TransactionRepository @Inject constructor(
                 android.util.Log.d("TransactionRepo", "Total transactions retrieved: ${transactions.size}")
                 trySend(transactions)
             }
+        
+        awaitClose { listener.remove() }
+    }
+
+    fun getUserTransactionsForCalculations(userId: String, startDate: Date? = null, endDate: Date? = null): Flow<List<Transaction>> = callbackFlow {
+        android.util.Log.d("TransactionRepo", "Starting getUserTransactionsForCalculations for user: $userId")
+        
+        var query = transactionsCollection
+            .whereEqualTo("userId", userId)
+        
+        // Add date filtering if provided
+        if (startDate != null) {
+            query = query.whereGreaterThanOrEqualTo("transactionDate", startDate)
+        }
+        if (endDate != null) {
+            query = query.whereLessThanOrEqualTo("transactionDate", endDate)
+        }
+        
+        val listener = query.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                android.util.Log.e("TransactionRepo", "Error in calculation query", error)
+                close(error)
+                return@addSnapshotListener
+            }
+            
+            val transactions = snapshot?.documents?.mapNotNull { document ->
+                try {
+                    val transaction = document.toObject(Transaction::class.java)?.copy(id = document.id)
+                    // For calculation purposes, we need all transactions regardless of date
+                    // If no transactionDate, use createdAt, if neither exists, still include but note in logs
+                    transaction?.let {
+                        if (it.transactionDate == null && it.createdAt == null) {
+                            android.util.Log.w("TransactionRepo", "Transaction ${it.id} has no date information")
+                        }
+                        it
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("TransactionRepo", "Error parsing calculation transaction: ${document.id}", e)
+                    null
+                }
+            }?.filter { it.id.isNotEmpty() } ?: emptyList()
+            
+            android.util.Log.d("TransactionRepo", "Calculation transactions retrieved: ${transactions.size} for user $userId")
+            trySend(transactions)
+        }
         
         awaitClose { listener.remove() }
     }
