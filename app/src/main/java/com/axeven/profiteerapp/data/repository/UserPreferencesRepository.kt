@@ -66,14 +66,27 @@ class UserPreferencesRepository @Inject constructor(
 
             if (snapshot.documents.isNotEmpty()) {
                 val docId = snapshot.documents.first().id
+                val existingPrefs = snapshot.documents.first().toObject(UserPreferences::class.java)
+                
+                // If displayCurrency is still the default "USD", update it to match the new defaultCurrency
+                val updates = if (existingPrefs?.displayCurrency == "USD") {
+                    mapOf(
+                        "defaultCurrency" to currency,
+                        "displayCurrency" to currency  // Auto-update displayCurrency to match
+                    )
+                } else {
+                    mapOf("defaultCurrency" to currency)  // Keep existing displayCurrency if it was explicitly set
+                }
+                
                 preferencesCollection.document(docId)
-                    .update("defaultCurrency", currency)
+                    .update(updates)
                     .await()
             } else {
-                // Create new preferences if none exist
+                // Create new preferences if none exist - set displayCurrency to match defaultCurrency
                 val newPreferences = UserPreferences(
                     userId = userId,
-                    defaultCurrency = currency
+                    defaultCurrency = currency,
+                    displayCurrency = currency  // Match displayCurrency to defaultCurrency
                 )
                 preferencesCollection.add(newPreferences).await()
             }
@@ -135,6 +148,36 @@ class UserPreferencesRepository @Inject constructor(
                     displayCurrency = displayCurrency
                 )
                 preferencesCollection.add(newPreferences).await()
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Sync displayCurrency to match defaultCurrency if displayCurrency is still "USD"
+     * This fixes the issue where users have IDR as defaultCurrency but displayCurrency is still "USD"
+     */
+    suspend fun syncDisplayCurrencyWithDefault(userId: String): Result<Unit> {
+        return try {
+            val snapshot = preferencesCollection
+                .whereEqualTo("userId", userId)
+                .limit(1)
+                .get()
+                .await()
+
+            if (snapshot.documents.isNotEmpty()) {
+                val docId = snapshot.documents.first().id
+                val existingPrefs = snapshot.documents.first().toObject(UserPreferences::class.java)
+                
+                // If displayCurrency is USD but defaultCurrency is something else, sync them
+                if (existingPrefs?.displayCurrency == "USD" && 
+                    existingPrefs.defaultCurrency != "USD") {
+                    preferencesCollection.document(docId)
+                        .update("displayCurrency", existingPrefs.defaultCurrency)
+                        .await()
+                }
             }
             Result.success(Unit)
         } catch (e: Exception) {

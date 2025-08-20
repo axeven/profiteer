@@ -44,6 +44,10 @@ class WalletListViewModel @Inject constructor(
 
     init {
         if (userId.isNotEmpty()) {
+            // Fix display currency sync issue
+            viewModelScope.launch {
+                userPreferencesRepository.syncDisplayCurrencyWithDefault(userId)
+            }
             loadWallets()
         }
     }

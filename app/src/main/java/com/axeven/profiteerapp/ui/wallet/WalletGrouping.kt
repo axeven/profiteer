@@ -159,7 +159,7 @@ private fun PhysicalFormGroupHeader(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = "$defaultCurrency ${NumberFormatter.formatCurrency(totalBalance)}",
+                    text = NumberFormatter.formatCurrency(totalBalance, defaultCurrency, showSymbol = true),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = if (totalBalance >= 0) {
@@ -318,7 +318,7 @@ fun PhysicalFormSummaryCard(
                 )
                 
                 Text(
-                    text = "$defaultCurrency ${NumberFormatter.formatCurrency(totalBalance)}",
+                    text = NumberFormatter.formatCurrency(totalBalance, defaultCurrency, showSymbol = true),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary
@@ -356,7 +356,7 @@ fun PhysicalFormSummaryCard(
                                 horizontalAlignment = Alignment.End
                             ) {
                                 Text(
-                                    text = "$defaultCurrency ${NumberFormatter.formatCurrency(balance)}",
+                                    text = NumberFormatter.formatCurrency(balance, defaultCurrency, showSymbol = true),
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium
                                 )

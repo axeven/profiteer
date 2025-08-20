@@ -25,6 +25,7 @@ import com.axeven.profiteerapp.data.model.Wallet
 import com.axeven.profiteerapp.data.model.PhysicalForm
 import com.axeven.profiteerapp.utils.NumberFormatter
 import com.axeven.profiteerapp.utils.WalletValidator
+import com.google.android.gms.common.util.AndroidUtilsLight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -387,7 +388,8 @@ fun WalletListItem(
                     wallet.balance
                 }
                 
-                val balanceText = "${NumberFormatter.formatCurrency(displayBalance, displayCurrency, showSymbol = true)}"
+                // Use displayCurrency for symbol display to match the converted balance
+                val balanceText = NumberFormatter.formatCurrency(displayBalance, displayCurrency, showSymbol = true)
                 
                 Text(
                     text = balanceText,
@@ -783,7 +785,7 @@ fun UnallocatedBalanceCard(
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "$defaultCurrency ${NumberFormatter.formatCurrency(unallocatedBalance)}",
+                text = NumberFormatter.formatCurrency(unallocatedBalance, defaultCurrency, showSymbol = true),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = if (unallocatedBalance >= 0) {
