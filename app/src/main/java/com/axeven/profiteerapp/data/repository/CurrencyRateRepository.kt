@@ -103,4 +103,44 @@ class CurrencyRateRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
+    /**
+     * Gets the display conversion rate from default currency to display currency.
+     * This is specifically for UI display purposes only.
+     */
+    suspend fun getDisplayRate(
+        userId: String,
+        defaultCurrency: String,
+        displayCurrency: String,
+        month: String? = null
+    ): Result<Double> {
+        return try {
+            // If currencies are the same, rate is 1.0
+            if (defaultCurrency == displayCurrency) {
+                return Result.success(1.0)
+            }
+
+            // First try direct rate
+            val directRate = getExchangeRate(userId, defaultCurrency, displayCurrency, month)
+            directRate.getOrNull()?.let {
+                return Result.success(it.rate)
+            }
+
+            // Try inverse rate
+            val inverseRate = getExchangeRate(userId, displayCurrency, defaultCurrency, month)
+            inverseRate.getOrNull()?.let {
+                return Result.success(1.0 / it.rate)
+            }
+
+            // If monthly rate not found, try default rate
+            if (month != null) {
+                return getDisplayRate(userId, defaultCurrency, displayCurrency, null)
+            }
+
+            // No rate found, return 1.0 as fallback
+            Result.success(1.0)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

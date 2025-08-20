@@ -31,9 +31,10 @@ data class HomeUiState(
     val totalIncome: Double = 0.0,
     val totalExpenses: Double = 0.0,
     val defaultCurrency: String = "USD",
+    val displayCurrency: String = "USD",
+    val displayRate: Double = 1.0,
     val isLoading: Boolean = false,
-    val error: String? = null,
-    val conversionWarning: String? = null
+    val error: String? = null
 )
 
 @HiltViewModel
@@ -85,31 +86,35 @@ class HomeViewModel @Inject constructor(
                     transactionRepository.getUserTransactions(userId), // Limited for display
                     transactionRepository.getUserTransactionsForCalculations(userId, currentMonthStart, currentMonthEnd), // Unlimited for calculations
                     walletRepository.getUserWallets(userId),
-                    userPreferencesRepository.getUserPreferences(userId),
-                    currencyRateRepository.getUserCurrencyRates(userId)
-                ) { displayTransactions, calculationTransactions, wallets, preferences, currencyRates ->
-                    QuintTransactions(displayTransactions, calculationTransactions, wallets, preferences, currencyRates)
-                }.collect { (displayTransactions, calculationTransactions, wallets, preferences, currencyRates) ->
+                    userPreferencesRepository.getUserPreferences(userId)
+                ) { displayTransactions, calculationTransactions, wallets, preferences ->
+                    Quadruple(displayTransactions, calculationTransactions, wallets, preferences)
+                }.collect { (displayTransactions, calculationTransactions, wallets, preferences) ->
                     android.util.Log.d("HomeViewModel", "Data update received - display: ${displayTransactions.size}, calculation: ${calculationTransactions.size}, wallets: ${wallets.size}")
                     
                     val defaultCurrency = preferences?.defaultCurrency ?: "USD"
+                    val displayCurrency = preferences?.displayCurrency ?: defaultCurrency
+                    
+                    // Get display rate for UI conversion
+                    val displayRate = if (defaultCurrency != displayCurrency) {
+                        currencyRateRepository.getDisplayRate(userId, defaultCurrency, displayCurrency).getOrElse { 1.0 }
+                    } else {
+                        1.0
+                    }
                     
                     // Use calculation transactions for accurate totals (current month only)
+                    // All transactions now use default currency - no conversion needed
                     val totalIncome = calculationTransactions
                         .filter { it.type == TransactionType.INCOME }
-                        .sumOf { convertAmount(it.amount, getTransactionCurrency(it, wallets), defaultCurrency, currencyRates) }
+                        .sumOf { it.amount }
                     
                     val totalExpenses = calculationTransactions
                         .filter { it.type == TransactionType.EXPENSE }
-                        .sumOf { abs(convertAmount(it.amount, getTransactionCurrency(it, wallets), defaultCurrency, currencyRates)) }
+                        .sumOf { abs(it.amount) }
                     
-                    // Calculate total balance with currency conversion
+                    // Calculate total balance - all wallets now use default currency
                     val physicalWallets = wallets.filter { it.walletType == "Physical" }
-                    val (totalBalance, conversionWarning) = calculateConvertedBalance(
-                        physicalWallets, 
-                        defaultCurrency, 
-                        currencyRates
-                    )
+                    val totalBalance = physicalWallets.sumOf { it.balance }
 
                     _uiState.update {
                         it.copy(
@@ -119,9 +124,10 @@ class HomeViewModel @Inject constructor(
                             totalIncome = totalIncome, // Calculated from all current month transactions
                             totalExpenses = totalExpenses, // Calculated from all current month transactions
                             defaultCurrency = defaultCurrency,
+                            displayCurrency = displayCurrency,
+                            displayRate = displayRate,
                             isLoading = false,
-                            error = null,
-                            conversionWarning = conversionWarning
+                            error = null
                         )
                     }
                     
@@ -228,129 +234,9 @@ class HomeViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) }
     }
     
-    fun clearConversionWarning() {
-        _uiState.update { it.copy(conversionWarning = null) }
-    }
     
-    private fun calculateConvertedBalance(
-        wallets: List<Wallet>,
-        defaultCurrency: String,
-        currencyRates: List<com.axeven.profiteerapp.data.model.CurrencyRate>
-    ): Pair<Double, String?> {
-        var convertedBalance = 0.0
-        val missingRates = mutableSetOf<String>()
-        
-        for (wallet in wallets) {
-            if (wallet.currency == defaultCurrency || wallet.currency.isBlank()) {
-                // Same currency as default or no currency specified, add directly
-                convertedBalance += wallet.balance
-            } else {
-                // Need conversion
-                val conversionRate = findConversionRate(wallet.currency, defaultCurrency, currencyRates)
-                if (conversionRate != null) {
-                    convertedBalance += wallet.balance * conversionRate
-                } else {
-                    // Missing conversion rate
-                    missingRates.add(wallet.currency)
-                    android.util.Log.w("HomeViewModel", "Missing conversion rate from ${wallet.currency} to $defaultCurrency for wallet: ${wallet.name}")
-                }
-            }
-        }
-        
-        val warning = if (missingRates.isNotEmpty()) {
-            val currenciesList = missingRates.joinToString(", ")
-            "Some wallets with currencies ($currenciesList) are not included in the total because conversion rates are not set."
-        } else null
-        
-        return Pair(convertedBalance, warning)
-    }
     
-    private fun findConversionRate(
-        fromCurrency: String,
-        toCurrency: String,
-        currencyRates: List<com.axeven.profiteerapp.data.model.CurrencyRate>
-    ): Double? {
-        // 1. Try to find direct conversion rate with default month (from -> to)
-        val directDefaultRate = currencyRates.find { 
-            it.fromCurrency == fromCurrency && it.toCurrency == toCurrency && it.month == null 
-        }?.rate
-        
-        if (directDefaultRate != null) {
-            return directDefaultRate
-        }
-        
-        // 2. Try to find reverse conversion rate with default month (to -> from) and invert it
-        val reverseDefaultRate = currencyRates.find { 
-            it.fromCurrency == toCurrency && it.toCurrency == fromCurrency && it.month == null 
-        }?.rate
-        
-        if (reverseDefaultRate != null && reverseDefaultRate != 0.0) {
-            return 1.0 / reverseDefaultRate
-        }
-        
-        // 3. Fallback to monthly rates: try direct conversion (from -> to)
-        val directMonthlyRate = currencyRates.find { 
-            it.fromCurrency == fromCurrency && it.toCurrency == toCurrency && it.month != null 
-        }?.rate
-        
-        if (directMonthlyRate != null) {
-            android.util.Log.d("HomeViewModel", "Using monthly rate for $fromCurrency -> $toCurrency: $directMonthlyRate")
-            return directMonthlyRate
-        }
-        
-        // 4. Fallback to monthly rates: try reverse conversion (to -> from) and invert it
-        val reverseMonthlyRate = currencyRates.find { 
-            it.fromCurrency == toCurrency && it.toCurrency == fromCurrency && it.month != null 
-        }?.rate
-        
-        if (reverseMonthlyRate != null && reverseMonthlyRate != 0.0) {
-            android.util.Log.d("HomeViewModel", "Using inverted monthly rate for $fromCurrency -> $toCurrency: ${1.0 / reverseMonthlyRate}")
-            return 1.0 / reverseMonthlyRate
-        }
-        
-        return null
-    }
     
-    private fun convertAmount(
-        amount: Double,
-        fromCurrency: String,
-        toCurrency: String,
-        currencyRates: List<com.axeven.profiteerapp.data.model.CurrencyRate>
-    ): Double {
-        if (fromCurrency == toCurrency || fromCurrency.isBlank()) {
-            return amount
-        }
-        
-        val conversionRate = findConversionRate(fromCurrency, toCurrency, currencyRates)
-        return if (conversionRate != null) {
-            amount * conversionRate
-        } else {
-            amount // Return original amount if no conversion rate available
-        }
-    }
     
-    private fun getTransactionCurrency(transaction: Transaction, wallets: List<Wallet>): String {
-        return when (transaction.type) {
-            TransactionType.TRANSFER -> {
-                wallets.find { it.id == transaction.sourceWalletId }?.currency ?: "USD"
-            }
-            else -> {
-                // For Income/Expense, try to find from affected wallets or fallback to primary wallet
-                val affectedWallets = if (transaction.affectedWalletIds.isNotEmpty()) {
-                    wallets.filter { it.id in transaction.affectedWalletIds }
-                } else {
-                    wallets.filter { it.id == transaction.walletId }
-                }
-                affectedWallets.firstOrNull()?.currency ?: "USD"
-            }
-        }
-    }
 }
 
-data class QuintTransactions<A, B, C, D, E>(
-    val first: A,
-    val second: B,
-    val third: C,
-    val fourth: D,
-    val fifth: E
-)

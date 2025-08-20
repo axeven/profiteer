@@ -91,7 +91,6 @@ class SettingsViewModel @Inject constructor(
 
             val wallet = Wallet(
                 name = name,
-                currency = currency,
                 balance = initialBalance, // Set current balance to initial balance
                 initialBalance = initialBalance,
                 walletType = walletType,
@@ -130,7 +129,6 @@ class SettingsViewModel @Inject constructor(
                         
                         val updatedWallet = wallet.copy(
                             name = name,
-                            currency = currency,
                             walletType = walletType,
                             initialBalance = newInitialBalance,
                             balance = newCurrentBalance // Adjust current balance by the difference

@@ -107,37 +107,6 @@ fun HomeScreen(
                 )
             }
             
-            // Show conversion warning if present
-            uiState.conversionWarning?.let { warning ->
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Warning,
-                                contentDescription = "Warning",
-                                tint = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = warning,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                        }
-                    }
-                }
-            }
             
             item {
                 Text(
@@ -179,6 +148,7 @@ fun HomeScreen(
                 TransactionItem(
                     transaction = transaction,
                     wallets = uiState.wallets,
+                    defaultCurrency = uiState.defaultCurrency,
                     onClick = { onEditTransaction(transaction) }
                 )
             }
@@ -318,6 +288,7 @@ fun TransactionItem(
     transaction: Transaction, 
     wallets: List<Wallet> = emptyList(),
     currentWalletId: String? = null,
+    defaultCurrency: String = "USD",
     onClick: () -> Unit = {}
 ) {
     val dateFormatter = remember { SimpleDateFormat("MMM dd", Locale.getDefault()) }
@@ -341,21 +312,8 @@ fun TransactionItem(
         else -> Triple(transaction.type, false, null)
     }
     
-    // Find currency from associated wallets
-    val currency = when (transaction.type) {
-        TransactionType.TRANSFER -> {
-            wallets.find { it.id == transaction.sourceWalletId }?.currency ?: "USD"
-        }
-        else -> {
-            // For Income/Expense, try to find from affected wallets or fallback to primary wallet
-            val affectedWallets = if (transaction.affectedWalletIds.isNotEmpty()) {
-                wallets.filter { it.id in transaction.affectedWalletIds }
-            } else {
-                wallets.filter { it.id == transaction.walletId }
-            }
-            affectedWallets.firstOrNull()?.currency ?: "USD"
-        }
-    }
+    // All transactions now use the default currency
+    val currency = defaultCurrency
     
     // Calculate display amount for transfers
     val displayAmount = when {

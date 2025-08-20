@@ -161,7 +161,7 @@ fun WalletListScreen(
                     GroupedWalletList(
                         groupedWallets = uiState.groupedWallets,
                         defaultCurrency = uiState.defaultCurrency,
-                        conversionRates = uiState.conversionRates,
+                        conversionRates = emptyMap(), // No longer needed
                         onWalletClick = onNavigateToWalletDetail,
                         onWalletEdit = { wallet ->
                             walletToEdit = wallet
@@ -200,7 +200,8 @@ fun WalletListScreen(
                                 WalletListItem(
                                     wallet = wallet,
                                     defaultCurrency = uiState.defaultCurrency,
-                                    conversionRates = uiState.conversionRates,
+                                    displayCurrency = uiState.displayCurrency,
+                                    displayRate = uiState.displayRate,
                                     onEdit = { 
                                         walletToEdit = wallet
                                         showEditWalletDialog = true
@@ -220,8 +221,8 @@ fun WalletListScreen(
     if (showCreateWalletDialog) {
         CreateWalletDialog(
             onDismiss = { showCreateWalletDialog = false },
-            onConfirm = { name, walletType, currency, initialBalance, physicalForm ->
-                viewModel.createWallet(name, walletType, currency, initialBalance, physicalForm)
+            onConfirm = { name, walletType, _, initialBalance, physicalForm ->
+                viewModel.createWallet(name, walletType, initialBalance, physicalForm)
                 showCreateWalletDialog = false
             },
             defaultCurrency = uiState.defaultCurrency,
@@ -237,11 +238,10 @@ fun WalletListScreen(
                 showEditWalletDialog = false
                 walletToEdit = null
             },
-            onConfirm = { name, walletType, currency, initialBalance, physicalForm ->
+            onConfirm = { name, walletType, _, initialBalance, physicalForm ->
                 val updatedWallet = walletToEdit!!.copy(
                     name = name,
                     walletType = walletType,
-                    currency = currency,
                     initialBalance = initialBalance,
                     physicalForm = physicalForm,
                     balance = walletToEdit!!.balance - walletToEdit!!.initialBalance + initialBalance
@@ -260,7 +260,8 @@ fun WalletListScreen(
 fun WalletListItem(
     wallet: Wallet,
     defaultCurrency: String,
-    conversionRates: Map<String, Double>,
+    displayCurrency: String,
+    displayRate: Double,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onClick: () -> Unit
@@ -339,7 +340,7 @@ fun WalletListItem(
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                         )
                         Text(
-                            text = wallet.currency,
+                            text = defaultCurrency,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
@@ -379,11 +380,14 @@ fun WalletListItem(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
                 
-                val balanceText = when (wallet.currency) {
-                    "GOLD" -> "${NumberFormatter.formatCurrency(wallet.balance, "GOLD")} grams"
-                    "BTC" -> "${NumberFormatter.formatCurrency(wallet.balance, "BTC")} BTC"
-                    else -> "${wallet.currency} ${NumberFormatter.formatCurrency(wallet.balance)}"
+                // All wallets now use default currency - display with display currency conversion if needed
+                val displayBalance = if (defaultCurrency != displayCurrency) {
+                    wallet.balance * displayRate
+                } else {
+                    wallet.balance
                 }
+                
+                val balanceText = "${NumberFormatter.formatCurrency(displayBalance, displayCurrency, showSymbol = true)}"
                 
                 Text(
                     text = balanceText,
@@ -391,25 +395,6 @@ fun WalletListItem(
                     fontWeight = FontWeight.SemiBold,
                     color = if (wallet.balance >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                 )
-                
-                // Show converted balance if different currency
-                if (wallet.currency != defaultCurrency && wallet.currency.isNotBlank()) {
-                    val conversionRate = conversionRates[wallet.currency]
-                    if (conversionRate != null) {
-                        val convertedBalance = wallet.balance * conversionRate
-                        Text(
-                            text = "≈ $defaultCurrency ${NumberFormatter.formatCurrency(convertedBalance)}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        )
-                    } else {
-                        Text(
-                            text = "Conversion rate not set",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
             }
         }
     }
@@ -480,26 +465,18 @@ fun CreateWalletDialog(
     isWalletNameUnique: (String) -> Boolean = { true }
 ) {
     var walletName by remember { mutableStateOf("") }
-    var selectedCurrency by remember { mutableStateOf(defaultCurrency) }
     var selectedWalletType by remember { mutableStateOf(defaultWalletType) }
-    var selectedPhysicalForm by remember { mutableStateOf(WalletValidator.getRecommendedPhysicalForm(defaultCurrency)) }
+    var selectedPhysicalForm by remember { mutableStateOf(PhysicalForm.FIAT_CURRENCY) }
     var initialBalanceText by remember { mutableStateOf("0.00") }
-    var showCurrencyDropdown by remember { mutableStateOf(false) }
     var showWalletTypeDropdown by remember { mutableStateOf(false) }
-    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR", "GOLD", "BTC")
     val walletTypes = listOf("Physical", "Logical")
-    
-    // Update physical form when currency changes
-    LaunchedEffect(selectedCurrency) {
-        selectedPhysicalForm = WalletValidator.getRecommendedPhysicalForm(selectedCurrency)
-    }
     
     val isNameUnique = isWalletNameUnique(walletName)
     val initialBalance = NumberFormatter.parseDouble(initialBalanceText) ?: 0.0
     
     // Validate form
     val validationResult = WalletValidator.validateWalletData(
-        walletName, selectedCurrency, selectedPhysicalForm, initialBalance
+        walletName, selectedPhysicalForm, initialBalance
     )
     val isFormValid = validationResult.isValid && isNameUnique
 
@@ -561,61 +538,28 @@ fun CreateWalletDialog(
                     }
                 }
                 
-                Box {
-                    OutlinedTextField(
-                        value = selectedCurrency,
-                        onValueChange = { },
-                        label = { Text("Currency") },
-                        modifier = Modifier.fillMaxWidth(),
-                        readOnly = true,
-                        trailingIcon = {
-                            Icon(
-                                imageVector = if (showCurrencyDropdown) Icons.Default.KeyboardArrowUp 
-                                            else Icons.Default.KeyboardArrowDown,
-                                contentDescription = null
-                            )
-                        }
-                    )
-                    
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .clickable { showCurrencyDropdown = true }
-                    )
-                    
-                    DropdownMenu(
-                        expanded = showCurrencyDropdown,
-                        onDismissRequest = { showCurrencyDropdown = false }
-                    ) {
-                        currencies.forEach { currency ->
-                            DropdownMenuItem(
-                                text = { Text(currency) },
-                                onClick = {
-                                    selectedCurrency = currency
-                                    showCurrencyDropdown = false
-                                }
-                            )
-                        }
-                    }
-                }
+                // Currency selection removed - using single global currency
+                Text(
+                    text = "Currency: $defaultCurrency",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
                 
                 // Physical Form Selection (only for Physical wallets)
                 if (selectedWalletType == "Physical") {
                     PhysicalFormSelector(
                         selectedForm = selectedPhysicalForm,
                         onFormSelected = { selectedPhysicalForm = it },
-                        currency = selectedCurrency,
-                        modifier = Modifier.fillMaxWidth(),
-                        showCompatibleOnly = true
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
                 
-                val balanceLabel = when (selectedCurrency) {
+                val balanceLabel = when (defaultCurrency) {
                     "GOLD" -> "Initial Weight (grams)"
                     "BTC" -> "Initial Amount (BTC)"
                     else -> "Initial Balance"
                 }
-                val balancePlaceholder = when (selectedCurrency) {
+                val balancePlaceholder = when (defaultCurrency) {
                     "GOLD" -> "0.000"
                     "BTC" -> "0.00000000"
                     else -> "0.00"
@@ -636,7 +580,7 @@ fun CreateWalletDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(walletName, selectedWalletType, selectedCurrency, initialBalance, selectedPhysicalForm) },
+                onClick = { onConfirm(walletName, selectedWalletType, defaultCurrency, initialBalance, selectedPhysicalForm) },
                 enabled = isFormValid
             ) {
                 Text("Create")
@@ -659,13 +603,10 @@ fun EditWalletDialog(
     isWalletNameUnique: (String) -> Boolean = { true }
 ) {
     var walletName by remember { mutableStateOf(wallet.name) }
-    var selectedCurrency by remember { mutableStateOf(wallet.currency) }
     var selectedWalletType by remember { mutableStateOf(wallet.walletType) }
     var selectedPhysicalForm by remember { mutableStateOf(wallet.physicalForm) }
     var initialBalanceText by remember { mutableStateOf(NumberFormatter.formatCurrency(wallet.initialBalance)) }
-    var showCurrencyDropdown by remember { mutableStateOf(false) }
     var showWalletTypeDropdown by remember { mutableStateOf(false) }
-    val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR", "GOLD", "BTC")
     val walletTypes = listOf("Physical", "Logical")
     
     val isNameUnique = isWalletNameUnique(walletName)
@@ -673,7 +614,7 @@ fun EditWalletDialog(
     
     // Validate form
     val validationResult = WalletValidator.validateWalletData(
-        walletName, selectedCurrency, selectedPhysicalForm, initialBalance
+        walletName, selectedPhysicalForm, initialBalance
     )
     val isFormValid = validationResult.isValid && isNameUnique
 
@@ -735,61 +676,28 @@ fun EditWalletDialog(
                     }
                 }
                 
-                Box {
-                    OutlinedTextField(
-                        value = selectedCurrency,
-                        onValueChange = { },
-                        label = { Text("Currency") },
-                        modifier = Modifier.fillMaxWidth(),
-                        readOnly = true,
-                        trailingIcon = {
-                            Icon(
-                                imageVector = if (showCurrencyDropdown) Icons.Default.KeyboardArrowUp 
-                                            else Icons.Default.KeyboardArrowDown,
-                                contentDescription = null
-                            )
-                        }
-                    )
-                    
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .clickable { showCurrencyDropdown = true }
-                    )
-                    
-                    DropdownMenu(
-                        expanded = showCurrencyDropdown,
-                        onDismissRequest = { showCurrencyDropdown = false }
-                    ) {
-                        currencies.forEach { currency ->
-                            DropdownMenuItem(
-                                text = { Text(currency) },
-                                onClick = {
-                                    selectedCurrency = currency
-                                    showCurrencyDropdown = false
-                                }
-                            )
-                        }
-                    }
-                }
+                // Currency selection removed - using single global currency
+                Text(
+                    text = "Currency: $defaultCurrency",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
                 
                 // Physical Form Selection (only for Physical wallets)
                 if (selectedWalletType == "Physical") {
                     PhysicalFormSelector(
                         selectedForm = selectedPhysicalForm,
                         onFormSelected = { selectedPhysicalForm = it },
-                        currency = selectedCurrency,
-                        modifier = Modifier.fillMaxWidth(),
-                        showCompatibleOnly = true
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
                 
-                val balanceLabel = when (selectedCurrency) {
+                val balanceLabel = when (defaultCurrency) {
                     "GOLD" -> "Initial Weight (grams)"
                     "BTC" -> "Initial Amount (BTC)"
                     else -> "Initial Balance"
                 }
-                val balancePlaceholder = when (selectedCurrency) {
+                val balancePlaceholder = when (defaultCurrency) {
                     "GOLD" -> "0.000"
                     "BTC" -> "0.00000000"
                     else -> "0.00"
@@ -810,7 +718,7 @@ fun EditWalletDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(walletName, selectedWalletType, selectedCurrency, initialBalance, selectedPhysicalForm) },
+                onClick = { onConfirm(walletName, selectedWalletType, defaultCurrency, initialBalance, selectedPhysicalForm) },
                 enabled = isFormValid
             ) {
                 Text("Save")

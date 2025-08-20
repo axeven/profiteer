@@ -40,18 +40,7 @@ class WalletRepository @Inject constructor(
                         android.util.Log.d("WalletRepo", "Processing wallet document: ${document.id}, exists: ${document.exists()}")
                         val data = document.data
                         
-                        // Check if wallet needs physical form migration
-                        val needsMigration = data?.get("physicalForm") == null
-                        
                         val wallet = document.toObject(Wallet::class.java)?.copy(id = document.id)
-                        
-                        // Perform migration if needed (async, don't block)
-                        if (needsMigration && wallet != null) {
-                            // Launch migration in background without blocking the listener
-                            CoroutineScope(Dispatchers.IO).launch {
-                                migrateWalletPhysicalForm(document.id, wallet.currency)
-                            }
-                        }
                         
                         android.util.Log.d("WalletRepo", "Parsed wallet: ${wallet?.name}, userId: ${wallet?.userId}")
                         wallet
@@ -114,24 +103,6 @@ class WalletRepository @Inject constructor(
         }
     }
 
-    /**
-     * Migrates a wallet document to include the physicalForm field.
-     * This is done asynchronously and doesn't block the main data flow.
-     */
-    private suspend fun migrateWalletPhysicalForm(walletId: String, currency: String) {
-        try {
-            val defaultForm = PhysicalForm.getDefaultForCurrency(currency)
-            val updateData = mapOf("physicalForm" to defaultForm.name)
-            
-            walletsCollection.document(walletId)
-                .set(updateData, SetOptions.merge())
-                .await()
-            
-            android.util.Log.d("WalletRepo", "Migrated wallet $walletId to physical form: ${defaultForm.name}")
-        } catch (e: Exception) {
-            android.util.Log.e("WalletRepo", "Failed to migrate wallet $walletId physical form", e)
-        }
-    }
 
     /**
      * Filters wallets by physical form for advanced portfolio management.
@@ -174,22 +145,7 @@ class WalletRepository @Inject constructor(
             
             val wallets = snapshot.documents.mapNotNull { document ->
                 try {
-                    val data = document.data
-                    val needsMigration = data?.get("physicalForm") == null
-                    
-                    val wallet = document.toObject(Wallet::class.java)?.copy(id = document.id)
-                    
-                    // Perform migration if needed
-                    if (needsMigration && wallet != null) {
-                        // Launch migration in background without blocking
-                        CoroutineScope(Dispatchers.IO).launch {
-                            migrateWalletPhysicalForm(document.id, wallet.currency)
-                        }
-                        // Return wallet with migrated form for immediate use
-                        wallet.copy(physicalForm = PhysicalForm.getDefaultForCurrency(wallet.currency))
-                    } else {
-                        wallet
-                    }
+                    document.toObject(Wallet::class.java)?.copy(id = document.id)
                 } catch (e: Exception) {
                     android.util.Log.e("WalletRepo", "Error parsing wallet document: ${document.id}", e)
                     null

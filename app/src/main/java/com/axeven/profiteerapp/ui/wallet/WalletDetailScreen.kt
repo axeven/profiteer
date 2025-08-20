@@ -78,17 +78,7 @@ fun WalletDetailScreen(
                     }
                 },
                 actions = {
-                    // Currency toggle button
-                    val wallet = uiState.wallet
-                    if (wallet?.currency?.isNotBlank() == true && wallet.currency != uiState.defaultCurrency) {
-                        IconButton(onClick = { viewModel.toggleCurrency() }) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Toggle currency",
-                                tint = if (uiState.useWalletCurrency) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
+                    // Currency display toggle removed - using single global currency
                 }
             )
         }
@@ -121,37 +111,7 @@ fun WalletDetailScreen(
                     )
                 }
                 
-                // Show conversion warning if present
-                uiState.conversionWarning?.let { warning ->
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.Warning,
-                                    contentDescription = "Warning",
-                                    tint = MaterialTheme.colorScheme.onErrorContainer,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = warning,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onErrorContainer
-                                )
-                            }
-                        }
-                    }
-                }
+                // Conversion warnings not needed with single currency
                 
                 item {
                     Text(

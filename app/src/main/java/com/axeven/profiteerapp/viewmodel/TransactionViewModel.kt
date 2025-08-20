@@ -20,6 +20,8 @@ data class TransactionUiState(
     val transactions: List<Transaction> = emptyList(),
     val wallets: List<Wallet> = emptyList(),
     val defaultCurrency: String = "USD",
+    val displayCurrency: String = "USD",
+    val displayRate: Double = 1.0,
     val isLoading: Boolean = false,
     val error: String? = null,
     val availableTags: List<String> = emptyList()
@@ -62,12 +64,15 @@ class TransactionViewModel @Inject constructor(
                         .sorted()
                     
                     val defaultCurrency = preferences?.defaultCurrency ?: "USD"
+                    val displayCurrency = preferences?.displayCurrency ?: defaultCurrency
                     
                     _uiState.update {
                         it.copy(
                             transactions = transactions,
                             wallets = wallets,
                             defaultCurrency = defaultCurrency,
+                            displayCurrency = displayCurrency,
+                            displayRate = 1.0, // Display rate will be handled at UI level
                             availableTags = uniqueTags,
                             isLoading = false,
                             error = null

@@ -82,4 +82,63 @@ class UserPreferencesRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
+    suspend fun updateDisplayCurrency(userId: String, currency: String): Result<Unit> {
+        return try {
+            val snapshot = preferencesCollection
+                .whereEqualTo("userId", userId)
+                .limit(1)
+                .get()
+                .await()
+
+            if (snapshot.documents.isNotEmpty()) {
+                val docId = snapshot.documents.first().id
+                preferencesCollection.document(docId)
+                    .update("displayCurrency", currency)
+                    .await()
+            } else {
+                // Create new preferences if none exist
+                val newPreferences = UserPreferences(
+                    userId = userId,
+                    displayCurrency = currency
+                )
+                preferencesCollection.add(newPreferences).await()
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateBothCurrencies(userId: String, defaultCurrency: String, displayCurrency: String): Result<Unit> {
+        return try {
+            val snapshot = preferencesCollection
+                .whereEqualTo("userId", userId)
+                .limit(1)
+                .get()
+                .await()
+
+            if (snapshot.documents.isNotEmpty()) {
+                val docId = snapshot.documents.first().id
+                val updates = mapOf(
+                    "defaultCurrency" to defaultCurrency,
+                    "displayCurrency" to displayCurrency
+                )
+                preferencesCollection.document(docId)
+                    .update(updates)
+                    .await()
+            } else {
+                // Create new preferences if none exist
+                val newPreferences = UserPreferences(
+                    userId = userId,
+                    defaultCurrency = defaultCurrency,
+                    displayCurrency = displayCurrency
+                )
+                preferencesCollection.add(newPreferences).await()
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

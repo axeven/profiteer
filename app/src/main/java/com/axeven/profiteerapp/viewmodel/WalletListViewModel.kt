@@ -16,10 +16,11 @@ import javax.inject.Inject
 data class WalletListUiState(
     val wallets: List<Wallet> = emptyList(),
     val defaultCurrency: String = "USD",
+    val displayCurrency: String = "USD",
+    val displayRate: Double = 1.0,
     val isLoading: Boolean = false,
     val error: String? = null,
     val showPhysicalWallets: Boolean = true,
-    val conversionRates: Map<String, Double> = emptyMap(),
     val existingWalletNames: Set<String> = emptySet(),
     val unallocatedBalance: Double = 0.0,
     val selectedPhysicalForms: Set<PhysicalForm> = emptySet(),
@@ -54,15 +55,19 @@ class WalletListViewModel @Inject constructor(
             try {
                 combine(
                     walletRepository.getUserWallets(userId),
-                    userPreferencesRepository.getUserPreferences(userId),
-                    currencyRateRepository.getUserCurrencyRates(userId)
-                ) { wallets, preferences, currencyRates ->
-                    Triple(wallets, preferences, currencyRates)
-                }.collect { (wallets, preferences, currencyRates) ->
+                    userPreferencesRepository.getUserPreferences(userId)
+                ) { wallets, preferences ->
+                    Pair(wallets, preferences)
+                }.collect { (wallets, preferences) ->
                     val defaultCurrency = preferences?.defaultCurrency ?: "USD"
+                    val displayCurrency = preferences?.displayCurrency ?: defaultCurrency
                     
-                    // Build conversion rates map based on actual wallet currencies
-                    val conversionRatesMap = buildConversionRatesMap(currencyRates, defaultCurrency, wallets)
+                    // Get display rate for UI conversion
+                    val displayRate = if (defaultCurrency != displayCurrency) {
+                        currencyRateRepository.getDisplayRate(userId, defaultCurrency, displayCurrency).getOrElse { 1.0 }
+                    } else {
+                        1.0
+                    }
                     
                     // Filter and sort wallets based on current view type
                     val baseFilteredWallets = wallets.filter { wallet ->
@@ -81,8 +86,8 @@ class WalletListViewModel @Inject constructor(
                     } else {
                         baseFilteredWallets
                     }.sortedByDescending { wallet ->
-                        // Sort by converted balance in descending order
-                        convertToDefaultCurrency(wallet.balance, wallet.currency, defaultCurrency, conversionRatesMap)
+                        // Sort by balance in descending order (all wallets use default currency now)
+                        wallet.balance
                     }
                     
                     // Get available physical forms from current wallets
@@ -96,7 +101,7 @@ class WalletListViewModel @Inject constructor(
                         filteredWallets.groupBy { it.physicalForm }
                             .mapValues { (_, wallets) ->
                                 wallets.sortedByDescending { wallet ->
-                                    convertToDefaultCurrency(wallet.balance, wallet.currency, defaultCurrency, conversionRatesMap)
+                                    wallet.balance
                                 }
                             }
                     } else {
@@ -107,15 +112,16 @@ class WalletListViewModel @Inject constructor(
                     val existingNames = wallets.map { it.name.lowercase() }.toSet()
 
                     // Calculate unallocated balance (physical - logical)
-                    val unallocatedBalance = calculateUnallocatedBalance(wallets, defaultCurrency, conversionRatesMap)
+                    val unallocatedBalance = calculateUnallocatedBalance(wallets)
 
                     _uiState.update {
                         it.copy(
                             wallets = filteredWallets,
                             defaultCurrency = defaultCurrency,
+                            displayCurrency = displayCurrency,
+                            displayRate = displayRate,
                             isLoading = false,
                             error = null,
-                            conversionRates = conversionRatesMap,
                             existingWalletNames = existingNames,
                             unallocatedBalance = unallocatedBalance,
                             availablePhysicalForms = availablePhysicalForms,
@@ -145,7 +151,6 @@ class WalletListViewModel @Inject constructor(
     fun createWallet(
         name: String,
         walletType: String,
-        currency: String,
         initialBalance: Double,
         physicalForm: PhysicalForm = PhysicalForm.FIAT_CURRENCY
     ) {
@@ -156,7 +161,6 @@ class WalletListViewModel @Inject constructor(
 
             val wallet = Wallet(
                 name = name,
-                currency = currency,
                 balance = initialBalance,
                 initialBalance = initialBalance,
                 walletType = walletType,
@@ -228,105 +232,17 @@ class WalletListViewModel @Inject constructor(
         }
     }
 
-    private fun buildConversionRatesMap(
-        currencyRates: List<com.axeven.profiteerapp.data.model.CurrencyRate>,
-        defaultCurrency: String,
-        wallets: List<Wallet>
-    ): Map<String, Double> {
-        val ratesMap = mutableMapOf<String, Double>()
-        
-        // Get all unique currencies from wallets that need conversion rates
-        val walletCurrencies = wallets.map { it.currency }.distinct()
-        
-        for (currency in walletCurrencies) {
-            if (currency != defaultCurrency && currency.isNotBlank()) {
-                val rate = findConversionRate(currency, defaultCurrency, currencyRates)
-                if (rate != null) {
-                    ratesMap[currency] = rate
-                }
-            }
-        }
-        
-        return ratesMap
-    }
 
-    private fun convertToDefaultCurrency(
-        amount: Double,
-        fromCurrency: String,
-        defaultCurrency: String,
-        conversionRates: Map<String, Double>
-    ): Double {
-        if (fromCurrency == defaultCurrency || fromCurrency.isBlank()) {
-            return amount
-        }
-        
-        val rate = conversionRates[fromCurrency]
-        return if (rate != null) {
-            amount * rate
-        } else {
-            amount // Return original amount if no conversion rate available
-        }
-    }
     
-    private fun findConversionRate(
-        fromCurrency: String,
-        toCurrency: String,
-        currencyRates: List<com.axeven.profiteerapp.data.model.CurrencyRate>
-    ): Double? {
-        // 1. Try to find direct conversion rate with default month (from -> to)
-        val directDefaultRate = currencyRates.find { 
-            it.fromCurrency == fromCurrency && it.toCurrency == toCurrency && it.month == null 
-        }?.rate
-        
-        if (directDefaultRate != null) {
-            return directDefaultRate
-        }
-        
-        // 2. Try to find reverse conversion rate with default month (to -> from) and invert it
-        val reverseDefaultRate = currencyRates.find { 
-            it.fromCurrency == toCurrency && it.toCurrency == fromCurrency && it.month == null 
-        }?.rate
-        
-        if (reverseDefaultRate != null && reverseDefaultRate != 0.0) {
-            return 1.0 / reverseDefaultRate
-        }
-        
-        // 3. Fallback to monthly rates: try direct conversion (from -> to)
-        val directMonthlyRate = currencyRates.find { 
-            it.fromCurrency == fromCurrency && it.toCurrency == toCurrency && it.month != null 
-        }?.rate
-        
-        if (directMonthlyRate != null) {
-            return directMonthlyRate
-        }
-        
-        // 4. Fallback to monthly rates: try reverse conversion (to -> from) and invert it
-        val reverseMonthlyRate = currencyRates.find { 
-            it.fromCurrency == toCurrency && it.toCurrency == fromCurrency && it.month != null 
-        }?.rate
-        
-        if (reverseMonthlyRate != null && reverseMonthlyRate != 0.0) {
-            return 1.0 / reverseMonthlyRate
-        }
-        
-        return null
-    }
     
     private fun calculateUnallocatedBalance(
-        wallets: List<Wallet>,
-        defaultCurrency: String,
-        conversionRates: Map<String, Double>
+        wallets: List<Wallet>
     ): Double {
         val physicalWallets = wallets.filter { it.walletType == "Physical" }
         val logicalWallets = wallets.filter { it.walletType == "Logical" }
         
-        val totalPhysicalBalance = physicalWallets.sumOf { wallet ->
-            convertToDefaultCurrency(wallet.balance, wallet.currency, defaultCurrency, conversionRates)
-        }
-        
-        val totalLogicalBalance = logicalWallets.sumOf { wallet ->
-            convertToDefaultCurrency(wallet.balance, wallet.currency, defaultCurrency, conversionRates)
-        }
+        val totalPhysicalBalance = physicalWallets.sumOf { it.balance }
+        val totalLogicalBalance = logicalWallets.sumOf { it.balance }
         
         return totalPhysicalBalance - totalLogicalBalance
     }
@@ -371,34 +287,18 @@ class WalletListViewModel @Inject constructor(
     // Analytics Methods
     
     fun getPhysicalFormBalanceSummary(): Map<PhysicalForm, Double> {
-        val currentState = _uiState.value
-        return currentState.wallets
+        return _uiState.value.wallets
             .filter { it.walletType == "Physical" }
             .groupBy { it.physicalForm }
             .mapValues { (_, wallets) ->
-                wallets.sumOf { wallet ->
-                    convertToDefaultCurrency(
-                        wallet.balance,
-                        wallet.currency,
-                        currentState.defaultCurrency,
-                        currentState.conversionRates
-                    )
-                }
+                wallets.sumOf { it.balance }
             }
     }
     
     fun getTotalBalanceByForm(physicalForm: PhysicalForm): Double {
-        val currentState = _uiState.value
-        return currentState.wallets
+        return _uiState.value.wallets
             .filter { it.walletType == "Physical" && it.physicalForm == physicalForm }
-            .sumOf { wallet ->
-                convertToDefaultCurrency(
-                    wallet.balance,
-                    wallet.currency,
-                    currentState.defaultCurrency,
-                    currentState.conversionRates
-                )
-            }
+            .sumOf { it.balance }
     }
     
     fun getWalletCountByForm(): Map<PhysicalForm, Int> {

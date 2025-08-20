@@ -79,7 +79,6 @@ fun CreateTransactionScreen(
             title.isNotBlank() && amount.isNotBlank() && 
             selectedSourceWallet != null && selectedDestinationWallet != null && 
             selectedSourceWallet != selectedDestinationWallet &&
-            selectedSourceWallet?.currency == selectedDestinationWallet?.currency &&
             selectedSourceWallet?.walletType == selectedDestinationWallet?.walletType &&
             amount.toDoubleOrNull() != null
         }
@@ -152,17 +151,8 @@ fun CreateTransactionScreen(
             
             // Amount Field
             item {
-                val currencySymbol = when (selectedType) {
-                    TransactionType.TRANSFER -> selectedSourceWallet?.currency?.let { 
-                        com.axeven.profiteerapp.utils.NumberFormatter.getCurrencySymbol(it)
-                    } ?: com.axeven.profiteerapp.utils.NumberFormatter.getCurrencySymbol(uiState.defaultCurrency)
-                    else -> {
-                        // For Income/Expense, use the currency from any selected wallet
-                        (selectedPhysicalWallet?.currency ?: selectedLogicalWallet?.currency)?.let {
-                            com.axeven.profiteerapp.utils.NumberFormatter.getCurrencySymbol(it)
-                        } ?: com.axeven.profiteerapp.utils.NumberFormatter.getCurrencySymbol(uiState.defaultCurrency)
-                    }
-                }
+                // All transactions now use the default currency
+                val currencySymbol = com.axeven.profiteerapp.utils.NumberFormatter.getCurrencySymbol(uiState.defaultCurrency)
                 
                 OutlinedTextField(
                     value = amount,
@@ -226,7 +216,7 @@ fun CreateTransactionScreen(
                                     )
                                     selectedPhysicalWallet?.let { wallet ->
                                         Text(
-                                            text = "${wallet.walletType} • ${wallet.currency}",
+                                            text = wallet.walletType,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                         )
@@ -281,7 +271,7 @@ fun CreateTransactionScreen(
                                     )
                                     selectedLogicalWallet?.let { wallet ->
                                         Text(
-                                            text = "${wallet.walletType} • ${wallet.currency}",
+                                            text = wallet.walletType,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                         )
@@ -335,7 +325,7 @@ fun CreateTransactionScreen(
                                 )
                                 selectedSourceWallet?.let { wallet ->
                                     Text(
-                                        text = "${wallet.walletType} • ${wallet.currency}",
+                                        text = wallet.walletType,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                     )
@@ -379,7 +369,7 @@ fun CreateTransactionScreen(
                                 )
                                 selectedDestinationWallet?.let { wallet ->
                                     Text(
-                                        text = "${wallet.walletType} • ${wallet.currency}",
+                                        text = wallet.walletType,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                     )
@@ -393,37 +383,8 @@ fun CreateTransactionScreen(
                     }
                 }
                 
-                // Currency and wallet type mismatch warnings
+                // Wallet type mismatch warnings
                 if (selectedSourceWallet != null && selectedDestinationWallet != null) {
-                    if (selectedSourceWallet?.currency != selectedDestinationWallet?.currency) {
-                        item {
-                            Card(
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.errorContainer
-                                )
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Warning,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onErrorContainer
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "Source and destination wallets must have the same currency",
-                                        color = MaterialTheme.colorScheme.onErrorContainer,
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    
                     if (selectedSourceWallet?.walletType != selectedDestinationWallet?.walletType) {
                         item {
                             Card(
@@ -634,7 +595,7 @@ fun WalletPickerDialog(
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
-                                text = "${wallet.walletType} • ${wallet.currency}",
+                                text = wallet.walletType,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                             )
@@ -892,7 +853,7 @@ fun WalletSelectionItem(
                     }
                 )
                 Text(
-                    text = "${wallet.walletType} • ${wallet.currency}",
+                    text = wallet.walletType,
                     style = MaterialTheme.typography.bodySmall,
                     color = if (isSelected) {
                         MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)

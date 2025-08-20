@@ -43,7 +43,7 @@ fun GroupedWalletList(
         // Sort groups by total balance (descending)
         val sortedGroups = groupedWallets.toList().sortedByDescending { (_, wallets) ->
             wallets.sumOf { wallet ->
-                convertToDefaultCurrency(wallet.balance, wallet.currency, defaultCurrency, conversionRates)
+                wallet.balance // All wallets use default currency now
             }
         }
         
@@ -72,7 +72,8 @@ fun GroupedWalletList(
                             WalletListItem(
                                 wallet = wallet,
                                 defaultCurrency = defaultCurrency,
-                                conversionRates = conversionRates,
+                                displayCurrency = defaultCurrency,
+                                displayRate = 1.0, // No conversion needed
                                 onEdit = { onWalletEdit(wallet) },
                                 onDelete = { onWalletDelete(wallet.id) },
                                 onClick = { onWalletClick(wallet.id) }
@@ -104,7 +105,7 @@ private fun PhysicalFormGroupHeader(
     onToggleExpanded: () -> Unit
 ) {
     val totalBalance = wallets.sumOf { wallet ->
-        convertToDefaultCurrency(wallet.balance, wallet.currency, defaultCurrency, conversionRates)
+        wallet.balance // All wallets use default currency now
     }
     
     val walletCount = wallets.size
@@ -431,21 +432,4 @@ private fun EmptyGroupedWalletState() {
     }
 }
 
-// Helper function to convert currency (can be moved to a shared location)
-private fun convertToDefaultCurrency(
-    amount: Double,
-    fromCurrency: String,
-    defaultCurrency: String,
-    conversionRates: Map<String, Double>
-): Double {
-    if (fromCurrency == defaultCurrency || fromCurrency.isBlank()) {
-        return amount
-    }
-    
-    val rate = conversionRates[fromCurrency]
-    return if (rate != null) {
-        amount * rate
-    } else {
-        amount // Return original amount if no conversion rate available
-    }
-}
+// Currency conversion no longer needed - all wallets use single default currency
