@@ -3,6 +3,7 @@ package com.axeven.profiteerapp.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.axeven.profiteerapp.data.model.Wallet
+import com.axeven.profiteerapp.data.model.PhysicalForm
 import com.axeven.profiteerapp.data.repository.AuthRepository
 import com.axeven.profiteerapp.data.repository.CurrencyRateRepository
 import com.axeven.profiteerapp.data.repository.UserPreferencesRepository
@@ -20,7 +21,11 @@ data class WalletListUiState(
     val showPhysicalWallets: Boolean = true,
     val conversionRates: Map<String, Double> = emptyMap(),
     val existingWalletNames: Set<String> = emptySet(),
-    val unallocatedBalance: Double = 0.0
+    val unallocatedBalance: Double = 0.0,
+    val selectedPhysicalForms: Set<PhysicalForm> = emptySet(),
+    val availablePhysicalForms: Set<PhysicalForm> = emptySet(),
+    val isGroupedByForm: Boolean = false,
+    val groupedWallets: Map<PhysicalForm, List<Wallet>> = emptyMap()
 )
 
 @HiltViewModel
@@ -60,15 +65,42 @@ class WalletListViewModel @Inject constructor(
                     val conversionRatesMap = buildConversionRatesMap(currencyRates, defaultCurrency, wallets)
                     
                     // Filter and sort wallets based on current view type
-                    val filteredWallets = wallets.filter { wallet ->
+                    val baseFilteredWallets = wallets.filter { wallet ->
                         if (_uiState.value.showPhysicalWallets) {
                             wallet.walletType == "Physical"
                         } else {
                             wallet.walletType != "Physical"
                         }
+                    }
+                    
+                    // Apply physical form filtering if any forms are selected
+                    val filteredWallets = if (_uiState.value.selectedPhysicalForms.isNotEmpty() && _uiState.value.showPhysicalWallets) {
+                        baseFilteredWallets.filter { wallet ->
+                            _uiState.value.selectedPhysicalForms.contains(wallet.physicalForm)
+                        }
+                    } else {
+                        baseFilteredWallets
                     }.sortedByDescending { wallet ->
                         // Sort by converted balance in descending order
                         convertToDefaultCurrency(wallet.balance, wallet.currency, defaultCurrency, conversionRatesMap)
+                    }
+                    
+                    // Get available physical forms from current wallets
+                    val availablePhysicalForms = baseFilteredWallets
+                        .filter { it.walletType == "Physical" }
+                        .map { it.physicalForm }
+                        .toSet()
+                    
+                    // Group wallets by physical form if grouping is enabled
+                    val groupedWallets = if (_uiState.value.isGroupedByForm && _uiState.value.showPhysicalWallets) {
+                        filteredWallets.groupBy { it.physicalForm }
+                            .mapValues { (_, wallets) ->
+                                wallets.sortedByDescending { wallet ->
+                                    convertToDefaultCurrency(wallet.balance, wallet.currency, defaultCurrency, conversionRatesMap)
+                                }
+                            }
+                    } else {
+                        emptyMap()
                     }
 
                     // Get existing wallet names for validation
@@ -85,7 +117,9 @@ class WalletListViewModel @Inject constructor(
                             error = null,
                             conversionRates = conversionRatesMap,
                             existingWalletNames = existingNames,
-                            unallocatedBalance = unallocatedBalance
+                            unallocatedBalance = unallocatedBalance,
+                            availablePhysicalForms = availablePhysicalForms,
+                            groupedWallets = groupedWallets
                         )
                     }
                 }
@@ -112,7 +146,8 @@ class WalletListViewModel @Inject constructor(
         name: String,
         walletType: String,
         currency: String,
-        initialBalance: Double
+        initialBalance: Double,
+        physicalForm: PhysicalForm = PhysicalForm.FIAT_CURRENCY
     ) {
         if (userId.isEmpty()) return
 
@@ -125,6 +160,7 @@ class WalletListViewModel @Inject constructor(
                 balance = initialBalance,
                 initialBalance = initialBalance,
                 walletType = walletType,
+                physicalForm = physicalForm,
                 userId = userId
             )
 
@@ -293,5 +329,82 @@ class WalletListViewModel @Inject constructor(
         }
         
         return totalPhysicalBalance - totalLogicalBalance
+    }
+    
+    // Physical Form Filtering Methods
+    
+    fun togglePhysicalFormFilter(physicalForm: PhysicalForm) {
+        _uiState.update { currentState ->
+            val currentSelected = currentState.selectedPhysicalForms
+            val newSelected = if (currentSelected.contains(physicalForm)) {
+                currentSelected - physicalForm
+            } else {
+                currentSelected + physicalForm
+            }
+            currentState.copy(selectedPhysicalForms = newSelected)
+        }
+        loadWallets() // Refresh with new filter
+    }
+    
+    fun clearPhysicalFormFilters() {
+        _uiState.update { it.copy(selectedPhysicalForms = emptySet()) }
+        loadWallets()
+    }
+    
+    fun setPhysicalFormFilters(physicalForms: Set<PhysicalForm>) {
+        _uiState.update { it.copy(selectedPhysicalForms = physicalForms) }
+        loadWallets()
+    }
+    
+    fun toggleGroupByForm() {
+        _uiState.update { currentState ->
+            currentState.copy(isGroupedByForm = !currentState.isGroupedByForm)
+        }
+        loadWallets() // Refresh with new grouping
+    }
+    
+    fun setGroupByForm(enabled: Boolean) {
+        _uiState.update { it.copy(isGroupedByForm = enabled) }
+        loadWallets()
+    }
+    
+    // Analytics Methods
+    
+    fun getPhysicalFormBalanceSummary(): Map<PhysicalForm, Double> {
+        val currentState = _uiState.value
+        return currentState.wallets
+            .filter { it.walletType == "Physical" }
+            .groupBy { it.physicalForm }
+            .mapValues { (_, wallets) ->
+                wallets.sumOf { wallet ->
+                    convertToDefaultCurrency(
+                        wallet.balance,
+                        wallet.currency,
+                        currentState.defaultCurrency,
+                        currentState.conversionRates
+                    )
+                }
+            }
+    }
+    
+    fun getTotalBalanceByForm(physicalForm: PhysicalForm): Double {
+        val currentState = _uiState.value
+        return currentState.wallets
+            .filter { it.walletType == "Physical" && it.physicalForm == physicalForm }
+            .sumOf { wallet ->
+                convertToDefaultCurrency(
+                    wallet.balance,
+                    wallet.currency,
+                    currentState.defaultCurrency,
+                    currentState.conversionRates
+                )
+            }
+    }
+    
+    fun getWalletCountByForm(): Map<PhysicalForm, Int> {
+        return _uiState.value.wallets
+            .filter { it.walletType == "Physical" }
+            .groupBy { it.physicalForm }
+            .mapValues { (_, wallets) -> wallets.size }
     }
 }

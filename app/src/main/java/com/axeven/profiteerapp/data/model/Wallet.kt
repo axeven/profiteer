@@ -13,13 +13,14 @@ data class Wallet(
     val balance: Double = 0.0,
     val initialBalance: Double = 0.0,
     val walletType: String = "Physical",
+    val physicalForm: PhysicalForm = PhysicalForm.FIAT_CURRENCY,
     val userId: String = "",
     @ServerTimestamp
     val createdAt: Date? = null,
     @ServerTimestamp
     val updatedAt: Date? = null
 ) {
-    constructor() : this("", "", "", 0.0, 0.0, "Physical", "", null, null)
+    constructor() : this("", "", "", 0.0, 0.0, "Physical", PhysicalForm.FIAT_CURRENCY, "", null, null)
     
     /**
      * Returns the transaction-based balance (current balance minus initial balance).

@@ -22,7 +22,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.collectAsState
 import com.axeven.profiteerapp.viewmodel.WalletListViewModel
 import com.axeven.profiteerapp.data.model.Wallet
+import com.axeven.profiteerapp.data.model.PhysicalForm
 import com.axeven.profiteerapp.utils.NumberFormatter
+import com.axeven.profiteerapp.utils.WalletValidator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,7 +80,7 @@ fun WalletListScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 FilterChip(
@@ -113,6 +115,36 @@ fun WalletListScreen(
                         )
                     }
                 )
+                
+                Spacer(modifier = Modifier.weight(1f))
+                
+                // Group toggle for physical wallets
+                if (uiState.showPhysicalWallets) {
+                    GroupingToggleButton(
+                        isGrouped = uiState.isGroupedByForm,
+                        onToggle = { viewModel.toggleGroupByForm() }
+                    )
+                }
+            }
+            
+            // Physical form filters for physical wallets
+            if (uiState.showPhysicalWallets && uiState.availablePhysicalForms.isNotEmpty()) {
+                PhysicalFormFilterChips(
+                    availablePhysicalForms = uiState.availablePhysicalForms,
+                    selectedPhysicalForms = uiState.selectedPhysicalForms,
+                    onFormToggled = { viewModel.togglePhysicalFormFilter(it) },
+                    onClearFilters = { viewModel.clearPhysicalFormFilters() },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+            
+            // Portfolio summary for physical wallets
+            if (uiState.showPhysicalWallets && uiState.wallets.isNotEmpty()) {
+                PhysicalFormSummaryCard(
+                    formBalances = viewModel.getPhysicalFormBalanceSummary(),
+                    defaultCurrency = uiState.defaultCurrency,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
             }
 
             if (uiState.isLoading) {
@@ -123,42 +155,60 @@ fun WalletListScreen(
                     CircularProgressIndicator()
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // Show unallocated balance when viewing logical wallets
-                    if (!uiState.showPhysicalWallets) {
-                        item {
-                            UnallocatedBalanceCard(
-                                unallocatedBalance = uiState.unallocatedBalance,
-                                defaultCurrency = uiState.defaultCurrency
-                            )
+                // Show grouped or flat view based on UI state
+                if (uiState.showPhysicalWallets && uiState.isGroupedByForm && uiState.groupedWallets.isNotEmpty()) {
+                    // Grouped view for physical wallets
+                    GroupedWalletList(
+                        groupedWallets = uiState.groupedWallets,
+                        defaultCurrency = uiState.defaultCurrency,
+                        conversionRates = uiState.conversionRates,
+                        onWalletClick = onNavigateToWalletDetail,
+                        onWalletEdit = { wallet ->
+                            walletToEdit = wallet
+                            showEditWalletDialog = true
+                        },
+                        onWalletDelete = { viewModel.deleteWallet(it) },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    // Flat view for all cases
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Show unallocated balance when viewing logical wallets
+                        if (!uiState.showPhysicalWallets) {
+                            item {
+                                UnallocatedBalanceCard(
+                                    unallocatedBalance = uiState.unallocatedBalance,
+                                    defaultCurrency = uiState.defaultCurrency
+                                )
+                            }
                         }
-                    }
-                    
-                    if (uiState.wallets.isEmpty()) {
-                        item {
-                            EmptyWalletState(
-                                walletType = if (uiState.showPhysicalWallets) "physical" else "logical",
-                                onCreateWallet = { showCreateWalletDialog = true }
-                            )
-                        }
-                    } else {
-                        items(uiState.wallets) { wallet ->
-                            WalletListItem(
-                                wallet = wallet,
-                                defaultCurrency = uiState.defaultCurrency,
-                                conversionRates = uiState.conversionRates,
-                                onEdit = { 
-                                    walletToEdit = wallet
-                                    showEditWalletDialog = true
-                                },
-                                onDelete = { viewModel.deleteWallet(wallet.id) },
-                                onClick = { onNavigateToWalletDetail(wallet.id) }
-                            )
+                        
+                        if (uiState.wallets.isEmpty()) {
+                            item {
+                                EmptyWalletState(
+                                    walletType = if (uiState.showPhysicalWallets) "physical" else "logical",
+                                    onCreateWallet = { showCreateWalletDialog = true }
+                                )
+                            }
+                        } else {
+                            items(uiState.wallets) { wallet ->
+                                WalletListItem(
+                                    wallet = wallet,
+                                    defaultCurrency = uiState.defaultCurrency,
+                                    conversionRates = uiState.conversionRates,
+                                    onEdit = { 
+                                        walletToEdit = wallet
+                                        showEditWalletDialog = true
+                                    },
+                                    onDelete = { viewModel.deleteWallet(wallet.id) },
+                                    onClick = { onNavigateToWalletDetail(wallet.id) }
+                                )
+                            }
                         }
                     }
                 }
@@ -170,8 +220,8 @@ fun WalletListScreen(
     if (showCreateWalletDialog) {
         CreateWalletDialog(
             onDismiss = { showCreateWalletDialog = false },
-            onConfirm = { name, walletType, currency, initialBalance ->
-                viewModel.createWallet(name, walletType, currency, initialBalance)
+            onConfirm = { name, walletType, currency, initialBalance, physicalForm ->
+                viewModel.createWallet(name, walletType, currency, initialBalance, physicalForm)
                 showCreateWalletDialog = false
             },
             defaultCurrency = uiState.defaultCurrency,
@@ -187,12 +237,13 @@ fun WalletListScreen(
                 showEditWalletDialog = false
                 walletToEdit = null
             },
-            onConfirm = { name, walletType, currency, initialBalance ->
+            onConfirm = { name, walletType, currency, initialBalance, physicalForm ->
                 val updatedWallet = walletToEdit!!.copy(
                     name = name,
                     walletType = walletType,
                     currency = currency,
                     initialBalance = initialBalance,
+                    physicalForm = physicalForm,
                     balance = walletToEdit!!.balance - walletToEdit!!.initialBalance + initialBalance
                 )
                 viewModel.updateWallet(updatedWallet)
@@ -233,11 +284,24 @@ fun WalletListItem(
                 verticalAlignment = Alignment.Top
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = wallet.name,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Physical form icon for Physical wallets
+                        if (wallet.walletType == "Physical") {
+                            Text(
+                                text = wallet.physicalForm.icon,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                        
+                        Text(
+                            text = wallet.name,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                     
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -254,6 +318,21 @@ fun WalletListItem(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
+                        
+                        // Show physical form for Physical wallets
+                        if (wallet.walletType == "Physical") {
+                            Text(
+                                text = "•",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                            )
+                            Text(
+                                text = wallet.physicalForm.displayName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                        
                         Text(
                             text = "•",
                             style = MaterialTheme.typography.bodyMedium,
@@ -395,7 +474,7 @@ fun EmptyWalletState(
 @Composable
 fun CreateWalletDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String, String, Double) -> Unit,
+    onConfirm: (String, String, String, Double, PhysicalForm) -> Unit,
     defaultCurrency: String = "USD",
     defaultWalletType: String = "Physical",
     isWalletNameUnique: (String) -> Boolean = { true }
@@ -403,15 +482,26 @@ fun CreateWalletDialog(
     var walletName by remember { mutableStateOf("") }
     var selectedCurrency by remember { mutableStateOf(defaultCurrency) }
     var selectedWalletType by remember { mutableStateOf(defaultWalletType) }
+    var selectedPhysicalForm by remember { mutableStateOf(WalletValidator.getRecommendedPhysicalForm(defaultCurrency)) }
     var initialBalanceText by remember { mutableStateOf("0.00") }
     var showCurrencyDropdown by remember { mutableStateOf(false) }
     var showWalletTypeDropdown by remember { mutableStateOf(false) }
     val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR", "GOLD", "BTC")
     val walletTypes = listOf("Physical", "Logical")
     
+    // Update physical form when currency changes
+    LaunchedEffect(selectedCurrency) {
+        selectedPhysicalForm = WalletValidator.getRecommendedPhysicalForm(selectedCurrency)
+    }
+    
     val isNameUnique = isWalletNameUnique(walletName)
     val initialBalance = NumberFormatter.parseDouble(initialBalanceText) ?: 0.0
-    val isFormValid = walletName.isNotBlank() && isNameUnique && NumberFormatter.parseDouble(initialBalanceText) != null
+    
+    // Validate form
+    val validationResult = WalletValidator.validateWalletData(
+        walletName, selectedCurrency, selectedPhysicalForm, initialBalance
+    )
+    val isFormValid = validationResult.isValid && isNameUnique
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -509,6 +599,17 @@ fun CreateWalletDialog(
                     }
                 }
                 
+                // Physical Form Selection (only for Physical wallets)
+                if (selectedWalletType == "Physical") {
+                    PhysicalFormSelector(
+                        selectedForm = selectedPhysicalForm,
+                        onFormSelected = { selectedPhysicalForm = it },
+                        currency = selectedCurrency,
+                        modifier = Modifier.fillMaxWidth(),
+                        showCompatibleOnly = true
+                    )
+                }
+                
                 val balanceLabel = when (selectedCurrency) {
                     "GOLD" -> "Initial Weight (grams)"
                     "BTC" -> "Initial Amount (BTC)"
@@ -535,7 +636,7 @@ fun CreateWalletDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(walletName, selectedWalletType, selectedCurrency, initialBalance) },
+                onClick = { onConfirm(walletName, selectedWalletType, selectedCurrency, initialBalance, selectedPhysicalForm) },
                 enabled = isFormValid
             ) {
                 Text("Create")
@@ -553,13 +654,14 @@ fun CreateWalletDialog(
 fun EditWalletDialog(
     wallet: Wallet,
     onDismiss: () -> Unit,
-    onConfirm: (String, String, String, Double) -> Unit,
+    onConfirm: (String, String, String, Double, PhysicalForm) -> Unit,
     defaultCurrency: String = "USD",
     isWalletNameUnique: (String) -> Boolean = { true }
 ) {
     var walletName by remember { mutableStateOf(wallet.name) }
     var selectedCurrency by remember { mutableStateOf(wallet.currency) }
     var selectedWalletType by remember { mutableStateOf(wallet.walletType) }
+    var selectedPhysicalForm by remember { mutableStateOf(wallet.physicalForm) }
     var initialBalanceText by remember { mutableStateOf(NumberFormatter.formatCurrency(wallet.initialBalance)) }
     var showCurrencyDropdown by remember { mutableStateOf(false) }
     var showWalletTypeDropdown by remember { mutableStateOf(false) }
@@ -568,7 +670,12 @@ fun EditWalletDialog(
     
     val isNameUnique = isWalletNameUnique(walletName)
     val initialBalance = NumberFormatter.parseDouble(initialBalanceText) ?: 0.0
-    val isFormValid = walletName.isNotBlank() && isNameUnique && NumberFormatter.parseDouble(initialBalanceText) != null
+    
+    // Validate form
+    val validationResult = WalletValidator.validateWalletData(
+        walletName, selectedCurrency, selectedPhysicalForm, initialBalance
+    )
+    val isFormValid = validationResult.isValid && isNameUnique
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -666,6 +773,17 @@ fun EditWalletDialog(
                     }
                 }
                 
+                // Physical Form Selection (only for Physical wallets)
+                if (selectedWalletType == "Physical") {
+                    PhysicalFormSelector(
+                        selectedForm = selectedPhysicalForm,
+                        onFormSelected = { selectedPhysicalForm = it },
+                        currency = selectedCurrency,
+                        modifier = Modifier.fillMaxWidth(),
+                        showCompatibleOnly = true
+                    )
+                }
+                
                 val balanceLabel = when (selectedCurrency) {
                     "GOLD" -> "Initial Weight (grams)"
                     "BTC" -> "Initial Amount (BTC)"
@@ -692,7 +810,7 @@ fun EditWalletDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(walletName, selectedWalletType, selectedCurrency, initialBalance) },
+                onClick = { onConfirm(walletName, selectedWalletType, selectedCurrency, initialBalance, selectedPhysicalForm) },
                 enabled = isFormValid
             ) {
                 Text("Save")
