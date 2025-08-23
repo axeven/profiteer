@@ -129,14 +129,6 @@ fun TransactionAnalyticsScreen(
                     )
                 }
                 
-                // Income vs Expenses
-                item {
-                    IncomeExpenseCard(
-                        comparison = uiState.incomeExpenseComparison,
-                        defaultCurrency = uiState.defaultCurrency
-                    )
-                }
-                
                 // Monthly Trends Chart
                 item {
                     MonthlyTrendChart(
@@ -153,17 +145,7 @@ fun TransactionAnalyticsScreen(
                         defaultCurrency = uiState.defaultCurrency
                     )
                 }
-                
-                // Expense by Tags Pie Chart
-                if (uiState.expensesByTag.isNotEmpty()) {
-                    item {
-                        ExpensesPieChart(
-                            tagExpenses = uiState.expensesByTag,
-                            defaultCurrency = uiState.defaultCurrency
-                        )
-                    }
-                }
-                
+
                 // Expense by Tags List (for detailed breakdown)
                 if (uiState.expensesByTag.isNotEmpty()) {
                     item {
