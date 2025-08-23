@@ -32,6 +32,7 @@ import com.google.android.gms.common.util.AndroidUtilsLight
 fun WalletListScreen(
     onNavigateBack: () -> Unit = {},
     onNavigateToWalletDetail: (String) -> Unit = {},
+    onNavigateToAnalytics: () -> Unit = {},
     viewModel: WalletListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -55,6 +56,9 @@ fun WalletListScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onNavigateToAnalytics) {
+                        Icon(Icons.Default.Info, contentDescription = "View Analytics")
+                    }
                     IconButton(onClick = { viewModel.toggleWalletType() }) {
                         Icon(
                             imageVector = if (uiState.showPhysicalWallets) Icons.Default.AccountBox else Icons.Default.AccountCircle,

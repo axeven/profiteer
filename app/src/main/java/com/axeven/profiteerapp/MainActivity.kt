@@ -17,6 +17,7 @@ import com.axeven.profiteerapp.ui.transaction.CreateTransactionScreen
 import com.axeven.profiteerapp.ui.transaction.EditTransactionScreen
 import com.axeven.profiteerapp.ui.wallet.WalletListScreen
 import com.axeven.profiteerapp.ui.wallet.WalletDetailScreen
+import com.axeven.profiteerapp.ui.analytics.TransactionAnalyticsScreen
 import com.axeven.profiteerapp.ui.theme.ProfiteerTheme
 import com.axeven.profiteerapp.viewmodel.AuthViewModel
 import com.axeven.profiteerapp.data.model.Transaction
@@ -37,7 +38,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class AppScreen {
-    HOME, SETTINGS, CREATE_TRANSACTION, EDIT_TRANSACTION, WALLET_LIST, WALLET_DETAIL
+    HOME, SETTINGS, CREATE_TRANSACTION, EDIT_TRANSACTION, WALLET_LIST, WALLET_DETAIL, TRANSACTION_ANALYTICS
 }
 
 @Composable
@@ -118,7 +119,8 @@ fun ProfiteerApp(authViewModel: AuthViewModel = viewModel()) {
                         onNavigateToWalletDetail = { walletId ->
                             selectedWalletId = walletId
                             currentScreen = AppScreen.WALLET_DETAIL
-                        }
+                        },
+                        onNavigateToAnalytics = { currentScreen = AppScreen.TRANSACTION_ANALYTICS }
                     )
                 }
                 AppScreen.WALLET_DETAIL -> {
@@ -140,6 +142,11 @@ fun ProfiteerApp(authViewModel: AuthViewModel = viewModel()) {
                             }
                         )
                     }
+                }
+                AppScreen.TRANSACTION_ANALYTICS -> {
+                    TransactionAnalyticsScreen(
+                        onNavigateBack = { currentScreen = AppScreen.WALLET_LIST }
+                    )
                 }
             }
         }
