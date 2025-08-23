@@ -1,6 +1,5 @@
 package com.axeven.profiteerapp.viewmodel
 
-import com.axeven.profiteerapp.data.model.TransactionType
 import java.util.Date
 
 data class MonthlyExpense(
