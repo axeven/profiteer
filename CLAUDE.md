@@ -1,10 +1,12 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides specific guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
+## Project Context
 
-Profiteer is a personal finance Android application built with Kotlin and Jetpack Compose. The app uses MVVM architecture with Firebase for authentication and Firestore for data persistence. The app supports multi-currency wallet management with automatic currency conversion for balance aggregation.
+For comprehensive project information, architecture details, and feature documentation, see **[README.md](README.md)** and the **[docs/](docs/)** directory.
+
+**Quick Summary**: Profiteer is a personal finance Android app built with Kotlin, Jetpack Compose, MVVM architecture, Firebase Auth, and Firestore, featuring a dual-wallet system with multi-currency support.
 
 ## Build Commands
 
@@ -15,137 +17,127 @@ Profiteer is a personal finance Android application built with Kotlin and Jetpac
 - `./gradlew installDebug` - Install debug build on connected device
 
 ### Testing
+
+Use the following commands to run tests
+
 - `./gradlew test` - Run unit tests
 - `./gradlew connectedAndroidTest` - Run instrumented tests on connected device/emulator
 - `./gradlew testDebugUnitTest` - Run debug unit tests specifically
+
+Testing requirements
+
+- All code changes MUST include tests - No code should be committed without corresponding test coverage
+- Test both happy path and error scenarios
+- Use descriptive test names that clearly explain the scenario being tested
+- Mock external dependencies appropriately
+- Test error handling and edge cases
+- Run tests before committing
+- Ensure tests are deterministic - Tests should pass consistently regardless of execution order
 
 ### Code Quality
 - `./gradlew lint` - Run Android lint checks
 - `./gradlew lintDebug` - Run lint on debug build variant
 
-## Architecture
+## Development Guidelines
 
-The codebase follows MVVM (Model-View-ViewModel) architecture with these key packages:
+### Code Quality & Testing
+- **ALWAYS** run lint and tests before committing changes
+- When implementing new features, add corresponding unit tests
+- Use Compose testing utilities for UI tests (`androidx.compose.ui.test`)
+- Follow existing code patterns and naming conventions
 
-- **`com.axeven.profiteerapp.data`** - Data layer including repositories and data sources
-  - `model/` - Data models (Wallet, Transaction, CurrencyRate, UserPreferences)  
-  - `repository/` - Repository pattern implementations for data access
-- **`com.axeven.profiteerapp.viewmodel`** - ViewModels for business logic and state management
-- **`com.axeven.profiteerapp.ui`** - UI components built with Jetpack Compose
-  - `home/` - Home screen with wallet balance aggregation and recent transactions
-  - `wallet/` - Wallet list screen with multi-wallet management and unallocated balance tracking
-  - `transaction/` - Transaction creation and editing screens with tag-based categorization
-  - `settings/` - Settings screen with currency rate management
-  - `theme/` - Material 3 theming system
-- **`com.axeven.profiteerapp.utils`** - Utility classes and helper functions
-  - `NumberFormatter` - Currency formatting with multi-currency support
+### Architecture Guidelines
+- Follow MVVM pattern with Repository pattern for data access
+- Use Hilt for dependency injection
+- Implement reactive programming with StateFlow and Compose State
+- Place business logic in ViewModels, not in UI components
 
-### Key Technologies
-- **Jetpack Compose** for modern declarative UI
-- **Firebase Authentication** with Google Sign-in integration
-- **Firestore Database** for cloud data storage (Native Mode)
-- **Material 3** for design system and theming
-- **Hilt** for dependency injection
-- **Kotlin Coroutines & Flow** for reactive programming
+### Key Development Notes
+- **Target SDK**: 36, **Min SDK**: 24, **Java**: 11
+- Uses Gradle Version Catalogs (`gradle/libs.versions.toml`)
+- Firebase must be in **Native Mode** (not Datastore Mode)
+- Requires `google-services.json` in `app/` directory
+- Web Client ID configuration required in `AuthRepository.kt`
 
-### Application Structure
-- **MainActivity.kt** - Single activity hosting all Compose screens
-- **Theme system** - Located in `ui/theme/` with Color.kt, Theme.kt, and Type.kt
-- **Navigation** - Compose Navigation (when implemented)
+## Firebase Requirements
 
-## Core Features
-
-### Multi-Currency Wallet Management
-- Support for Physical and Logical wallet types with distinct management
-- Comprehensive currency support including:
-  - Standard currencies: USD, EUR, GBP, JPY, CAD, AUD, IDR
-  - Precious metals: GOLD (gram-based pricing)
-  - Cryptocurrency: BTC (8-decimal precision)
-- Automatic currency conversion for balance aggregation
-- Warning system for missing conversion rates
-- Unallocated balance tracking (Physical wallet balance minus allocated Logical wallet balance)
-- Dedicated wallet list page with separate Physical and Logical wallet sections
-
-### Currency Rate Management
-- Default rates for consistent conversion across time periods
-- Monthly rates for time-specific conversions
-- Bi-directional rate lookup (direct and inverse conversion)
-- Smart rate fallback: Default → Monthly when rates missing
-
-### Transaction Management
-- Three transaction types: Income, Expense, and Transfer
-- **Tag-based Categorization**: Unified tag system (replaced category field)
-  - Multiple tags per transaction supported
-  - Auto-completion after 3+ characters based on historical tags
-  - Default "Untagged" for transactions without tags
-- **Single Wallet Selection**: Each transaction affects exactly one Physical and one Logical wallet
-- **Transfer Validation**: Source and destination must have same wallet type AND currency
-- Real-time wallet balance updates with proper multi-wallet support
-- Firestore real-time synchronization with proper document ID mapping
-- Enhanced transaction editing with backward compatibility for existing data
-
-## Development Notes
-
-- Target SDK: 36, Min SDK: 24
-- Java/Kotlin compatibility: Java 11
-- The project uses Gradle Version Catalogs (`gradle/libs.versions.toml`) for dependency management
-- Firebase configuration is handled via `google-services.json`
-- **Firebase Project**: Must be in Native Mode (not Datastore Mode) for Firestore operations
-- **Authentication**: Requires proper Web Client ID configuration in `AuthRepository.kt`
-
-## Firebase Setup Requirements
-
-### Firestore Configuration
-- **Database Mode**: Native Mode (not Datastore Mode)
-- **Real-time Listeners**: Used for live data synchronization
+### Critical Setup Requirements
+- **Firestore Database**: Must be Native Mode for real-time listeners
+- **Authentication**: Google Sign-in with proper SHA-1 fingerprints configured
 - **Document ID Mapping**: Manual mapping required for proper model instantiation
-- **Index Management**: Avoided complex queries to prevent composite index requirements
+- **Security Rules**: User data isolation enforced through Firestore rules
 
-### Authentication Setup
-- Google Sign-in integration with proper SHA-1 fingerprints
-- Web Client ID must match the Firebase project configuration
-- ProGuard rules configured for Google Play Services compatibility
+## Code Organization
+
+### Package Structure
+```
+com.axeven.profiteerapp/
+├── data/              # Data layer (models, repositories, DI)
+├── ui/               # UI components (Jetpack Compose screens)
+├── utils/            # Utility classes (NumberFormatter, validators)
+└── viewmodel/        # ViewModels for business logic
+```
+
+### Key Files
+- **MainActivity.kt** - Single activity hosting all Compose screens
+- **Theme system** - `ui/theme/` (Color.kt, Theme.kt, Type.kt)
+- **Models** - `data/model/` (Wallet.kt, Transaction.kt, CurrencyRate.kt)
+
+## Business Logic & Validation
+
+### Critical Business Rules
+- **Balance Integrity**: Sum of Logical wallet balances must equal sum of Physical wallet balances
+- **Transfer Validation**: Same wallet type AND same currency required
+- **Tag System**: Multiple tags per transaction, auto-completion after 3+ characters
+- **Currency Conversion**: Default rates → Monthly rates → Warning system
+
+### Data Model Evolution
+- **Transactions**: Use `affectedWalletIds` (modern) alongside `walletId` (legacy) for backward compatibility
+- **Tags**: Use `tags` array field, maintain `category` field for backward compatibility
+- **Default Values**: "Untagged" for transactions without tags/categories
 
 ## Known Issues & Solutions
 
-### Google Play Services Warnings
-Non-critical SecurityException warnings may appear in logcat. These are handled with:
-- ProGuard rules in `app/proguard-rules.pro`
-- Exception handling in `AuthRepository.kt`
+### Google Play Services
+- Non-critical SecurityException warnings in logcat are expected
+- Handled in ProGuard rules (`app/proguard-rules.pro`) and `AuthRepository.kt`
 
-### Currency Conversion Logic
-- Prioritizes default rates over monthly rates
-- Falls back to inverse rate calculation when direct rates unavailable
-- Warns users when rates are missing for proper balance calculation
-
-## Recent Improvements & Bug Fixes
-
-### Wallet Management Enhancements
-- **Dedicated Wallet List Page**: Complete wallet management interface with Physical/Logical separation
-- **Unallocated Balance Tracking**: Shows unallocated Physical wallet balance when viewing Logical wallets
-- **Enhanced Navigation**: Direct navigation from home page to wallet list
-
-### Transaction System Overhaul
-- **Tag Unification**: Merged category and tag concepts into unified tagging system
-- **Single Wallet Selection**: Simplified from multi-wallet to single wallet selection per transaction type
-- **Smart Auto-completion**: Tag suggestions based on historical data with 3+ character trigger
-- **Transfer Validation**: Enhanced validation requiring same wallet type AND currency
-- **UI Consistency**: Tag display fixed across all screens (home page, transaction screens)
-
-### Data Model Updates
-- **Transaction Model**: Enhanced with `affectedWalletIds` and `tags` fields
-- **Backward Compatibility**: Maintains support for existing transaction formats
-- **Default Values**: Updated default category from "Uncategorized" to "Untagged"
-
-### User Experience Improvements
-- **Separate Wallet Type Selection**: Physical and Logical wallet selection in dedicated UI sections
-- **Enhanced Validation**: Real-time validation with clear error messages
-- **Consistent Tag Display**: Tags properly displayed throughout the application
+### Currency Conversion
+- System prioritizes default rates, falls back to monthly rates
+- Inverse rate calculation when direct rates unavailable
+- User warnings displayed when conversion rates missing
 
 ## Testing Strategy
 
-- Unit tests in `src/test/` using JUnit
-- Instrumented tests in `src/androidTest/` using Espresso and Compose testing
-- UI tests should use Compose testing utilities from `androidx.compose.ui.test`
-- **Test Coverage**: All major features have corresponding unit tests
-- **Continuous Integration**: Tests run on every build to ensure stability
+- **Unit Tests**: Focus on ViewModels, repositories, and business logic
+- **Integration Tests**: Test Firebase integration and data flow
+- **UI Tests**: Use Compose testing utilities for screen interactions
+- **Validation**: Test business rules and edge cases thoroughly
+
+## Recent Changes to Be Aware Of
+
+### Transaction System Updates
+- Merged category and tag concepts into unified tagging system
+- Enhanced transfer validation (wallet type + currency matching)
+- Simplified wallet selection (one Physical + one Logical per transaction)
+
+### Wallet Management Updates
+- Added dedicated wallet list page with Physical/Logical separation
+- Implemented unallocated balance tracking and warnings
+- Enhanced navigation between home screen and wallet management
+
+### UI/UX Improvements
+- Consistent tag display across all screens
+- Real-time validation with clear error messages
+- Material 3 design system integration
+
+## Development Best Practices
+
+1. **Always check README.md** for comprehensive project context
+2. **Run tests** before committing any changes
+3. **Follow existing patterns** for consistency
+4. **Validate business rules** in all new implementations
+5. **Use proper error handling** especially for Firebase operations
+6. **Maintain backward compatibility** when modifying data models
+7. **Test currency conversion** logic thoroughly
+8. **Verify balance integrity** in wallet and transaction operations

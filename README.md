@@ -105,20 +105,30 @@ The application implements a sophisticated dual-wallet system:
 ### Prerequisites
 - Android Studio with Kotlin support
 - Firebase account for backend services
-- Target SDK: 36, Min SDK: 24
-- Java 11 compatibility
+- **Target SDK**: 36, **Min SDK**: 24
+- **Java Compatibility**: Java 11
+- Git for version control
 
 ### Firebase Setup Requirements
+
+**Critical Setup Steps**:
 1. Create Firebase project in **Native Mode** (not Datastore Mode)
 2. Enable Authentication with Google Sign-in provider
-3. Create Firestore database in Native Mode
-4. Configure SHA-1 fingerprints for Google Sign-in
-5. Set up proper Web Client ID in `AuthRepository.kt`
+3. Create Firestore database in Native Mode with appropriate security rules
+4. Configure SHA-1 fingerprints for Google Sign-in in Firebase Console
+5. Download `google-services.json` and place in `app/` directory
+6. Configure Web Client ID in `AuthRepository.kt` if needed
+
+**Security Rules**: Ensure Firestore security rules enforce user data isolation:
+```javascript
+allow read, write: if request.auth != null && request.auth.uid == userId;
+```
 
 ### Installation Steps
 ```bash
 # Clone the repository
 git clone <repository-url>
+cd Profiteer
 
 # Add your Firebase configuration
 # Place google-services.json in app/ directory
@@ -126,7 +136,16 @@ git clone <repository-url>
 # Build and run
 ./gradlew assembleDebug
 ./gradlew installDebug
+
+# Optional: Run tests to ensure everything is working
+./gradlew test
+./gradlew lint
 ```
+
+### Development Setup
+- Uses Gradle Version Catalogs (`gradle/libs.versions.toml`) for dependency management
+- ProGuard rules configured for Google Play Services compatibility
+- Hilt dependency injection setup in `ProfiteerApplication.kt`
 
 ## 🛠️ Build Commands
 
@@ -184,10 +203,16 @@ Comprehensive documentation is available in the `docs/` directory:
 ## 🧪 Testing Strategy
 
 - **Unit Tests**: ViewModels and business logic (`src/test/`)
-- **Integration Tests**: Repository layer and data operations
+- **Integration Tests**: Repository layer and Firebase data operations
 - **Instrumented Tests**: Android-specific functionality (`src/androidTest/`)
-- **UI Tests**: Compose testing utilities for user interface
-- **Continuous Integration**: Automated testing on every build
+- **UI Tests**: Compose testing utilities (`androidx.compose.ui.test`) for user interface
+- **Continuous Integration**: Automated testing on every build to ensure stability
+
+### Testing Guidelines
+- All major features have corresponding unit tests
+- Business rules and edge cases are thoroughly tested
+- Firebase integration and real-time data synchronization are validated
+- Currency conversion logic and balance integrity are verified
 
 ## 📄 License
 
