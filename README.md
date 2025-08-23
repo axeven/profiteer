@@ -1,100 +1,202 @@
 # Profiteer
 
-A comprehensive personal finance management Android application built with modern Android development practices.
+A comprehensive personal finance management Android application built with modern Android development practices. Profiteer provides a sophisticated dual-wallet system for managing both physical and logical financial accounts with full multi-currency support and real-time synchronization.
 
-## Features
+## 🏗️ Architecture
 
-### 🏦 Wallet Management
-- **Physical Wallets**: Real-world accounts (bank accounts, cash, crypto wallets)
-- **Investment Wallets**: Separate category for investment tracking
-- **Multi-currency Support**: Comprehensive currency support including:
+Profiteer follows the **MVVM (Model-View-ViewModel)** architecture pattern with the Repository pattern for data abstraction. The application is built using:
+
+- **Frontend**: Android (Kotlin) with Jetpack Compose
+- **Backend**: Firebase Authentication + Firestore Database (Native Mode)
+- **UI Framework**: Material 3 Design System
+- **Dependency Injection**: Hilt
+- **State Management**: StateFlow and Compose State
+- **Reactive Programming**: Kotlin Coroutines & Flow
+
+## ✨ Key Features
+
+### 🏦 Advanced Wallet Management
+- **Dual Wallet System**: 
+  - **Physical Wallets**: Real-world accounts (bank accounts, cash, crypto wallets)
+  - **Logical Wallets**: Virtual categorizations for budgeting and allocation
+- **Multi-Currency Support**: Comprehensive currency support including:
   - Standard currencies (USD, EUR, GBP, JPY, CAD, AUD, IDR)
   - Precious metals (GOLD with gram-based pricing)
   - Cryptocurrency (BTC with 8-decimal precision)
-- **Automatic Balance Conversion**: Home screen aggregates all wallet balances in default currency
-- **Smart Currency Conversion**: Uses conversion rates with fallback from default to monthly rates
+- **Unallocated Balance Tracking**: Monitor unallocated physical wallet balance
+- **Dedicated Wallet List Page**: Complete wallet management interface with Physical/Logical separation
 
-### 💰 Transaction Tracking
-- **Real-time Balance Updates**: Transactions automatically update wallet balances
+### 💰 Sophisticated Transaction Management
+- **Three Transaction Types**: Income, Expense, and Transfer with comprehensive validation
+- **Tag-Based Categorization**: Unified tag system with multiple tags per transaction
+- **Smart Auto-completion**: Tag suggestions based on historical data (triggers after 3+ characters)
+- **Transfer Validation**: Enhanced validation requiring same wallet type AND currency
+- **Real-time Balance Updates**: Automatic wallet balance synchronization
+- **Single Wallet Selection**: Each transaction affects exactly one Physical and one Logical wallet
+
+### 🌍 Multi-Currency System
+- **Smart Currency Conversion**: 
+  - Default rates for consistent conversion across time periods
+  - Monthly rates for time-specific conversions
+  - Bi-directional rate lookup with intelligent fallback
+- **Currency-Specific Formatting**: Tailored precision for different currencies
+- **Missing Rate Warnings**: Alerts when conversion rates are needed for accurate calculations
+- **Home Screen Aggregation**: Converts all wallet balances to default currency
+
+### 📊 Analytics & Insights
 - **Transaction Analytics**: Income/expense tracking excluding initial balances
-- **Thousands Separator Formatting**: All amounts display with proper formatting (1,234.56)
-- **Multi-currency Display**: View amounts in wallet's native currency or default currency
+- **Monthly Financial Metrics**: Expense and net income calculations
+- **Balance Integrity Monitoring**: Ensures logical wallet totals match physical wallet totals
+- **Real-time Credit/Debit Summaries**: Live calculation updates for filtered results
 
-### 🔧 Settings & Configuration
-- **Wallet Management**: Create, edit, delete wallets with comprehensive validation
-- **Currency Rate Management**: Set default and monthly conversion rates
-- **Multi-currency Rate Setup**: Support for all currencies including GOLD and BTC pricing
-- **Smart Rate Warnings**: Alerts when conversion rates are missing for accurate balance calculations
-- **Wallet Type Validation**: Proper dropdown handling for wallet types vs currencies
+### 🔐 Security & Data Management
+- **Firebase Authentication**: Secure Google Sign-In integration
+- **User Data Isolation**: Complete data separation with Firestore subcollections
+- **Real-time Synchronization**: Live data updates across all devices
+- **Firestore Native Mode**: Optimized for real-time listeners and performance
 
-### 🔐 Security & Data
-- **Firebase Authentication**: Secure Google Sign-In integration with proper Web Client ID configuration
-- **Firestore Native Mode**: Optimized for real-time data synchronization
-- **User Data Isolation**: Each user's data is completely isolated with proper document mapping
-- **Real-time Sync**: All data syncs across devices in real-time with Firestore listeners
+## 📁 Project Structure
 
-## Tech Stack
-- **Frontend**: Android (Kotlin) with Jetpack Compose
-- **Backend**: Firebase Authentication + Firestore Database
-- **Architecture**: MVVM with Repository Pattern
-- **UI Design**: Material 3 Design System
-- **Dependency Injection**: Hilt
-- **State Management**: StateFlow and Compose State
-
-## Project Structure
 ```
 app/src/main/java/com/axeven/profiteerapp/
 ├── data/
+│   ├── di/              # Dependency injection modules
 │   ├── model/           # Data models (Wallet, Transaction, CurrencyRate, UserPreferences)
-│   └── repository/      # Repository pattern (Auth, Wallet, Transaction, CurrencyRate)
+│   └── repository/      # Repository pattern implementations
 ├── ui/
-│   ├── home/           # Home screen with multi-currency balance aggregation
-│   ├── settings/       # Settings with wallet & currency rate management
+│   ├── home/           # Home screen with balance aggregation
+│   ├── wallet/         # Wallet management screens
+│   ├── transaction/    # Transaction creation and editing
+│   ├── settings/       # Settings and configuration
+│   ├── login/          # Authentication screens
 │   └── theme/          # Material 3 theming system
-├── utils/              # NumberFormatter with multi-currency support
-└── viewmodel/          # ViewModels with reactive state management
+├── utils/              # Utility classes (NumberFormatter, WalletValidator)
+└── viewmodel/          # ViewModels for business logic and state management
 ```
 
-## Key Architectural Decisions
+## 🎯 Core Domain Model
 
-### Multi-Currency System Design
-- **Currency-specific formatting**: Each currency has tailored precision (BTC: 8 decimals, GOLD: 3 decimals)
-- **Smart conversion logic**: Prioritizes default rates, falls back to monthly rates, supports bi-directional conversion
-- **Balance aggregation**: Home screen converts all wallets to default currency with missing rate warnings
+### Wallet System Architecture
+The application implements a sophisticated dual-wallet system:
 
-### Firestore Integration
-- **Document ID mapping**: Manual mapping ensures proper model instantiation with real document IDs
-- **Real-time listeners**: Live data synchronization without composite index requirements
-- **Error handling**: Comprehensive error handling for authentication and data operations
+**Physical Wallets**
+- Represent real-world financial accounts
+- Independent entities with their own balance and currency
+- Direct transaction impacts and balance tracking
 
-### State Management
-- **Reactive UI**: StateFlow and Compose State for live updates
-- **MVVM pattern**: Clear separation between UI, business logic, and data layers
-- **Hilt DI**: Proper dependency injection for testable, maintainable code
+**Logical Wallets**  
+- Virtual categorizations built on top of physical wallets
+- Used for budgeting and allocation (e.g., "Monthly Expenses", "Emergency Fund")
+- **Critical Constraint**: Sum of logical wallet balances must equal sum of physical wallet balances
 
-## Getting Started
+### Transaction Types
+1. **Income Transactions**: Add money to wallets (salary, deposits)
+2. **Expense Transactions**: Remove money from wallets (purchases, bills)  
+3. **Transfer Transactions**: Move money between wallets (same currency required)
+
+### Multi-Currency Architecture
+- Each wallet operates in its native currency
+- User-configurable default currency for display purposes
+- Conversion rates support both permanent and monthly-specific rates
+- Smart fallback system: Default → Monthly when rates are missing
+
+## 🚀 Getting Started
 
 ### Prerequisites
 - Android Studio with Kotlin support
 - Firebase account for backend services
+- Target SDK: 36, Min SDK: 24
+- Java 11 compatibility
 
-### Setup Steps
-1. Clone the repository
-2. Create Firebase project in **Native Mode** (not Datastore Mode)
-3. Enable Authentication with Google Sign-in provider
-4. Create Firestore database in Native Mode
-5. Add `google-services.json` to `app/` directory
-6. Configure SHA-1 fingerprint in Firebase console
-7. Update Web Client ID in `AuthRepository.kt` if needed
-8. Build and run the project
+### Firebase Setup Requirements
+1. Create Firebase project in **Native Mode** (not Datastore Mode)
+2. Enable Authentication with Google Sign-in provider
+3. Create Firestore database in Native Mode
+4. Configure SHA-1 fingerprints for Google Sign-in
+5. Set up proper Web Client ID in `AuthRepository.kt`
 
-### Firebase Configuration Requirements
-- **Firestore**: Must be in Native Mode for real-time listeners
-- **Authentication**: Google Sign-in with proper OAuth 2.0 setup
-- **Security Rules**: Configure appropriate read/write rules for user data isolation
+### Installation Steps
+```bash
+# Clone the repository
+git clone <repository-url>
 
-## Build Commands
+# Add your Firebase configuration
+# Place google-services.json in app/ directory
+
+# Build and run
+./gradlew assembleDebug
+./gradlew installDebug
+```
+
+## 🛠️ Build Commands
+
+### Development
 - `./gradlew build` - Build the project
 - `./gradlew assembleDebug` - Build debug APK
+- `./gradlew assembleRelease` - Build release APK
+- `./gradlew installDebug` - Install debug build on connected device
+
+### Testing & Quality
 - `./gradlew test` - Run unit tests
+- `./gradlew connectedAndroidTest` - Run instrumented tests
+- `./gradlew testDebugUnitTest` - Run debug unit tests specifically
 - `./gradlew lint` - Run Android lint checks
+- `./gradlew lintDebug` - Run lint on debug build variant
+
+## 📚 Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+- **[Architecture](docs/architecture.md)** - Detailed system architecture and design decisions
+- **[Database Schema](docs/database-schema.md)** - Complete Firestore schema documentation
+- **[Feature Requirements](docs/feature-requirements.md)** - Detailed feature specifications
+- **[Implementation Status](docs/implementation-status.md)** - Current development status
+
+### Concept Documentation
+- **[Wallets](docs/concepts/wallets.md)** - Wallet system design and implementation
+- **[Transactions](docs/concepts/transactions.md)** - Transaction management and validation
+- **[Currencies](docs/concepts/currencies.md)** - Multi-currency support and conversion
+
+### Page Documentation  
+- **[Homepage](docs/pages/homepage.md)** - Home screen functionality
+- **[Wallet List](docs/pages/wallet_list_page.md)** - Wallet management interface
+- **[Transaction Pages](docs/pages/transaction_list_page.md)** - Transaction management screens
+- **[Settings](docs/pages/settings_page.md)** - Configuration and preferences
+
+## 🔧 Recent Improvements
+
+### Transaction System Overhaul
+- **Tag Unification**: Merged category and tag concepts into unified tagging system
+- **Enhanced Validation**: Real-time validation with clear error messages
+- **Smart Auto-completion**: Historical tag-based suggestions
+- **Transfer Validation**: Same wallet type AND currency requirements
+
+### Wallet Management Enhancements
+- **Dedicated Wallet List Page**: Complete interface with Physical/Logical separation
+- **Unallocated Balance Tracking**: Shows unallocated Physical wallet balance
+- **Enhanced Navigation**: Direct navigation from home page to wallet list
+
+### UI/UX Improvements
+- **Consistent Tag Display**: Tags properly displayed throughout the application
+- **Separate Wallet Type Selection**: Dedicated UI sections for different wallet types
+- **Material 3 Integration**: Modern design system implementation
+
+## 🧪 Testing Strategy
+
+- **Unit Tests**: ViewModels and business logic (`src/test/`)
+- **Integration Tests**: Repository layer and data operations
+- **Instrumented Tests**: Android-specific functionality (`src/androidTest/`)
+- **UI Tests**: Compose testing utilities for user interface
+- **Continuous Integration**: Automated testing on every build
+
+## 📄 License
+
+This project is a personal finance management application. Please refer to the license file for usage terms.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our contributing guidelines and ensure all tests pass before submitting pull requests.
+
+---
+
+**Built with ❤️ using modern Android development practices**

@@ -1,103 +1,196 @@
-# Homepage
+# Profiteer Homepage Documentation
 
-The Homepage serves as the main dashboard providing users with an overview of their financial status and quick access to key features.
+## Overview
 
-## Current Implementation
+The Homepage serves as the central dashboard and primary entry point for users, providing a comprehensive overview of their financial status, quick access to essential features, and real-time insights into their financial health. The page is designed with a card-based layout optimized for both information density and user experience.
 
-### 💰 Balance Overview Card
-- **Total Balance Display**: Shows overall financial position with thousands separator formatting
-- **Income Summary**: Current period income with green color coding and proper formatting
-- **Expense Summary**: Current period expenses with red color coding and proper formatting
-- **Currency Display**: Shows amounts in user's default currency
+## Core Components
 
-### 🎯 Quick Actions
-Interactive card-based navigation to key features:
-- **Add Income**: Quick access to record income transactions with tag-based categorization
-- **Add Expense**: Quick access to record expense transactions with tag-based categorization  
-- **Transfer**: Money movement between wallets with same-type and same-currency validation
-- **Analytics**: Financial analysis and reporting (planned feature)
+### 💰 Multi-Currency Balance Overview Card
 
-### 📋 Recent Transactions
-- **Transaction List**: Displays recent transactions with formatted amounts
-- **Transaction Details**: Shows title, tags, date, and amount for each transaction
-- **Tag Display**: Shows all transaction tags as comma-separated list, with "Untagged" fallback
-- **Visual Indicators**: Color-coded icons and amounts (green up arrow for income, red down arrow for expenses, blue refresh for transfers)
-- **Thousands Separators**: All amounts display with proper formatting (1,234.56)
-- **Click to Edit**: Tap any transaction to open edit screen
+**Primary Balance Display**:
+- **Total Portfolio Value**: Aggregated balance across all Physical wallets converted to user's default currency
+- **Missing Rate Warnings**: Alert indicators when currency conversion rates are unavailable
+- **Real-time Updates**: Live synchronization with wallet balance changes
+- **Precision Formatting**: Thousands separators and appropriate decimal precision
 
-### 🧭 Navigation
-- **Top Bar**: App title "Profiteer" with settings and profile access
-- **Settings Access**: Direct navigation to settings page via gear icon
-- **Profile Menu**: User account access (planned feature)
-- **Wallet Navigation**: Click balance card to access dedicated wallet list page
+**Financial Metrics**:
+- **Monthly Income**: Current month income transactions with green color coding
+- **Monthly Expenses**: Current month expense transactions with red color coding
+- **Net Income**: Calculated difference between income and expenses
+- **Transaction Balance**: Excludes initial wallet balances for accurate financial behavior tracking
 
-## Data Sources
+**Balance Integrity Monitoring**:
+- **Physical vs Logical Balance Comparison**: Real-time validation of balance consistency
+- **Unallocated Balance Display**: Shows difference when Physical and Logical wallet totals don't match
+- **Warning Indicators**: Visual alerts for balance discrepancies requiring user attention
 
-### Transaction Analytics
-- **Real-time Calculation**: Analytics based purely on transaction data
-- **Initial Balance Exclusion**: Setup balances don't affect analytics calculations
-- **Income/Expense Tracking**: Separate tracking of positive and negative transactions
-- **Balance Calculation**: `totalBalance = totalIncome - totalExpenses`
+### 🎯 Quick Actions Navigation
 
-### Wallet Integration
-- **Firestore Sync**: Real-time data from user's wallet and transaction collections
-- **User Isolation**: Only displays current user's data
-- **Multi-currency Support**: Handles different wallet currencies with default currency display
+**Transaction Creation Shortcuts**:
+- **Add Income**: Direct navigation to income transaction creation with pre-selected transaction type
+- **Add Expense**: Quick access to expense transaction creation with tag auto-completion
+- **Transfer Money**: Wallet-to-wallet transfer with same-type and same-currency validation
+- **Manage Wallets**: Direct access to wallet list and wallet management features
 
-## User Interface Features
+**Visual Design Features**:
+- **Card-Based Interface**: Clean, tappable cards with descriptive icons
+- **Color Coding**: Consistent color scheme for different action types
+- **Accessibility**: Proper contrast ratios and touch target sizing
+- **Visual Feedback**: Subtle animations and state changes for user interactions
 
-### Material 3 Design
-- **Primary Container**: Balance card with prominent display
-- **Surface Cards**: Clean card-based layout for transactions and quick actions
-- **Color Scheme**: Consistent color coding (green for income, red for expenses)
-- **Typography**: Proper text hierarchy with bold headings and readable content
+### 📋 Recent Transactions Feed
 
-### Number Formatting
-- **Thousands Separators**: All financial amounts display as 1,234.56
-- **Currency Prefix**: Shows currency code before amounts (USD 1,234.56)
-- **Consistent Formatting**: Uniform display across balance card, transactions, and summaries
+**Transaction Display**:
+- **Last 10 Transactions**: Most recent financial activity across all wallets
+- **Multi-Currency Support**: Transactions displayed in their native currencies
+- **Tag Visualization**: Transaction tags displayed as comma-separated lists
+- **Date Formatting**: Consistent date display with relative time indicators
 
-### Responsive Layout
-- **Scrollable Content**: Lazy column layout accommodating any number of transactions
-- **Card Spacing**: Consistent 16dp spacing between elements
-- **Adaptive Sizing**: Components adjust to screen size and content length
+**Transaction Information**:
+- **Title and Amount**: Clear transaction identification and monetary impact
+- **Wallet Context**: Shows which wallets were affected by each transaction
+- **Transaction Type Icons**: Visual indicators for Income, Expense, and Transfer transactions
+- **Tag Display**: Complete tag list or "Untagged" for transactions without categorization
 
-## Authentication Integration
-- **Firebase Auth**: Integrated with Google Sign-In authentication
-- **Protected Routes**: Requires user authentication to access financial data
-- **User Context**: All data operations tied to authenticated user ID
+**Interactive Features**:
+- **Transaction Editing**: Tap to edit transaction details, amounts, and tags
+- **Wallet Navigation**: Direct navigation to affected wallet details
+- **Quick Filters**: Swipe actions for common transaction operations
 
-## Planned Features (Not Yet Implemented)
+## User Experience Features
 
-### Balance Discrepancy Detection
-- Sum of physical wallet balances vs logical wallet balances comparison
-- Notification system for discrepancy alerts
-- Detailed discrepancy amount display
+### Dashboard Personalization
 
-### Enhanced Transaction Features
-- ~~Grouped wallet display (Physical vs Logical)~~ **IMPLEMENTED**
-- ~~Individual wallet balance display with navigation to detail pages~~ **IMPLEMENTED**
-- ~~Real-time balance updates~~ **IMPLEMENTED**
-- Advanced transaction filtering by tags
-- Transaction search functionality
-- Bulk transaction operations
+**Display Customization**:
+- **Balance Visibility Toggle**: Option to hide/show sensitive financial information
+- **Currency Display Mode**: Switch between native and converted currency display
+- **Compact/Detailed View**: Adjustable information density based on user preference
 
-### Advanced Analytics
-- Monthly expense tracking
-- Net income calculations (income - expenses)
-- Top 5 expense categories by transaction value
-- Spending trend analysis
+**Real-time Updates**:
+- **Live Data Synchronization**: Automatic updates when financial data changes
+- **Offline Support**: Cached data display during network disconnections
+- **Conflict Resolution**: Seamless handling of concurrent data modifications
 
-### Enhanced Navigation
-- Add transaction page integration
-- Transaction list page access
-- Wallet detail page navigation
-- Analytics dashboard access
+### Navigation Integration
 
-## Performance Considerations
-- **Lazy Loading**: Efficient transaction list rendering
-- **Real-time Updates**: Firebase listeners for immediate data sync
-- **Optimized Queries**: Efficient Firestore queries for dashboard data
-- **State Management**: Proper StateFlow and Compose state handling
+**Primary Navigation Hub**:
+- **Home Button**: Returns users to dashboard from any screen in the application
+- **Quick Access**: Single-tap access to most frequently used features
+- **Context Preservation**: Maintains user context when navigating between screens
 
-The current homepage implementation focuses on providing a clean, informative dashboard with essential financial information while maintaining excellent user experience through proper formatting and responsive design.
+**Deep Linking Support**:
+- **Direct Feature Access**: URLs can link directly to specific dashboard sections
+- **State Recovery**: Maintains dashboard state across application restarts
+- **Progressive Loading**: Optimized loading sequence for better perceived performance
+
+## Technical Implementation
+
+### Data Loading Strategy
+
+**Efficient Data Fetching**:
+- **Prioritized Loading**: Critical balance information loaded first
+- **Progressive Enhancement**: Additional features loaded after core data
+- **Caching Strategy**: Intelligent caching of frequently accessed data
+
+**Performance Optimization**:
+- **Lazy Loading**: Non-critical components loaded on demand
+- **Memory Management**: Proper cleanup of resources when screen not visible
+- **Battery Optimization**: Minimized background processing for dashboard updates
+
+### State Management
+
+**Reactive Architecture**:
+- **StateFlow Integration**: Reactive updates for all dashboard components
+- **Compose State**: Optimal UI recomposition when data changes
+- **Error Handling**: Graceful degradation when data loading fails
+
+**Data Consistency**:
+- **Real-time Validation**: Continuous balance integrity checking
+- **Error Recovery**: Automatic retry mechanisms for failed operations
+- **User Notifications**: Clear feedback for system status and errors
+
+## Accessibility & Usability
+
+### Accessibility Features
+
+**Screen Reader Support**:
+- **Semantic Labels**: Descriptive labels for all interactive elements
+- **Content Description**: Full context for financial data and navigation elements
+- **Logical Tab Order**: Proper navigation sequence for keyboard users
+
+**Visual Accessibility**:
+- **High Contrast Mode**: Support for users with visual impairments
+- **Font Scaling**: Proper scaling with system font size preferences
+- **Color Independence**: Information conveyed through more than just color
+
+### Usability Optimization
+
+**Touch Interface**:
+- **Appropriate Touch Targets**: Minimum 44dp touch target size
+- **Gesture Support**: Intuitive swipe and tap interactions
+- **Haptic Feedback**: Subtle vibration feedback for important actions
+
+**Information Architecture**:
+- **Hierarchical Layout**: Clear visual hierarchy for information priority
+- **Scannable Design**: Easy to quickly scan and understand financial status
+- **Progressive Disclosure**: Advanced features available without cluttering main view
+
+## Security & Privacy
+
+### Financial Data Protection
+
+**Data Display Security**:
+- **Balance Hiding**: Quick toggle to hide sensitive financial information
+- **Session Timeout**: Automatic screen locking after inactivity period
+- **Screenshot Protection**: Prevention of sensitive data capture in screenshots
+
+**Authentication Integration**:
+- **Biometric Unlock**: Fingerprint/face unlock for quick secure access
+- **Re-authentication**: Periodic re-authentication for sensitive operations
+- **Session Management**: Secure handling of authentication tokens
+
+### Privacy Considerations
+
+**Data Minimization**:
+- **Need-to-Know Display**: Only necessary information shown on dashboard
+- **Contextual Privacy**: Privacy controls adapt to usage context
+- **User Control**: Complete user control over what information is displayed
+
+## Future Enhancements
+
+### Planned Features
+
+**Enhanced Analytics Dashboard**:
+- **Spending Trends**: Visual charts showing spending patterns over time
+- **Budget Progress**: Real-time budget vs. actual spending comparisons
+- **Financial Goals**: Progress tracking for savings and investment goals
+- **Predictive Insights**: AI-driven financial recommendations and alerts
+
+**Advanced Personalization**:
+- **Widget Customization**: User-configurable dashboard widgets
+- **Theme Customization**: Personalized color schemes and layout options  
+- **Smart Shortcuts**: AI-powered suggestions for quick actions based on usage patterns
+
+**Integration Features**:
+- **Calendar Integration**: Financial events and due dates in calendar view
+- **Notification Center**: Centralized financial alerts and reminders
+- **Quick Entry**: Voice and camera-based transaction entry from dashboard
+
+## Component Implementation References
+
+**HomeScreen.kt Location**: `app/src/main/java/com/axeven/profiteerapp/ui/home/HomeScreen.kt`
+
+**Key Dependencies**:
+- **HomeViewModel.kt**: Business logic and state management for dashboard data
+- **WalletRepository.kt**: Wallet balance aggregation and currency conversion
+- **TransactionRepository.kt**: Recent transaction fetching and filtering
+- **CurrencyRateRepository.kt**: Multi-currency conversion for portfolio aggregation
+
+**UI Components**:
+- **Balance Overview Card**: Aggregated financial metrics with conversion warnings
+- **Quick Actions Grid**: Navigation shortcuts to primary application features
+- **Transaction List**: Recent activity feed with inline editing capabilities
+- **Loading States**: Skeleton screens and progress indicators for data loading
+
+This homepage serves as the foundation for user engagement with Profiteer, providing immediate value through comprehensive financial overview while maintaining clean, intuitive navigation to all application features.
