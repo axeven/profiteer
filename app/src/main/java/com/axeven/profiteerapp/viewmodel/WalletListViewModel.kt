@@ -287,28 +287,4 @@ class WalletListViewModel @Inject constructor(
         _uiState.update { it.copy(isGroupedByForm = enabled) }
         loadWallets()
     }
-    
-    // Analytics Methods
-    
-    fun getPhysicalFormBalanceSummary(): Map<PhysicalForm, Double> {
-        return _uiState.value.wallets
-            .filter { it.walletType == "Physical" }
-            .groupBy { it.physicalForm }
-            .mapValues { (_, wallets) ->
-                wallets.sumOf { it.balance }
-            }
-    }
-    
-    fun getTotalBalanceByForm(physicalForm: PhysicalForm): Double {
-        return _uiState.value.wallets
-            .filter { it.walletType == "Physical" && it.physicalForm == physicalForm }
-            .sumOf { it.balance }
-    }
-    
-    fun getWalletCountByForm(): Map<PhysicalForm, Int> {
-        return _uiState.value.wallets
-            .filter { it.walletType == "Physical" }
-            .groupBy { it.physicalForm }
-            .mapValues { (_, wallets) -> wallets.size }
-    }
 }

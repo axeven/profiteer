@@ -143,14 +143,6 @@ fun WalletListScreen(
                 )
             }
             
-            // Portfolio summary for physical wallets
-            if (uiState.showPhysicalWallets && uiState.wallets.isNotEmpty()) {
-                PhysicalFormSummaryCard(
-                    formBalances = viewModel.getPhysicalFormBalanceSummary(),
-                    defaultCurrency = uiState.defaultCurrency,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-            }
 
             if (uiState.isLoading) {
                 Box(
