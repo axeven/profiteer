@@ -206,13 +206,37 @@ fun WalletDetailScreen(
                         }
                     }
                 } else {
-                    items(uiState.filteredTransactions) { transaction ->
-                        TransactionItem(
-                            transaction = transaction,
-                            wallets = uiState.allWallets,
-                            currentWalletId = walletId,
-                            onClick = { onEditTransaction(transaction) }
-                        )
+                    uiState.groupedTransactions.forEach { (dateKey, transactionsForDate) ->
+                        if (transactionsForDate.isNotEmpty()) {
+                            item {
+                                DateGroupHeader(
+                                    dateKey = dateKey,
+                                    dateDisplayString = viewModel.getDateDisplayString(dateKey),
+                                    transactions = transactionsForDate,
+                                    walletId = walletId,
+                                    defaultCurrency = uiState.defaultCurrency,
+                                    isExpanded = uiState.expandedDates.contains(dateKey),
+                                    onToggleExpanded = { 
+                                        viewModel.toggleDateExpansion(dateKey)
+                                    },
+                                    calculateDailySummary = viewModel::calculateDailySummary
+                                )
+                            }
+                            
+                            if (uiState.expandedDates.contains(dateKey)) {
+                                items(transactionsForDate) { transaction ->
+                                    Box(modifier = Modifier.padding(start = 16.dp)) {
+                                        TransactionItem(
+                                            transaction = transaction,
+                                            wallets = uiState.allWallets,
+                                            currentWalletId = walletId,
+                                            defaultCurrency = uiState.defaultCurrency,
+                                            onClick = { onEditTransaction(transaction) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

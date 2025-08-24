@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 import java.util.*
 import javax.inject.Inject
 import kotlin.math.abs
+import java.text.SimpleDateFormat
 
 enum class TransferDirection {
     INCOMING, OUTGOING
@@ -35,7 +36,9 @@ data class WalletDetailUiState(
     val selectedMonth: Int = Calendar.getInstance().get(Calendar.MONTH),
     val selectedYear: Int = Calendar.getInstance().get(Calendar.YEAR),
     val filteredTransactions: List<Transaction> = emptyList(),
-    val transactionCount: Int = 0
+    val transactionCount: Int = 0,
+    val groupedTransactions: Map<String, List<Transaction>> = emptyMap(),
+    val expandedDates: Set<String> = emptySet()
 )
 
 @HiltViewModel
@@ -52,6 +55,10 @@ class WalletDetailViewModel @Inject constructor(
 
     private val userId = authRepository.getCurrentUserId() ?: ""
     private var currentWalletId: String = ""
+    
+    // Date formatters for transaction grouping
+    private val dateGroupingFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    private val dateDisplayFormat = SimpleDateFormat("EEEE, MMM dd", Locale.getDefault())
 
     fun loadWalletDetails(walletId: String) {
         if (walletId.isEmpty() || userId.isEmpty()) return
@@ -91,6 +98,9 @@ class WalletDetailViewModel @Inject constructor(
                     
                     val filteredTransactions = filterTransactionsByMonth(transactions, selectedMonth, selectedYear)
                     
+                    // Group transactions by date
+                    val groupedTransactions = groupTransactionsByDate(filteredTransactions, walletId)
+                    
                     val monthlyIncome = filteredTransactions
                         .filter { 
                             it.type == TransactionType.INCOME || 
@@ -127,7 +137,9 @@ class WalletDetailViewModel @Inject constructor(
                             isLoading = false,
                             error = null,
                             filteredTransactions = filteredTransactions,
-                            transactionCount = filteredTransactions.size
+                            transactionCount = filteredTransactions.size,
+                            groupedTransactions = groupedTransactions,
+                            expandedDates = currentState.expandedDates
                         )
                     }
                     
@@ -203,6 +215,51 @@ class WalletDetailViewModel @Inject constructor(
             transaction.destinationWalletId == walletId -> allWallets.find { it.id == transaction.sourceWalletId }
             else -> null
         }
+    }
+    
+    fun toggleDateExpansion(dateKey: String) {
+        _uiState.update { currentState ->
+            val expandedDates = if (currentState.expandedDates.contains(dateKey)) {
+                currentState.expandedDates - dateKey
+            } else {
+                currentState.expandedDates + dateKey
+            }
+            currentState.copy(expandedDates = expandedDates)
+        }
+    }
+    
+    private fun groupTransactionsByDate(transactions: List<Transaction>, walletId: String): Map<String, List<Transaction>> {
+        return transactions
+            .sortedByDescending { it.transactionDate ?: it.createdAt }
+            .groupBy { transaction ->
+                val date = transaction.transactionDate ?: transaction.createdAt
+                date?.let { dateGroupingFormat.format(it) } ?: ""
+            }
+            .filter { it.key.isNotEmpty() }
+            .toSortedMap(compareByDescending { it })
+    }
+    
+    fun getDateDisplayString(dateKey: String): String {
+        return try {
+            val date = dateGroupingFormat.parse(dateKey)
+            date?.let { dateDisplayFormat.format(it) } ?: dateKey
+        } catch (e: Exception) {
+            dateKey
+        }
+    }
+    
+    fun calculateDailySummary(transactions: List<Transaction>, walletId: String): Pair<Int, Double> {
+        val count = transactions.size
+        val netAmount = transactions.sumOf { transaction ->
+            when {
+                transaction.type == TransactionType.INCOME -> transaction.amount
+                transaction.type == TransactionType.EXPENSE -> -abs(transaction.amount)
+                transaction.type == TransactionType.TRANSFER && transaction.sourceWalletId == walletId -> -abs(transaction.amount)
+                transaction.type == TransactionType.TRANSFER && transaction.destinationWalletId == walletId -> abs(transaction.amount)
+                else -> 0.0
+            }
+        }
+        return Pair(count, netAmount)
     }
     
     fun setSelectedMonth(month: Int, year: Int) {
