@@ -33,6 +33,8 @@ data class WalletDetailUiState(
     val displayRate: Double = 1.0,
     val isLoading: Boolean = false,
     val error: String? = null,
+    val isRecalculatingBalance: Boolean = false,
+    val recalculationError: String? = null,
     val selectedMonth: Int = Calendar.getInstance().get(Calendar.MONTH),
     val selectedYear: Int = Calendar.getInstance().get(Calendar.YEAR),
     val filteredTransactions: List<Transaction> = emptyList(),
@@ -169,9 +171,102 @@ class WalletDetailViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) }
     }
     
+    fun clearRecalculationError() {
+        _uiState.update { it.copy(recalculationError = null) }
+    }
     
-    
-    
+    fun recalculateBalance() {
+        android.util.Log.d("WalletDetailViewModel", "recalculateBalance called for wallet: $currentWalletId")
+        
+        if (currentWalletId.isEmpty() || userId.isEmpty()) {
+            _uiState.update { it.copy(recalculationError = "Unable to recalculate: wallet or user not found") }
+            return
+        }
+        
+        val currentWallet = _uiState.value.wallet
+        if (currentWallet == null) {
+            _uiState.update { it.copy(recalculationError = "Unable to recalculate: wallet data not available") }
+            return
+        }
+        
+        // Prevent multiple simultaneous recalculations
+        if (_uiState.value.isRecalculatingBalance) {
+            android.util.Log.d("WalletDetailViewModel", "Recalculation already in progress, ignoring request")
+            return
+        }
+        
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isRecalculatingBalance = true, recalculationError = null) }
+                
+                android.util.Log.d("WalletDetailViewModel", "Starting balance recalculation for wallet: ${currentWallet.name}")
+                
+                // Get all transactions for this wallet (not just current month)
+                val allTransactions = _uiState.value.transactions
+                
+                // Calculate balance using same logic as existing monthly calculations
+                val income = allTransactions
+                    .filter { 
+                        it.type == TransactionType.INCOME || 
+                        (it.type == TransactionType.TRANSFER && isTransferIncome(it, currentWalletId))
+                    }
+                    .sumOf { 
+                        val amount = if (it.type == TransactionType.TRANSFER) abs(it.amount) else it.amount
+                        amount
+                    }
+                
+                val expenses = allTransactions
+                    .filter { 
+                        it.type == TransactionType.EXPENSE || 
+                        (it.type == TransactionType.TRANSFER && isTransferExpense(it, currentWalletId))
+                    }
+                    .sumOf { 
+                        val amount = if (it.type == TransactionType.TRANSFER) abs(it.amount) else abs(it.amount)
+                        amount
+                    }
+                
+                // Calculate new balance: initial balance + income - expenses
+                val newBalance = currentWallet.initialBalance + income - expenses
+                
+                android.util.Log.d("WalletDetailViewModel", "Balance calculation: initial=${currentWallet.initialBalance}, income=$income, expenses=$expenses, new=$newBalance")
+                
+                // Update wallet in Firestore
+                val updatedWallet = currentWallet.copy(balance = newBalance)
+                val updateResult = walletRepository.updateWallet(updatedWallet)
+                
+                updateResult.fold(
+                    onSuccess = {
+                        android.util.Log.d("WalletDetailViewModel", "Balance recalculation successful: $newBalance")
+                        _uiState.update { 
+                            it.copy(
+                                isRecalculatingBalance = false, 
+                                recalculationError = null,
+                                wallet = updatedWallet
+                            ) 
+                        }
+                    },
+                    onFailure = { exception ->
+                        android.util.Log.e("WalletDetailViewModel", "Error updating wallet balance", exception)
+                        _uiState.update { 
+                            it.copy(
+                                isRecalculatingBalance = false,
+                                recalculationError = "Failed to update balance: ${exception.message}"
+                            ) 
+                        }
+                    }
+                )
+                
+            } catch (e: Exception) {
+                android.util.Log.e("WalletDetailViewModel", "Error during balance recalculation", e)
+                _uiState.update { 
+                    it.copy(
+                        isRecalculatingBalance = false,
+                        recalculationError = "Recalculation failed: ${e.message}"
+                    ) 
+                }
+            }
+        }
+    }
     
     private fun isTransferIncome(transaction: Transaction, walletId: String): Boolean {
         return transaction.type == TransactionType.TRANSFER && transaction.destinationWalletId == walletId

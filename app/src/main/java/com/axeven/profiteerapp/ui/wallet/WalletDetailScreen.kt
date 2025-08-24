@@ -107,7 +107,11 @@ fun WalletDetailScreen(
                         monthlyExpenses = uiState.monthlyExpenses,
                         currency = uiState.displayCurrency,
                         selectedMonth = uiState.selectedMonth,
-                        selectedYear = uiState.selectedYear
+                        selectedYear = uiState.selectedYear,
+                        isRecalculatingBalance = uiState.isRecalculatingBalance,
+                        recalculationError = uiState.recalculationError,
+                        onRecalculateBalance = { viewModel.recalculateBalance() },
+                        onClearRecalculationError = { viewModel.clearRecalculationError() }
                     )
                 }
                 
@@ -251,7 +255,11 @@ fun WalletBalanceCard(
     monthlyExpenses: Double, 
     currency: String = "USD",
     selectedMonth: Int = Calendar.getInstance().get(Calendar.MONTH),
-    selectedYear: Int = Calendar.getInstance().get(Calendar.YEAR)
+    selectedYear: Int = Calendar.getInstance().get(Calendar.YEAR),
+    isRecalculatingBalance: Boolean = false,
+    recalculationError: String? = null,
+    onRecalculateBalance: () -> Unit = {},
+    onClearRecalculationError: () -> Unit = {}
 ) {
     val monthFormatter = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
     val calendar = Calendar.getInstance().apply {
@@ -296,12 +304,71 @@ fun WalletBalanceCard(
                         )
                     }
                 }
-                Text(
-                    text = NumberFormatter.formatCurrency(wallet?.balance ?: 0.0, currency, showSymbol = true),
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = NumberFormatter.formatCurrency(wallet?.balance ?: 0.0, currency, showSymbol = true),
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    
+                    // Recalculate balance button
+                    IconButton(
+                        onClick = onRecalculateBalance,
+                        enabled = !isRecalculatingBalance,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        if (isRecalculatingBalance) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Recalculate balance",
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
+                
+                // Show recalculation error if any
+                recalculationError?.let { error ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Error",
+                            modifier = Modifier.size(16.dp),
+                            tint = Color(0xFFF44336)
+                        )
+                        Text(
+                            text = error,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFFF44336)
+                        )
+                        IconButton(
+                            onClick = onClearRecalculationError,
+                            modifier = Modifier.size(20.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear error",
+                                modifier = Modifier.size(14.dp),
+                                tint = Color(0xFFF44336)
+                            )
+                        }
+                    }
+                }
             }
             
             Row(
