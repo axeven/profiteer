@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.axeven.profiteerapp.utils.NumberFormatter
 import com.axeven.profiteerapp.viewmodel.DateRange
 import com.axeven.profiteerapp.viewmodel.TransactionAnalyticsViewModel
 
@@ -244,7 +245,7 @@ private fun SummaryStatisticsCard(
                 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "%.2f %s".format(averageAmount, defaultCurrency),
+                        text = NumberFormatter.formatCurrency(averageAmount, defaultCurrency, showSymbol = true),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -295,7 +296,7 @@ private fun IncomeExpenseCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "%.2f %s".format(comparison.totalIncome, defaultCurrency),
+                        text = NumberFormatter.formatCurrency(comparison.totalIncome, defaultCurrency, showSymbol = true),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -309,7 +310,7 @@ private fun IncomeExpenseCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "%.2f %s".format(comparison.totalExpenses, defaultCurrency),
+                        text = NumberFormatter.formatCurrency(comparison.totalExpenses, defaultCurrency, showSymbol = true),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.error
@@ -323,7 +324,7 @@ private fun IncomeExpenseCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "%.2f %s".format(comparison.netAmount, defaultCurrency),
+                        text = NumberFormatter.formatCurrency(comparison.netAmount, defaultCurrency, showSymbol = true),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = if (comparison.netAmount >= 0) 
@@ -383,7 +384,7 @@ private fun ExpensesByTagCard(
                     
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = "%.2f %s".format(tagData.amount, defaultCurrency),
+                            text = NumberFormatter.formatCurrency(tagData.amount, defaultCurrency, showSymbol = true),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold
                         )

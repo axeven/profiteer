@@ -4,6 +4,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -27,6 +30,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -151,18 +156,27 @@ private fun PhysicalFormGroupHeader(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.weight(1f)
             ) {
                 Text(
                     text = physicalForm.icon,
-                    style = MaterialTheme.typography.headlineMedium
+                    style = MaterialTheme.typography.headlineMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .width(40.dp)
+                        .align(Alignment.CenterVertically)
                 )
                 
-                Column {
+                Column(
+                    modifier = Modifier.align(Alignment.CenterVertically)
+                ) {
                     Text(
                         text = physicalForm.displayName,
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     
@@ -176,12 +190,15 @@ private fun PhysicalFormGroupHeader(
             
             Column(
                 horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.weight(1f, fill = false)
             ) {
                 Text(
                     text = NumberFormatter.formatCurrency(totalBalance, defaultCurrency, showSymbol = true),
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    softWrap = false,
                     color = if (totalBalance >= 0) {
                         MaterialTheme.colorScheme.primary
                     } else {
@@ -214,6 +231,7 @@ private fun PhysicalFormGroupHeader(
 /**
  * Physical form filter chips for the wallet list.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PhysicalFormFilterChips(
     availablePhysicalForms: Set<PhysicalForm>,
@@ -241,11 +259,12 @@ fun PhysicalFormFilterChips(
             }
         }
         
-        Row(
+        FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Sort by category groups for better UX
             val sortedForms = availablePhysicalForms.sortedBy { form ->

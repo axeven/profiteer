@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import com.axeven.profiteerapp.viewmodel.MonthlyExpense
 import com.axeven.profiteerapp.viewmodel.TagExpenseData
 import com.axeven.profiteerapp.viewmodel.IncomeExpenseComparison
+import com.axeven.profiteerapp.utils.NumberFormatter
 import kotlin.math.max
 
 @Composable
@@ -160,7 +161,7 @@ fun IncomeExpenseBarChart(
                         }
                         
                         Text(
-                            text = "%.0f %s".format(comparison.totalIncome, defaultCurrency),
+                            text = NumberFormatter.formatCurrency(comparison.totalIncome, defaultCurrency, showSymbol = true),
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(start = 8.dp),
                             color = MaterialTheme.colorScheme.primary
@@ -202,7 +203,7 @@ fun IncomeExpenseBarChart(
                         }
                         
                         Text(
-                            text = "%.0f %s".format(comparison.totalExpenses, defaultCurrency),
+                            text = NumberFormatter.formatCurrency(comparison.totalExpenses, defaultCurrency, showSymbol = true),
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(start = 8.dp),
                             color = MaterialTheme.colorScheme.error
@@ -223,7 +224,7 @@ fun IncomeExpenseBarChart(
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        text = "%.2f %s".format(comparison.netAmount, defaultCurrency),
+                        text = NumberFormatter.formatCurrency(comparison.netAmount, defaultCurrency, showSymbol = true),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
                         color = if (comparison.netAmount >= 0) 
@@ -284,7 +285,7 @@ private fun SimpleBarChart(
         Spacer(modifier = Modifier.height(8.dp))
         
         Text(
-            text = "Max: %.0f %s".format(maxAmount, defaultCurrency),
+            text = "Max: ${NumberFormatter.formatCurrency(maxAmount, defaultCurrency, showSymbol = true)}",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
