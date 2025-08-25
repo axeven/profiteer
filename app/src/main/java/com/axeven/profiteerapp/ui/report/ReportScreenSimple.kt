@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,8 +80,10 @@ fun ReportScreenSimple(
                         selectedDataType = uiState.selectedChartDataType,
                         portfolioData = uiState.portfolioComposition,
                         walletData = uiState.physicalWalletBalances,
+                        logicalWalletData = uiState.logicalWalletBalances,
                         totalPortfolioBalance = uiState.totalPortfolioValue,
                         totalWalletBalance = uiState.totalPhysicalWalletValue,
+                        totalLogicalWalletBalance = uiState.totalLogicalWalletValue,
                         defaultCurrency = uiState.defaultCurrency
                     )
                 }
@@ -89,7 +92,8 @@ fun ReportScreenSimple(
                 item {
                     val hasPortfolioData = uiState.portfolioComposition.isNotEmpty() && uiState.totalPortfolioValue > 0
                     val hasPhysicalWalletData = uiState.physicalWalletBalances.isNotEmpty() && uiState.totalPhysicalWalletValue > 0
-                    val hasAnyData = hasPortfolioData || hasPhysicalWalletData
+                    val hasLogicalWalletData = uiState.logicalWalletBalances.isNotEmpty()
+                    val hasAnyData = hasPortfolioData || hasPhysicalWalletData || hasLogicalWalletData
                     
                     if (hasAnyData) {
                         Card(
@@ -104,28 +108,43 @@ fun ReportScreenSimple(
                                     .padding(20.dp)
                             ) {
                                 
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(250.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    when (uiState.selectedChartDataType) {
-                                        ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> {
-                                            if (hasPortfolioData) {
+                                when (uiState.selectedChartDataType) {
+                                    ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> {
+                                        if (hasPortfolioData) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(250.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
                                                 ComposeChartsPieChartAsset(
                                                     portfolioData = uiState.portfolioComposition,
                                                     modifier = Modifier.size(200.dp)
                                                 )
                                             }
                                         }
-                                        ChartDataType.PHYSICAL_WALLET_BALANCE -> {
-                                            if (hasPhysicalWalletData) {
+                                    }
+                                    ChartDataType.PHYSICAL_WALLET_BALANCE -> {
+                                        if (hasPhysicalWalletData) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(250.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
                                                 ComposeChartsPieChartWallet(
                                                     walletData = uiState.physicalWalletBalances,
                                                     modifier = Modifier.size(200.dp)
                                                 )
                                             }
+                                        }
+                                    }
+                                    ChartDataType.LOGICAL_WALLET_BALANCE -> {
+                                        if (hasLogicalWalletData) {
+                                            ComposeChartsLogicalWalletChart(
+                                                logicalWalletData = uiState.logicalWalletBalances,
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
                                         }
                                     }
                                 }
@@ -140,7 +159,8 @@ fun ReportScreenSimple(
                         selectedDataType = uiState.selectedChartDataType,
                         onDataTypeChange = viewModel::selectChartDataType,
                         hasPortfolioData = uiState.portfolioComposition.isNotEmpty() && uiState.totalPortfolioValue > 0,
-                        hasPhysicalWalletData = uiState.physicalWalletBalances.isNotEmpty() && uiState.totalPhysicalWalletValue > 0
+                        hasPhysicalWalletData = uiState.physicalWalletBalances.isNotEmpty() && uiState.totalPhysicalWalletValue > 0,
+                        hasLogicalWalletData = uiState.logicalWalletBalances.isNotEmpty()
                     )
                 }
                 
@@ -148,9 +168,11 @@ fun ReportScreenSimple(
                 item {
                     val hasPortfolioData = uiState.portfolioComposition.isNotEmpty() && uiState.totalPortfolioValue > 0
                     val hasPhysicalWalletData = uiState.physicalWalletBalances.isNotEmpty() && uiState.totalPhysicalWalletValue > 0
+                    val hasLogicalWalletData = uiState.logicalWalletBalances.isNotEmpty()
                     val hasData = when (uiState.selectedChartDataType) {
                         ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> hasPortfolioData
                         ChartDataType.PHYSICAL_WALLET_BALANCE -> hasPhysicalWalletData
+                        ChartDataType.LOGICAL_WALLET_BALANCE -> hasLogicalWalletData
                     }
                     
                     if (hasData) {
@@ -158,8 +180,10 @@ fun ReportScreenSimple(
                             selectedDataType = uiState.selectedChartDataType,
                             portfolioData = uiState.portfolioComposition,
                             walletData = uiState.physicalWalletBalances,
+                            logicalWalletData = uiState.logicalWalletBalances,
                             totalPortfolioBalance = uiState.totalPortfolioValue,
                             totalWalletBalance = uiState.totalPhysicalWalletValue,
+                            totalLogicalWalletBalance = uiState.totalLogicalWalletValue,
                             defaultCurrency = uiState.defaultCurrency
                         )
                     }
@@ -174,8 +198,10 @@ fun SimplePortfolioAssetCard(
     selectedDataType: ChartDataType,
     portfolioData: Map<PhysicalForm, Double>,
     walletData: Map<String, Double>,
+    logicalWalletData: Map<String, Double>,
     totalPortfolioBalance: Double,
     totalWalletBalance: Double,
+    totalLogicalWalletBalance: Double,
     defaultCurrency: String
 ) {
     Card(
@@ -192,11 +218,13 @@ fun SimplePortfolioAssetCard(
             val totalValue = when (selectedDataType) {
                 ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> totalPortfolioBalance
                 ChartDataType.PHYSICAL_WALLET_BALANCE -> totalWalletBalance
+                ChartDataType.LOGICAL_WALLET_BALANCE -> totalLogicalWalletBalance
             }
             
             val hasData = when (selectedDataType) {
                 ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> portfolioData.isNotEmpty() && totalPortfolioBalance > 0
                 ChartDataType.PHYSICAL_WALLET_BALANCE -> walletData.isNotEmpty() && totalWalletBalance > 0
+                ChartDataType.LOGICAL_WALLET_BALANCE -> logicalWalletData.isNotEmpty()
             }
             
             Text(
@@ -205,6 +233,8 @@ fun SimplePortfolioAssetCard(
                         "Total Portfolio Value: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
                     ChartDataType.PHYSICAL_WALLET_BALANCE -> 
                         "Total Physical Wallet Value: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
+                    ChartDataType.LOGICAL_WALLET_BALANCE -> 
+                        "Total Logical Wallet Value: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -227,6 +257,7 @@ fun SimplePortfolioAssetCard(
                             text = when (selectedDataType) {
                                 ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> "No portfolio data available"
                                 ChartDataType.PHYSICAL_WALLET_BALANCE -> "No physical wallet data available"
+                                ChartDataType.LOGICAL_WALLET_BALANCE -> "No logical wallet data available"
                             },
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -235,6 +266,7 @@ fun SimplePortfolioAssetCard(
                             text = when (selectedDataType) {
                                 ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> "Add some wallets to see your asset composition"
                                 ChartDataType.PHYSICAL_WALLET_BALANCE -> "Add some physical wallets to see their balance composition"
+                                ChartDataType.LOGICAL_WALLET_BALANCE -> "Add some logical wallets to see their balance composition"
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
@@ -362,6 +394,173 @@ fun SimpleWalletLegend(
     }
 }
 
+@Composable
+fun SimpleLogicalWalletLegend(
+    logicalWalletData: Map<String, Double>,
+    totalBalance: Double,
+    defaultCurrency: String
+) {
+    // Separate positive and negative balances
+    val positiveData = logicalWalletData.filter { it.value > 0 }
+    val negativeData = logicalWalletData.filter { it.value < 0 }
+    
+    Column {
+        // Show positive balances
+        if (positiveData.isNotEmpty()) {
+            Text(
+                text = "Positive Balances",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            val positiveTotal = positiveData.values.sum()
+            positiveData.entries.sortedByDescending { it.value }.forEachIndexed { index, entry ->
+                val percentage = (entry.value / positiveTotal * 100)
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .background(
+                                    color = getWalletColorSimple(index),
+                                    shape = RoundedCornerShape(2.dp)
+                                )
+                        )
+                        
+                        Spacer(modifier = Modifier.width(4.dp))
+                        
+                        Text(
+                            text = entry.key,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    
+                    Column(
+                        horizontalAlignment = Alignment.End
+                    ) {
+                        Text(
+                            text = NumberFormatter.formatCurrency(entry.value, defaultCurrency, showSymbol = true),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF4CAF50) // Green for positive
+                        )
+                        Text(
+                            text = "${String.format("%.1f", percentage)}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Show negative balances
+        if (negativeData.isNotEmpty()) {
+            if (positiveData.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
+            Text(
+                text = "Negative Balances",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            val negativeTotal = negativeData.values.map { kotlin.math.abs(it) }.sum()
+            negativeData.entries.sortedBy { it.value }.forEachIndexed { index, entry ->
+                val absoluteValue = kotlin.math.abs(entry.value)
+                val percentage = (absoluteValue / negativeTotal * 100)
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .background(
+                                    color = getNegativeWalletColorSimple(index),
+                                    shape = RoundedCornerShape(2.dp)
+                                )
+                        )
+                        
+                        Spacer(modifier = Modifier.width(4.dp))
+                        
+                        Text(
+                            text = entry.key,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    
+                    Column(
+                        horizontalAlignment = Alignment.End
+                    ) {
+                        Text(
+                            text = NumberFormatter.formatCurrency(entry.value, defaultCurrency, showSymbol = true),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.error // Red for negative
+                        )
+                        Text(
+                            text = "${String.format("%.1f", percentage)}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Show total balance
+        if (logicalWalletData.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 4.dp),
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+            )
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Total Balance",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = NumberFormatter.formatCurrency(totalBalance, defaultCurrency, showSymbol = true),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = if (totalBalance >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+}
+
 // Helper function to get consistent colors for physical forms
 @Composable
 fun getPhysicalFormColorSimple(physicalForm: PhysicalForm, index: Int): Color {
@@ -410,6 +609,29 @@ fun getWalletColorSimple(index: Int): Color {
     return colors[index % colors.size]
 }
 
+// Helper function to get consistent colors for negative wallet balances (using red shades)
+@Composable
+fun getNegativeWalletColorSimple(index: Int): Color {
+    val colors = listOf(
+        Color(0xFFE57373), // Light Red
+        Color(0xFFF48FB1), // Light Pink
+        Color(0xFFFFB74D), // Light Orange
+        Color(0xFFAED581), // Light Green (muted)
+        Color(0xFF81C784), // Medium Green (muted)
+        Color(0xFF64B5F6), // Light Blue (muted)
+        Color(0xFFBA68C8), // Light Purple (muted)
+        Color(0xFF4DB6AC), // Light Teal (muted)
+        Color(0xFF90A4AE), // Blue Grey (muted)
+        Color(0xFFA1887F), // Light Brown (muted)
+        Color(0xFFDCE775), // Light Lime (muted)
+        Color(0xFFFFAB91), // Light Deep Orange (muted)
+        Color(0xFF4FC3F7), // Light Cyan (muted)
+        Color(0xFFC5E1A5), // Very Light Green (muted)
+        Color(0xFFFFCC80) // Light Amber (muted)
+    )
+    return colors[index % colors.size]
+}
+
 // Extension property for PhysicalForm display names
 val PhysicalForm.displayNameSimple: String
     get() = when (this) {
@@ -429,8 +651,10 @@ fun ChartBreakdownSection(
     selectedDataType: ChartDataType,
     portfolioData: Map<PhysicalForm, Double>,
     walletData: Map<String, Double>,
+    logicalWalletData: Map<String, Double>,
     totalPortfolioBalance: Double,
     totalWalletBalance: Double,
+    totalLogicalWalletBalance: Double,
     defaultCurrency: String
 ) {
     Card(
@@ -460,6 +684,13 @@ fun ChartBreakdownSection(
                         defaultCurrency = defaultCurrency
                     )
                 }
+                ChartDataType.LOGICAL_WALLET_BALANCE -> {
+                    SimpleLogicalWalletLegend(
+                        logicalWalletData = logicalWalletData,
+                        totalBalance = totalLogicalWalletBalance,
+                        defaultCurrency = defaultCurrency
+                    )
+                }
             }
         }
     }
@@ -470,7 +701,8 @@ fun ChartOptionsSection(
     selectedDataType: ChartDataType,
     onDataTypeChange: (ChartDataType) -> Unit,
     hasPortfolioData: Boolean,
-    hasPhysicalWalletData: Boolean
+    hasPhysicalWalletData: Boolean,
+    hasLogicalWalletData: Boolean
 ) {
     var expanded by remember { mutableStateOf(false) }
     
@@ -509,6 +741,7 @@ fun ChartOptionsSection(
                             text = when (selectedDataType) {
                                 ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> "Portfolio Asset Composition"
                                 ChartDataType.PHYSICAL_WALLET_BALANCE -> "Physical Wallet Balance Composition"
+                                ChartDataType.LOGICAL_WALLET_BALANCE -> "Logical Wallet Balance Composition"
                             },
                             style = MaterialTheme.typography.bodyMedium
                         )
@@ -578,6 +811,34 @@ fun ChartOptionsSection(
                             }
                         },
                         enabled = hasPhysicalWalletData
+                    )
+                    
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text(
+                                    text = "Logical Wallet Balance Composition",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = if (hasLogicalWalletData) MaterialTheme.colorScheme.onSurface 
+                                           else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                                Text(
+                                    text = "Shows breakdown by individual logical wallet balances",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                        alpha = if (hasLogicalWalletData) 1f else 0.6f
+                                    )
+                                )
+                            }
+                        },
+                        onClick = {
+                            if (hasLogicalWalletData) {
+                                onDataTypeChange(ChartDataType.LOGICAL_WALLET_BALANCE)
+                                expanded = false
+                            }
+                        },
+                        enabled = hasLogicalWalletData
                     )
                 }
             }
@@ -649,6 +910,195 @@ fun ComposeChartsPieChartWallet(
         scaleAnimExitSpec = androidx.compose.animation.core.tween(300),
         spaceDegreeAnimExitSpec = androidx.compose.animation.core.tween(300)
     )
+}
+
+@Composable
+fun ComposeChartsLogicalWalletChart(
+    logicalWalletData: Map<String, Double>,
+    modifier: Modifier = Modifier
+) {
+    // Separate positive and negative balances
+    val positiveData = logicalWalletData.filter { it.value > 0 }
+    val negativeData = logicalWalletData.filter { it.value < 0 }.mapValues { kotlin.math.abs(it.value) }
+    
+    val hasPositiveData = positiveData.isNotEmpty()
+    val hasNegativeData = negativeData.isNotEmpty()
+    
+    if (hasPositiveData && hasNegativeData) {
+        // Show side-by-side pie charts for positive and negative
+        Column(modifier = modifier) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(250.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                // Positive balance pie chart
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Positive Balances",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    
+                    val positiveePieData = positiveData.entries.sortedByDescending { it.value }.mapIndexed { index, entry ->
+                        Pie(
+                            label = entry.key,
+                            data = entry.value,
+                            color = getWalletColorSimple(index)
+                        )
+                    }
+                    
+                    PieChart(
+                        modifier = Modifier.size(180.dp),
+                        data = positiveePieData,
+                        onPieClick = { pie ->
+                            println("Clicked on positive ${pie.label}: ${pie.data}")
+                        },
+                        selectedScale = 1.2f,
+                        scaleAnimEnterSpec = androidx.compose.animation.core.spring(
+                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                        ),
+                        colorAnimEnterSpec = androidx.compose.animation.core.tween(300),
+                        colorAnimExitSpec = androidx.compose.animation.core.tween(300),
+                        scaleAnimExitSpec = androidx.compose.animation.core.tween(300),
+                        spaceDegreeAnimExitSpec = androidx.compose.animation.core.tween(300)
+                    )
+                }
+                
+                // Negative balance pie chart
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Negative Balances",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    
+                    val negativePieData = negativeData.entries.sortedByDescending { it.value }.mapIndexed { index, entry ->
+                        Pie(
+                            label = entry.key,
+                            data = entry.value,
+                            color = getNegativeWalletColorSimple(index)
+                        )
+                    }
+                    
+                    PieChart(
+                        modifier = Modifier.size(180.dp),
+                        data = negativePieData,
+                        onPieClick = { pie ->
+                            println("Clicked on negative ${pie.label}: ${pie.data}")
+                        },
+                        selectedScale = 1.2f,
+                        scaleAnimEnterSpec = androidx.compose.animation.core.spring(
+                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                        ),
+                        colorAnimEnterSpec = androidx.compose.animation.core.tween(300),
+                        colorAnimExitSpec = androidx.compose.animation.core.tween(300),
+                        scaleAnimExitSpec = androidx.compose.animation.core.tween(300),
+                        spaceDegreeAnimExitSpec = androidx.compose.animation.core.tween(300)
+                    )
+                }
+            }
+        }
+    } else if (hasPositiveData) {
+        // Only positive data - show single centered pie chart
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(250.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "Logical Wallet Balances",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                val pieData = positiveData.entries.sortedByDescending { it.value }.mapIndexed { index, entry ->
+                    Pie(
+                        label = entry.key,
+                        data = entry.value,
+                        color = getWalletColorSimple(index)
+                    )
+                }
+                
+                PieChart(
+                    modifier = Modifier.size(200.dp),
+                    data = pieData,
+                    onPieClick = { pie ->
+                        println("Clicked on ${pie.label}: ${pie.data}")
+                    },
+                    selectedScale = 1.2f,
+                    scaleAnimEnterSpec = androidx.compose.animation.core.spring(
+                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                        stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                    ),
+                    colorAnimEnterSpec = androidx.compose.animation.core.tween(300),
+                    colorAnimExitSpec = androidx.compose.animation.core.tween(300),
+                    scaleAnimExitSpec = androidx.compose.animation.core.tween(300),
+                    spaceDegreeAnimExitSpec = androidx.compose.animation.core.tween(300)
+                )
+            }
+        }
+    } else if (hasNegativeData) {
+        // Only negative data - show single centered pie chart
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(250.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "Negative Logical Wallet Balances",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                val pieData = negativeData.entries.sortedByDescending { it.value }.mapIndexed { index, entry ->
+                    Pie(
+                        label = entry.key,
+                        data = entry.value,
+                        color = getNegativeWalletColorSimple(index)
+                    )
+                }
+                
+                PieChart(
+                    modifier = Modifier.size(200.dp),
+                    data = pieData,
+                    onPieClick = { pie ->
+                        println("Clicked on negative ${pie.label}: ${pie.data}")
+                    },
+                    selectedScale = 1.2f,
+                    scaleAnimEnterSpec = androidx.compose.animation.core.spring(
+                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                        stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                    ),
+                    colorAnimEnterSpec = androidx.compose.animation.core.tween(300),
+                    colorAnimExitSpec = androidx.compose.animation.core.tween(300),
+                    scaleAnimExitSpec = androidx.compose.animation.core.tween(300),
+                    spaceDegreeAnimExitSpec = androidx.compose.animation.core.tween(300)
+                )
+            }
+        }
+    }
 }
 
 

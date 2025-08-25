@@ -14,14 +14,17 @@ import javax.inject.Inject
 
 enum class ChartDataType {
     PORTFOLIO_ASSET_COMPOSITION,
-    PHYSICAL_WALLET_BALANCE
+    PHYSICAL_WALLET_BALANCE,
+    LOGICAL_WALLET_BALANCE
 }
 
 data class ReportUiState(
     val portfolioComposition: Map<PhysicalForm, Double> = emptyMap(),
     val physicalWalletBalances: Map<String, Double> = emptyMap(), // wallet name to balance
+    val logicalWalletBalances: Map<String, Double> = emptyMap(), // wallet name to balance
     val totalPortfolioValue: Double = 0.0,
     val totalPhysicalWalletValue: Double = 0.0,
+    val totalLogicalWalletValue: Double = 0.0,
     val wallets: List<Wallet> = emptyList(),
     val defaultCurrency: String = "USD",
     val selectedChartDataType: ChartDataType = ChartDataType.PORTFOLIO_ASSET_COMPOSITION,
@@ -76,15 +79,22 @@ class ReportViewModel @Inject constructor(
                     val physicalWalletBalances = calculatePhysicalWalletBalances(wallets)
                     val totalPhysicalWalletValue = physicalWalletBalances.values.sum()
                     
+                    // Calculate logical wallet balances
+                    val logicalWalletBalances = calculateLogicalWalletBalances(wallets)
+                    val totalLogicalWalletValue = logicalWalletBalances.values.sum()
+                    
                     android.util.Log.d("ReportViewModel", "Portfolio composition: $portfolioComposition, total: $totalPortfolioValue")
                     android.util.Log.d("ReportViewModel", "Physical wallet balances: $physicalWalletBalances, total: $totalPhysicalWalletValue")
+                    android.util.Log.d("ReportViewModel", "Logical wallet balances: $logicalWalletBalances, total: $totalLogicalWalletValue")
                     
                     _uiState.update {
                         it.copy(
                             portfolioComposition = portfolioComposition,
                             physicalWalletBalances = physicalWalletBalances,
+                            logicalWalletBalances = logicalWalletBalances,
                             totalPortfolioValue = totalPortfolioValue,
                             totalPhysicalWalletValue = totalPhysicalWalletValue,
+                            totalLogicalWalletValue = totalLogicalWalletValue,
                             wallets = wallets,
                             defaultCurrency = defaultCurrency,
                             isLoading = false,
@@ -126,6 +136,13 @@ class ReportViewModel @Inject constructor(
         // Get only physical wallets with positive balances
         return wallets
             .filter { it.walletType == "Physical" && it.balance > 0 }
+            .associate { wallet -> wallet.name to wallet.balance }
+    }
+    
+    private fun calculateLogicalWalletBalances(wallets: List<Wallet>): Map<String, Double> {
+        // Get only logical wallets with non-zero balances (including negative)
+        return wallets
+            .filter { it.walletType == "Logical" && it.balance != 0.0 }
             .associate { wallet -> wallet.name to wallet.balance }
     }
     
