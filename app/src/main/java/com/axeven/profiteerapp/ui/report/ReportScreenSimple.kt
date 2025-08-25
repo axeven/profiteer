@@ -1,8 +1,6 @@
 package com.axeven.profiteerapp.ui.report
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,20 +10,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlin.math.*
+import ir.ehsannarmani.compose_charts.models.Pie
+import ir.ehsannarmani.compose_charts.PieChart
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.axeven.profiteerapp.viewmodel.ReportViewModel
 import com.axeven.profiteerapp.data.model.PhysicalForm
@@ -116,9 +106,8 @@ fun ReportScreenSimple(
                                         .height(250.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    PieChart(
+                                    ComposeChartsPieChart(
                                         portfolioData = uiState.portfolioComposition,
-                                        totalValue = uiState.totalPortfolioValue,
                                         modifier = Modifier.size(200.dp)
                                     )
                                 }
@@ -304,81 +293,36 @@ val PhysicalForm.displayNameSimple: String
     }
 
 @Composable
-fun PieChart(
+fun ComposeChartsPieChart(
     portfolioData: Map<PhysicalForm, Double>,
-    totalValue: Double,
     modifier: Modifier = Modifier
 ) {
-    // Prepare color mapping outside of Canvas
-    val colorMap = remember(portfolioData) {
-        portfolioData.entries.mapIndexed { index, entry ->
-            entry.key to getPhysicalFormColorNonComposable(entry.key, index)
-        }.toMap()
+    // Convert portfolio data to ComposeCharts Pie format
+    val pieData = portfolioData.entries.mapIndexed { index, entry ->
+        Pie(
+            label = entry.key.displayNameSimple,
+            data = entry.value,
+            color = getPhysicalFormColorSimple(entry.key, index)
+        )
     }
     
-    Canvas(modifier = modifier) {
-        val center = androidx.compose.ui.geometry.Offset(size.width / 2, size.height / 2)
-        val radius = size.minDimension / 2 * 0.8f
-        
-        var startAngle = 0f
-        
-        portfolioData.entries.forEach { entry ->
-            val sweepAngle = ((entry.value / totalValue) * 360).toFloat()
-            val color = colorMap[entry.key] ?: androidx.compose.ui.graphics.Color.Gray
-            
-            drawArc(
-                color = color,
-                startAngle = startAngle,
-                sweepAngle = sweepAngle,
-                useCenter = true,
-                topLeft = androidx.compose.ui.geometry.Offset(
-                    center.x - radius,
-                    center.y - radius
-                ),
-                size = androidx.compose.ui.geometry.Size(radius * 2, radius * 2)
-            )
-            
-            startAngle += sweepAngle
-        }
-        
-        // Draw white center circle for donut effect
-        drawCircle(
-            color = androidx.compose.ui.graphics.Color.White,
-            radius = radius * 0.4f,
-            center = center
-        )
-        
-        // Draw border around the pie chart
-        drawCircle(
-            color = androidx.compose.ui.graphics.Color.Gray,
-            radius = radius,
-            center = center,
-            style = Stroke(width = 2.dp.toPx())
-        )
-    }
+    PieChart(
+        modifier = modifier,
+        data = pieData,
+        onPieClick = { pie ->
+            // Optional: Handle pie slice click
+            println("Clicked on ${pie.label}: ${pie.data}")
+        },
+        selectedScale = 1.2f,
+        scaleAnimEnterSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+        ),
+        colorAnimEnterSpec = androidx.compose.animation.core.tween(300),
+        colorAnimExitSpec = androidx.compose.animation.core.tween(300),
+        scaleAnimExitSpec = androidx.compose.animation.core.tween(300),
+        spaceDegreeAnimExitSpec = androidx.compose.animation.core.tween(300)
+    )
 }
 
-// Non-composable version for Canvas usage
-fun getPhysicalFormColorNonComposable(physicalForm: PhysicalForm, index: Int): androidx.compose.ui.graphics.Color {
-    return when (physicalForm) {
-        PhysicalForm.FIAT_CURRENCY -> androidx.compose.ui.graphics.Color(0xFF4CAF50) // Green
-        PhysicalForm.CRYPTOCURRENCY -> androidx.compose.ui.graphics.Color(0xFFFF9800) // Orange  
-        PhysicalForm.STOCKS -> androidx.compose.ui.graphics.Color(0xFF2196F3) // Blue
-        PhysicalForm.BONDS -> androidx.compose.ui.graphics.Color(0xFF9C27B0) // Purple
-        PhysicalForm.COMMODITIES -> androidx.compose.ui.graphics.Color(0xFFF44336) // Red
-        PhysicalForm.REAL_ESTATE -> androidx.compose.ui.graphics.Color(0xFF607D8B) // Blue Grey
-        PhysicalForm.MUTUAL_FUNDS -> androidx.compose.ui.graphics.Color(0xFF795548) // Brown
-        PhysicalForm.ETFS -> androidx.compose.ui.graphics.Color(0xFF009688) // Teal
-        else -> {
-            // Fallback colors for any additional forms
-            val colors = listOf(
-                androidx.compose.ui.graphics.Color(0xFFE91E63), // Pink
-                androidx.compose.ui.graphics.Color(0xFF3F51B5), // Indigo
-                androidx.compose.ui.graphics.Color(0xFFCDDC39), // Lime
-                androidx.compose.ui.graphics.Color(0xFFFF5722)  // Deep Orange
-            )
-            colors[index % colors.size]
-        }
-    }
-}
 
