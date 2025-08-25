@@ -12,11 +12,19 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+enum class ChartDataType {
+    PORTFOLIO_ASSET_COMPOSITION,
+    PHYSICAL_WALLET_BALANCE
+}
+
 data class ReportUiState(
     val portfolioComposition: Map<PhysicalForm, Double> = emptyMap(),
+    val physicalWalletBalances: Map<String, Double> = emptyMap(), // wallet name to balance
     val totalPortfolioValue: Double = 0.0,
+    val totalPhysicalWalletValue: Double = 0.0,
     val wallets: List<Wallet> = emptyList(),
     val defaultCurrency: String = "USD",
+    val selectedChartDataType: ChartDataType = ChartDataType.PORTFOLIO_ASSET_COMPOSITION,
     val isLoading: Boolean = false,
     val error: String? = null
 )
@@ -62,14 +70,21 @@ class ReportViewModel @Inject constructor(
                     
                     // Calculate portfolio composition by PhysicalForm
                     val portfolioComposition = calculatePortfolioComposition(wallets)
-                    val totalValue = portfolioComposition.values.sum()
+                    val totalPortfolioValue = portfolioComposition.values.sum()
                     
-                    android.util.Log.d("ReportViewModel", "Portfolio composition: $portfolioComposition, total: $totalValue")
+                    // Calculate physical wallet balances
+                    val physicalWalletBalances = calculatePhysicalWalletBalances(wallets)
+                    val totalPhysicalWalletValue = physicalWalletBalances.values.sum()
+                    
+                    android.util.Log.d("ReportViewModel", "Portfolio composition: $portfolioComposition, total: $totalPortfolioValue")
+                    android.util.Log.d("ReportViewModel", "Physical wallet balances: $physicalWalletBalances, total: $totalPhysicalWalletValue")
                     
                     _uiState.update {
                         it.copy(
                             portfolioComposition = portfolioComposition,
-                            totalPortfolioValue = totalValue,
+                            physicalWalletBalances = physicalWalletBalances,
+                            totalPortfolioValue = totalPortfolioValue,
+                            totalPhysicalWalletValue = totalPhysicalWalletValue,
                             wallets = wallets,
                             defaultCurrency = defaultCurrency,
                             isLoading = false,
@@ -90,26 +105,37 @@ class ReportViewModel @Inject constructor(
     }
     
     private fun calculatePortfolioComposition(wallets: List<Wallet>): Map<PhysicalForm, Double> {
-        // Group wallets by their physical form and sum their balances
+        // Group PHYSICAL wallets by their physical form and sum their balances
         val composition = mutableMapOf<PhysicalForm, Double>()
         
         wallets.forEach { wallet ->
-            // Only include wallets with positive balances
-            if (wallet.balance > 0) {
+            // Only include physical wallets with positive balances
+            if (wallet.walletType == "Physical" && wallet.balance > 0) {
                 val currentAmount = composition[wallet.physicalForm] ?: 0.0
                 composition[wallet.physicalForm] = currentAmount + wallet.balance
                 
                 android.util.Log.d("ReportViewModel", 
-                    "Adding wallet '${wallet.name}': ${wallet.physicalForm} = ${wallet.balance}")
+                    "Adding physical wallet '${wallet.name}': ${wallet.physicalForm} = ${wallet.balance}")
             }
         }
         
         return composition.toMap()
     }
     
+    private fun calculatePhysicalWalletBalances(wallets: List<Wallet>): Map<String, Double> {
+        // Get only physical wallets with positive balances
+        return wallets
+            .filter { it.walletType == "Physical" && it.balance > 0 }
+            .associate { wallet -> wallet.name to wallet.balance }
+    }
+    
     fun refreshData() {
         android.util.Log.d("ReportViewModel", "Refreshing portfolio data")
         loadPortfolioData()
+    }
+    
+    fun selectChartDataType(dataType: ChartDataType) {
+        _uiState.update { it.copy(selectedChartDataType = dataType) }
     }
     
     fun clearError() {
