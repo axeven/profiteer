@@ -14,9 +14,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -43,6 +45,7 @@ fun HomeScreen(
     onNavigateToWalletList: () -> Unit = {},
     onNavigateToCreateTransaction: (TransactionType) -> Unit = {},
     onEditTransaction: (Transaction) -> Unit = {},
+    onNavigateToReports: () -> Unit = {},
     refreshTrigger: Int = 0, // Add refresh trigger parameter
     viewModel: HomeViewModel = hiltViewModel()
 ) {
@@ -59,7 +62,8 @@ fun HomeScreen(
         QuickAction("Add Income", Icons.Default.Add, Color(0xFF4CAF50)),
         QuickAction("Add Expense", Icons.Default.Delete, Color(0xFFF44336)),
         QuickAction("Transfer", Icons.Default.Refresh, Color(0xFF2196F3)),
-        QuickAction("Analytics", Icons.Default.Info, Color(0xFF9C27B0))
+        QuickAction("Analytics", Icons.Default.Info, Color(0xFF9C27B0)),
+        QuickAction("Reports", Icons.Default.DateRange, Color(0xFF00BCD4))
     )
 
     // Show error if any
@@ -94,17 +98,19 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
+                .padding(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                BalanceCard(
-                    balance = uiState.totalBalance, 
-                    income = uiState.totalIncome, 
-                    expenses = uiState.totalExpenses,
-                    currency = uiState.defaultCurrency,
-                    onBalanceClick = onNavigateToWalletList
-                )
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    BalanceCard(
+                        balance = uiState.totalBalance, 
+                        income = uiState.totalIncome, 
+                        expenses = uiState.totalExpenses,
+                        currency = uiState.defaultCurrency,
+                        onBalanceClick = onNavigateToWalletList
+                    )
+                }
             }
             
             
@@ -112,13 +118,15 @@ fun HomeScreen(
                 Text(
                     text = "Quick Actions",
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 )
             }
             
             item {
                 LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp)
                 ) {
                     items(quickActions) { action ->
                         QuickActionCard(
@@ -128,6 +136,7 @@ fun HomeScreen(
                                     "Add Income" -> onNavigateToCreateTransaction(TransactionType.INCOME)
                                     "Add Expense" -> onNavigateToCreateTransaction(TransactionType.EXPENSE)
                                     "Transfer" -> onNavigateToCreateTransaction(TransactionType.TRANSFER)
+                                    "Reports" -> onNavigateToReports()
                                     // Other actions can be implemented later
                                 }
                             }
@@ -140,17 +149,20 @@ fun HomeScreen(
                 Text(
                     text = "Recent Transactions",
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 )
             }
             
             items(uiState.transactions) { transaction ->
-                TransactionItem(
-                    transaction = transaction,
-                    wallets = uiState.wallets,
-                    defaultCurrency = uiState.defaultCurrency,
-                    onClick = { onEditTransaction(transaction) }
-                )
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    TransactionItem(
+                        transaction = transaction,
+                        wallets = uiState.wallets,
+                        defaultCurrency = uiState.defaultCurrency,
+                        onClick = { onEditTransaction(transaction) }
+                    )
+                }
             }
         }
     }
@@ -244,7 +256,7 @@ fun BalanceCard(
 fun QuickActionCard(action: QuickAction, onClick: () -> Unit = {}) {
     Card(
         modifier = Modifier
-            .size(120.dp, 100.dp)
+            .size(70.dp, 75.dp)
             .clickable { onClick() },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -253,14 +265,14 @@ fun QuickActionCard(action: QuickAction, onClick: () -> Unit = {}) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(20.dp))
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(14.dp))
                     .background(action.color.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -268,16 +280,20 @@ fun QuickActionCard(action: QuickAction, onClick: () -> Unit = {}) {
                     imageVector = action.icon,
                     contentDescription = action.title,
                     tint = action.color,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(16.dp)
                 )
             }
             
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             
             Text(
                 text = action.title,
                 style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                fontSize = 9.sp,
+                maxLines = 2,
+                lineHeight = 11.sp,
+                textAlign = TextAlign.Center
             )
         }
     }
