@@ -3,8 +3,11 @@ package com.axeven.profiteerapp.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.axeven.profiteerapp.data.model.PhysicalForm
+import com.axeven.profiteerapp.data.model.Transaction
+import com.axeven.profiteerapp.data.model.TransactionType
 import com.axeven.profiteerapp.data.model.Wallet
 import com.axeven.profiteerapp.data.repository.AuthRepository
+import com.axeven.profiteerapp.data.repository.TransactionRepository
 import com.axeven.profiteerapp.data.repository.UserPreferencesRepository
 import com.axeven.profiteerapp.data.repository.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,16 +18,22 @@ import javax.inject.Inject
 enum class ChartDataType {
     PORTFOLIO_ASSET_COMPOSITION,
     PHYSICAL_WALLET_BALANCE,
-    LOGICAL_WALLET_BALANCE
+    LOGICAL_WALLET_BALANCE,
+    EXPENSE_TRANSACTION_BY_TAG,
+    INCOME_TRANSACTION_BY_TAG
 }
 
 data class ReportUiState(
     val portfolioComposition: Map<PhysicalForm, Double> = emptyMap(),
     val physicalWalletBalances: Map<String, Double> = emptyMap(), // wallet name to balance
     val logicalWalletBalances: Map<String, Double> = emptyMap(), // wallet name to balance
+    val expenseTransactionsByTag: Map<String, Double> = emptyMap(), // tag to total expense amount
+    val incomeTransactionsByTag: Map<String, Double> = emptyMap(), // tag to total income amount
     val totalPortfolioValue: Double = 0.0,
     val totalPhysicalWalletValue: Double = 0.0,
     val totalLogicalWalletValue: Double = 0.0,
+    val totalExpensesByTag: Double = 0.0,
+    val totalIncomeByTag: Double = 0.0,
     val wallets: List<Wallet> = emptyList(),
     val defaultCurrency: String = "USD",
     val selectedChartDataType: ChartDataType = ChartDataType.PORTFOLIO_ASSET_COMPOSITION,
@@ -36,6 +45,7 @@ data class ReportUiState(
 class ReportViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val walletRepository: WalletRepository,
+    private val transactionRepository: TransactionRepository,
     private val userPreferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
@@ -63,11 +73,12 @@ class ReportViewModel @Inject constructor(
             try {
                 combine(
                     walletRepository.getUserWallets(userId),
+                    transactionRepository.getUserTransactionsForCalculations(userId),
                     userPreferencesRepository.getUserPreferences(userId)
-                ) { wallets, preferences ->
-                    Pair(wallets, preferences)
-                }.collect { (wallets, preferences) ->
-                    android.util.Log.d("ReportViewModel", "Data received - wallets: ${wallets.size}")
+                ) { wallets, transactions, preferences ->
+                    Triple(wallets, transactions, preferences)
+                }.collect { (wallets, transactions, preferences) ->
+                    android.util.Log.d("ReportViewModel", "Data received - wallets: ${wallets.size}, transactions: ${transactions.size}")
                     
                     val defaultCurrency = preferences?.defaultCurrency ?: "USD"
                     
@@ -83,18 +94,30 @@ class ReportViewModel @Inject constructor(
                     val logicalWalletBalances = calculateLogicalWalletBalances(wallets)
                     val totalLogicalWalletValue = logicalWalletBalances.values.sum()
                     
+                    // Calculate expense and income transactions by tag
+                    val expenseTransactionsByTag = calculateExpenseTransactionsByTag(transactions)
+                    val totalExpensesByTag = expenseTransactionsByTag.values.sum()
+                    val incomeTransactionsByTag = calculateIncomeTransactionsByTag(transactions)
+                    val totalIncomeByTag = incomeTransactionsByTag.values.sum()
+                    
                     android.util.Log.d("ReportViewModel", "Portfolio composition: $portfolioComposition, total: $totalPortfolioValue")
                     android.util.Log.d("ReportViewModel", "Physical wallet balances: $physicalWalletBalances, total: $totalPhysicalWalletValue")
                     android.util.Log.d("ReportViewModel", "Logical wallet balances: $logicalWalletBalances, total: $totalLogicalWalletValue")
+                    android.util.Log.d("ReportViewModel", "Expense transactions by tag: $expenseTransactionsByTag, total: $totalExpensesByTag")
+                    android.util.Log.d("ReportViewModel", "Income transactions by tag: $incomeTransactionsByTag, total: $totalIncomeByTag")
                     
                     _uiState.update {
                         it.copy(
                             portfolioComposition = portfolioComposition,
                             physicalWalletBalances = physicalWalletBalances,
                             logicalWalletBalances = logicalWalletBalances,
+                            expenseTransactionsByTag = expenseTransactionsByTag,
+                            incomeTransactionsByTag = incomeTransactionsByTag,
                             totalPortfolioValue = totalPortfolioValue,
                             totalPhysicalWalletValue = totalPhysicalWalletValue,
                             totalLogicalWalletValue = totalLogicalWalletValue,
+                            totalExpensesByTag = totalExpensesByTag,
+                            totalIncomeByTag = totalIncomeByTag,
                             wallets = wallets,
                             defaultCurrency = defaultCurrency,
                             isLoading = false,
@@ -144,6 +167,56 @@ class ReportViewModel @Inject constructor(
         return wallets
             .filter { it.walletType == "Logical" && it.balance != 0.0 }
             .associate { wallet -> wallet.name to wallet.balance }
+    }
+    
+    private fun calculateExpenseTransactionsByTag(transactions: List<Transaction>): Map<String, Double> {
+        val tagAmounts = mutableMapOf<String, Double>()
+        
+        transactions.filter { it.type == TransactionType.EXPENSE }.forEach { transaction ->
+            // Use the tags field, fallback to category for backward compatibility
+            val tags = if (transaction.tags.isNotEmpty()) {
+                transaction.tags
+            } else {
+                listOf(transaction.category)
+            }
+            
+            // For each tag, add the expense transaction amount (absolute value)
+            tags.forEach { tag ->
+                val currentAmount = tagAmounts[tag] ?: 0.0
+                tagAmounts[tag] = currentAmount + kotlin.math.abs(transaction.amount)
+                
+                android.util.Log.d("ReportViewModel", 
+                    "Adding expense transaction '${transaction.title}': tag=$tag, amount=${kotlin.math.abs(transaction.amount)}")
+            }
+        }
+        
+        android.util.Log.d("ReportViewModel", "Final expense tag amounts: $tagAmounts")
+        return tagAmounts.toMap()
+    }
+    
+    private fun calculateIncomeTransactionsByTag(transactions: List<Transaction>): Map<String, Double> {
+        val tagAmounts = mutableMapOf<String, Double>()
+        
+        transactions.filter { it.type == TransactionType.INCOME }.forEach { transaction ->
+            // Use the tags field, fallback to category for backward compatibility
+            val tags = if (transaction.tags.isNotEmpty()) {
+                transaction.tags
+            } else {
+                listOf(transaction.category)
+            }
+            
+            // For each tag, add the income transaction amount (absolute value)
+            tags.forEach { tag ->
+                val currentAmount = tagAmounts[tag] ?: 0.0
+                tagAmounts[tag] = currentAmount + kotlin.math.abs(transaction.amount)
+                
+                android.util.Log.d("ReportViewModel", 
+                    "Adding income transaction '${transaction.title}': tag=$tag, amount=${kotlin.math.abs(transaction.amount)}")
+            }
+        }
+        
+        android.util.Log.d("ReportViewModel", "Final income tag amounts: $tagAmounts")
+        return tagAmounts.toMap()
     }
     
     fun refreshData() {

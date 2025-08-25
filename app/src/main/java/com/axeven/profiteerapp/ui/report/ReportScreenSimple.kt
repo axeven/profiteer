@@ -81,9 +81,13 @@ fun ReportScreenSimple(
                         portfolioData = uiState.portfolioComposition,
                         walletData = uiState.physicalWalletBalances,
                         logicalWalletData = uiState.logicalWalletBalances,
+                        expenseTransactionsByTagData = uiState.expenseTransactionsByTag,
+                        incomeTransactionsByTagData = uiState.incomeTransactionsByTag,
                         totalPortfolioBalance = uiState.totalPortfolioValue,
                         totalWalletBalance = uiState.totalPhysicalWalletValue,
                         totalLogicalWalletBalance = uiState.totalLogicalWalletValue,
+                        totalExpensesByTag = uiState.totalExpensesByTag,
+                        totalIncomeByTag = uiState.totalIncomeByTag,
                         defaultCurrency = uiState.defaultCurrency
                     )
                 }
@@ -93,7 +97,9 @@ fun ReportScreenSimple(
                     val hasPortfolioData = uiState.portfolioComposition.isNotEmpty() && uiState.totalPortfolioValue > 0
                     val hasPhysicalWalletData = uiState.physicalWalletBalances.isNotEmpty() && uiState.totalPhysicalWalletValue > 0
                     val hasLogicalWalletData = uiState.logicalWalletBalances.isNotEmpty()
-                    val hasAnyData = hasPortfolioData || hasPhysicalWalletData || hasLogicalWalletData
+                    val hasExpenseTransactionsByTagData = uiState.expenseTransactionsByTag.isNotEmpty() && uiState.totalExpensesByTag > 0
+                    val hasIncomeTransactionsByTagData = uiState.incomeTransactionsByTag.isNotEmpty() && uiState.totalIncomeByTag > 0
+                    val hasAnyData = hasPortfolioData || hasPhysicalWalletData || hasLogicalWalletData || hasExpenseTransactionsByTagData || hasIncomeTransactionsByTagData
                     
                     if (hasAnyData) {
                         Card(
@@ -147,6 +153,36 @@ fun ReportScreenSimple(
                                             )
                                         }
                                     }
+                                    ChartDataType.EXPENSE_TRANSACTION_BY_TAG -> {
+                                        if (hasExpenseTransactionsByTagData) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(250.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                ComposeChartsPieChartExpenseTransactionsByTag(
+                                                    expenseTransactionsByTagData = uiState.expenseTransactionsByTag,
+                                                    modifier = Modifier.size(200.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                    ChartDataType.INCOME_TRANSACTION_BY_TAG -> {
+                                        if (hasIncomeTransactionsByTagData) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(250.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                ComposeChartsPieChartIncomeTransactionsByTag(
+                                                    incomeTransactionsByTagData = uiState.incomeTransactionsByTag,
+                                                    modifier = Modifier.size(200.dp)
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -160,7 +196,9 @@ fun ReportScreenSimple(
                         onDataTypeChange = viewModel::selectChartDataType,
                         hasPortfolioData = uiState.portfolioComposition.isNotEmpty() && uiState.totalPortfolioValue > 0,
                         hasPhysicalWalletData = uiState.physicalWalletBalances.isNotEmpty() && uiState.totalPhysicalWalletValue > 0,
-                        hasLogicalWalletData = uiState.logicalWalletBalances.isNotEmpty()
+                        hasLogicalWalletData = uiState.logicalWalletBalances.isNotEmpty(),
+                        hasExpenseTransactionsByTagData = uiState.expenseTransactionsByTag.isNotEmpty() && uiState.totalExpensesByTag > 0,
+                        hasIncomeTransactionsByTagData = uiState.incomeTransactionsByTag.isNotEmpty() && uiState.totalIncomeByTag > 0
                     )
                 }
                 
@@ -169,10 +207,14 @@ fun ReportScreenSimple(
                     val hasPortfolioData = uiState.portfolioComposition.isNotEmpty() && uiState.totalPortfolioValue > 0
                     val hasPhysicalWalletData = uiState.physicalWalletBalances.isNotEmpty() && uiState.totalPhysicalWalletValue > 0
                     val hasLogicalWalletData = uiState.logicalWalletBalances.isNotEmpty()
+                    val hasExpenseTransactionsByTagData = uiState.expenseTransactionsByTag.isNotEmpty() && uiState.totalExpensesByTag > 0
+                    val hasIncomeTransactionsByTagData = uiState.incomeTransactionsByTag.isNotEmpty() && uiState.totalIncomeByTag > 0
                     val hasData = when (uiState.selectedChartDataType) {
                         ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> hasPortfolioData
                         ChartDataType.PHYSICAL_WALLET_BALANCE -> hasPhysicalWalletData
                         ChartDataType.LOGICAL_WALLET_BALANCE -> hasLogicalWalletData
+                        ChartDataType.EXPENSE_TRANSACTION_BY_TAG -> hasExpenseTransactionsByTagData
+                        ChartDataType.INCOME_TRANSACTION_BY_TAG -> hasIncomeTransactionsByTagData
                     }
                     
                     if (hasData) {
@@ -181,9 +223,13 @@ fun ReportScreenSimple(
                             portfolioData = uiState.portfolioComposition,
                             walletData = uiState.physicalWalletBalances,
                             logicalWalletData = uiState.logicalWalletBalances,
+                            expenseTransactionsByTagData = uiState.expenseTransactionsByTag,
+                            incomeTransactionsByTagData = uiState.incomeTransactionsByTag,
                             totalPortfolioBalance = uiState.totalPortfolioValue,
                             totalWalletBalance = uiState.totalPhysicalWalletValue,
                             totalLogicalWalletBalance = uiState.totalLogicalWalletValue,
+                            totalExpensesByTag = uiState.totalExpensesByTag,
+                            totalIncomeByTag = uiState.totalIncomeByTag,
                             defaultCurrency = uiState.defaultCurrency
                         )
                     }
@@ -199,9 +245,13 @@ fun SimplePortfolioAssetCard(
     portfolioData: Map<PhysicalForm, Double>,
     walletData: Map<String, Double>,
     logicalWalletData: Map<String, Double>,
+    expenseTransactionsByTagData: Map<String, Double>,
+    incomeTransactionsByTagData: Map<String, Double>,
     totalPortfolioBalance: Double,
     totalWalletBalance: Double,
     totalLogicalWalletBalance: Double,
+    totalExpensesByTag: Double,
+    totalIncomeByTag: Double,
     defaultCurrency: String
 ) {
     Card(
@@ -219,12 +269,16 @@ fun SimplePortfolioAssetCard(
                 ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> totalPortfolioBalance
                 ChartDataType.PHYSICAL_WALLET_BALANCE -> totalWalletBalance
                 ChartDataType.LOGICAL_WALLET_BALANCE -> totalLogicalWalletBalance
+                ChartDataType.EXPENSE_TRANSACTION_BY_TAG -> totalExpensesByTag
+                ChartDataType.INCOME_TRANSACTION_BY_TAG -> totalIncomeByTag
             }
             
             val hasData = when (selectedDataType) {
                 ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> portfolioData.isNotEmpty() && totalPortfolioBalance > 0
                 ChartDataType.PHYSICAL_WALLET_BALANCE -> walletData.isNotEmpty() && totalWalletBalance > 0
                 ChartDataType.LOGICAL_WALLET_BALANCE -> logicalWalletData.isNotEmpty()
+                ChartDataType.EXPENSE_TRANSACTION_BY_TAG -> expenseTransactionsByTagData.isNotEmpty() && totalExpensesByTag > 0
+                ChartDataType.INCOME_TRANSACTION_BY_TAG -> incomeTransactionsByTagData.isNotEmpty() && totalIncomeByTag > 0
             }
             
             Text(
@@ -235,6 +289,10 @@ fun SimplePortfolioAssetCard(
                         "Total Physical Wallet Value: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
                     ChartDataType.LOGICAL_WALLET_BALANCE -> 
                         "Total Logical Wallet Value: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
+                    ChartDataType.EXPENSE_TRANSACTION_BY_TAG -> 
+                        "Total Expense Amount by Tag: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
+                    ChartDataType.INCOME_TRANSACTION_BY_TAG -> 
+                        "Total Income Amount by Tag: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -258,6 +316,8 @@ fun SimplePortfolioAssetCard(
                                 ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> "No portfolio data available"
                                 ChartDataType.PHYSICAL_WALLET_BALANCE -> "No physical wallet data available"
                                 ChartDataType.LOGICAL_WALLET_BALANCE -> "No logical wallet data available"
+                                ChartDataType.EXPENSE_TRANSACTION_BY_TAG -> "No expense transaction data available"
+                                ChartDataType.INCOME_TRANSACTION_BY_TAG -> "No income transaction data available"
                             },
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -267,6 +327,8 @@ fun SimplePortfolioAssetCard(
                                 ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> "Add some wallets to see your asset composition"
                                 ChartDataType.PHYSICAL_WALLET_BALANCE -> "Add some physical wallets to see their balance composition"
                                 ChartDataType.LOGICAL_WALLET_BALANCE -> "Add some logical wallets to see their balance composition"
+                                ChartDataType.EXPENSE_TRANSACTION_BY_TAG -> "Add some expense transactions with tags to see spending breakdown by tag"
+                                ChartDataType.INCOME_TRANSACTION_BY_TAG -> "Add some income transactions with tags to see income breakdown by tag"
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
@@ -652,9 +714,13 @@ fun ChartBreakdownSection(
     portfolioData: Map<PhysicalForm, Double>,
     walletData: Map<String, Double>,
     logicalWalletData: Map<String, Double>,
+    expenseTransactionsByTagData: Map<String, Double>,
+    incomeTransactionsByTagData: Map<String, Double>,
     totalPortfolioBalance: Double,
     totalWalletBalance: Double,
     totalLogicalWalletBalance: Double,
+    totalExpensesByTag: Double,
+    totalIncomeByTag: Double,
     defaultCurrency: String
 ) {
     Card(
@@ -691,6 +757,20 @@ fun ChartBreakdownSection(
                         defaultCurrency = defaultCurrency
                     )
                 }
+                ChartDataType.EXPENSE_TRANSACTION_BY_TAG -> {
+                    SimpleExpenseTransactionsByTagLegend(
+                        expenseTransactionsByTagData = expenseTransactionsByTagData,
+                        totalBalance = totalExpensesByTag,
+                        defaultCurrency = defaultCurrency
+                    )
+                }
+                ChartDataType.INCOME_TRANSACTION_BY_TAG -> {
+                    SimpleIncomeTransactionsByTagLegend(
+                        incomeTransactionsByTagData = incomeTransactionsByTagData,
+                        totalBalance = totalIncomeByTag,
+                        defaultCurrency = defaultCurrency
+                    )
+                }
             }
         }
     }
@@ -702,7 +782,9 @@ fun ChartOptionsSection(
     onDataTypeChange: (ChartDataType) -> Unit,
     hasPortfolioData: Boolean,
     hasPhysicalWalletData: Boolean,
-    hasLogicalWalletData: Boolean
+    hasLogicalWalletData: Boolean,
+    hasExpenseTransactionsByTagData: Boolean,
+    hasIncomeTransactionsByTagData: Boolean
 ) {
     var expanded by remember { mutableStateOf(false) }
     
@@ -742,6 +824,8 @@ fun ChartOptionsSection(
                                 ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> "Portfolio Asset Composition"
                                 ChartDataType.PHYSICAL_WALLET_BALANCE -> "Physical Wallet Balance Composition"
                                 ChartDataType.LOGICAL_WALLET_BALANCE -> "Logical Wallet Balance Composition"
+                                ChartDataType.EXPENSE_TRANSACTION_BY_TAG -> "Expense Transaction by Tag"
+                                ChartDataType.INCOME_TRANSACTION_BY_TAG -> "Income Transaction by Tag"
                             },
                             style = MaterialTheme.typography.bodyMedium
                         )
@@ -839,6 +923,62 @@ fun ChartOptionsSection(
                             }
                         },
                         enabled = hasLogicalWalletData
+                    )
+                    
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text(
+                                    text = "Expense Transaction by Tag",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = if (hasExpenseTransactionsByTagData) MaterialTheme.colorScheme.onSurface 
+                                           else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                                Text(
+                                    text = "Shows breakdown by expense transaction tags (spending analysis)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                        alpha = if (hasExpenseTransactionsByTagData) 1f else 0.6f
+                                    )
+                                )
+                            }
+                        },
+                        onClick = {
+                            if (hasExpenseTransactionsByTagData) {
+                                onDataTypeChange(ChartDataType.EXPENSE_TRANSACTION_BY_TAG)
+                                expanded = false
+                            }
+                        },
+                        enabled = hasExpenseTransactionsByTagData
+                    )
+                    
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text(
+                                    text = "Income Transaction by Tag",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = if (hasIncomeTransactionsByTagData) MaterialTheme.colorScheme.onSurface 
+                                           else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                                Text(
+                                    text = "Shows breakdown by income transaction tags (income analysis)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                        alpha = if (hasIncomeTransactionsByTagData) 1f else 0.6f
+                                    )
+                                )
+                            }
+                        },
+                        onClick = {
+                            if (hasIncomeTransactionsByTagData) {
+                                onDataTypeChange(ChartDataType.INCOME_TRANSACTION_BY_TAG)
+                                expanded = false
+                            }
+                        },
+                        enabled = hasIncomeTransactionsByTagData
                     )
                 }
             }
@@ -1101,4 +1241,185 @@ fun ComposeChartsLogicalWalletChart(
     }
 }
 
+@Composable
+fun SimpleExpenseTransactionsByTagLegend(
+    expenseTransactionsByTagData: Map<String, Double>,
+    totalBalance: Double,
+    defaultCurrency: String
+) {
+    Column {
+        
+        expenseTransactionsByTagData.entries.sortedByDescending { it.value }.forEachIndexed { index, entry ->
+            val percentage = (entry.value / totalBalance * 100)
+            
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .background(
+                                color = getWalletColorSimple(index),
+                                shape = RoundedCornerShape(2.dp)
+                            )
+                    )
+                    
+                    Spacer(modifier = Modifier.width(4.dp))
+                    
+                    Text(
+                        text = entry.key,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                
+                Column(
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Text(
+                        text = NumberFormatter.formatCurrency(entry.value, defaultCurrency, showSymbol = true),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "${String.format("%.1f", percentage)}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SimpleIncomeTransactionsByTagLegend(
+    incomeTransactionsByTagData: Map<String, Double>,
+    totalBalance: Double,
+    defaultCurrency: String
+) {
+    Column {
+        
+        incomeTransactionsByTagData.entries.sortedByDescending { it.value }.forEachIndexed { index, entry ->
+            val percentage = (entry.value / totalBalance * 100)
+            
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .background(
+                                color = getWalletColorSimple(index),
+                                shape = RoundedCornerShape(2.dp)
+                            )
+                    )
+                    
+                    Spacer(modifier = Modifier.width(4.dp))
+                    
+                    Text(
+                        text = entry.key,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                
+                Column(
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Text(
+                        text = NumberFormatter.formatCurrency(entry.value, defaultCurrency, showSymbol = true),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "${String.format("%.1f", percentage)}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ComposeChartsPieChartExpenseTransactionsByTag(
+    expenseTransactionsByTagData: Map<String, Double>,
+    modifier: Modifier = Modifier
+) {
+    // Convert expense transaction by tag data to ComposeCharts Pie format
+    val pieData = expenseTransactionsByTagData.entries.sortedByDescending { it.value }.mapIndexed { index, entry ->
+        Pie(
+            label = entry.key,
+            data = entry.value,
+            color = getWalletColorSimple(index)
+        )
+    }
+    
+    PieChart(
+        modifier = modifier,
+        data = pieData,
+        onPieClick = { pie ->
+            // Optional: Handle pie slice click
+            println("Clicked on expense transaction tag ${pie.label}: ${pie.data}")
+        },
+        selectedScale = 1.2f,
+        scaleAnimEnterSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+        ),
+        colorAnimEnterSpec = androidx.compose.animation.core.tween(300),
+        colorAnimExitSpec = androidx.compose.animation.core.tween(300),
+        scaleAnimExitSpec = androidx.compose.animation.core.tween(300),
+        spaceDegreeAnimExitSpec = androidx.compose.animation.core.tween(300)
+    )
+}
+
+@Composable
+fun ComposeChartsPieChartIncomeTransactionsByTag(
+    incomeTransactionsByTagData: Map<String, Double>,
+    modifier: Modifier = Modifier
+) {
+    // Convert income transaction by tag data to ComposeCharts Pie format
+    val pieData = incomeTransactionsByTagData.entries.sortedByDescending { it.value }.mapIndexed { index, entry ->
+        Pie(
+            label = entry.key,
+            data = entry.value,
+            color = getWalletColorSimple(index)
+        )
+    }
+    
+    PieChart(
+        modifier = modifier,
+        data = pieData,
+        onPieClick = { pie ->
+            // Optional: Handle pie slice click
+            println("Clicked on income transaction tag ${pie.label}: ${pie.data}")
+        },
+        selectedScale = 1.2f,
+        scaleAnimEnterSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+        ),
+        colorAnimEnterSpec = androidx.compose.animation.core.tween(300),
+        colorAnimExitSpec = androidx.compose.animation.core.tween(300),
+        scaleAnimExitSpec = androidx.compose.animation.core.tween(300),
+        spaceDegreeAnimExitSpec = androidx.compose.animation.core.tween(300)
+    )
+}
 
