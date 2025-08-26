@@ -12,7 +12,7 @@ import java.util.*
 /**
  * Unit tests for WalletDetailViewModel balance recalculation feature
  * Tests the balance calculation logic with various transaction combinations
- * Following patterns from TransactionAnalyticsViewModelTest.kt
+ * Following patterns from existing unit tests
  */
 class WalletDetailViewModelBalanceRecalculationTest {
     

@@ -62,7 +62,6 @@ fun HomeScreen(
         QuickAction("Add Income", Icons.Default.Add, Color(0xFF4CAF50)),
         QuickAction("Add Expense", Icons.Default.Delete, Color(0xFFF44336)),
         QuickAction("Transfer", Icons.Default.Refresh, Color(0xFF2196F3)),
-        QuickAction("Analytics", Icons.Default.Info, Color(0xFF9C27B0)),
         QuickAction("Reports", Icons.Default.DateRange, Color(0xFF00BCD4))
     )
 
