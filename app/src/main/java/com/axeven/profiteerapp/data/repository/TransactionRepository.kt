@@ -21,7 +21,8 @@ class TransactionRepository @Inject constructor(
     fun getUserTransactions(userId: String): Flow<List<Transaction>> = callbackFlow {
         val listener = transactionsCollection
             .whereEqualTo("userId", userId)
-            .limit(50)
+            .orderBy("transactionDate", Query.Direction.DESCENDING)
+            .limit(20)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
@@ -41,8 +42,7 @@ class TransactionRepository @Inject constructor(
                         android.util.Log.e("TransactionRepo", "Error parsing transaction document: ${document.id}", e)
                         null
                     }
-                }?.filter { it.id.isNotEmpty() }
-                ?.sortedByDescending { it.transactionDate ?: it.createdAt ?: java.util.Date(0) } ?: emptyList()
+                }?.filter { it.id.isNotEmpty() } ?: emptyList()
                 
                 android.util.Log.d("TransactionRepo", "Total transactions retrieved: ${transactions.size}")
                 trySend(transactions)
