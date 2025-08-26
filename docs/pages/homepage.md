@@ -31,7 +31,7 @@ The Homepage serves as the central dashboard and primary entry point for users, 
 - **Add Income**: Direct navigation to income transaction creation with pre-selected transaction type
 - **Add Expense**: Quick access to expense transaction creation with tag auto-completion
 - **Transfer Money**: Wallet-to-wallet transfer with same-type and same-currency validation
-- **Manage Wallets**: Direct access to wallet list and wallet management features
+- **Reports**: Direct access to comprehensive analytics and reporting dashboard
 
 **Visual Design Features**:
 - **Card-Based Interface**: Clean, tappable cards with descriptive icons

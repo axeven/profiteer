@@ -43,8 +43,11 @@ Profiteer follows the **MVVM (Model-View-ViewModel)** architecture pattern with 
 - **Missing Rate Warnings**: Alerts when conversion rates are needed for accurate calculations
 - **Home Screen Aggregation**: Converts all wallet balances to default currency
 
-### 📊 Analytics & Insights
-- **Transaction Analytics**: Income/expense tracking excluding initial balances
+### 📊 Reports & Analytics
+- **Comprehensive Reporting**: Unified reports page with portfolio composition, wallet balances, and transaction analytics
+- **Transaction Analysis by Tags**: Income and expense tracking grouped by transaction tags
+- **Portfolio Composition**: Visual breakdown of assets by physical form (Cash, Bank, Gold, Bitcoin)
+- **Wallet Balance Analytics**: Both physical and logical wallet balance analysis
 - **Monthly Financial Metrics**: Expense and net income calculations
 - **Balance Integrity Monitoring**: Ensures logical wallet totals match physical wallet totals
 - **Real-time Credit/Debit Summaries**: Live calculation updates for filtered results
@@ -67,6 +70,7 @@ app/src/main/java/com/axeven/profiteerapp/
 │   ├── home/           # Home screen with balance aggregation
 │   ├── wallet/         # Wallet management screens
 │   ├── transaction/    # Transaction creation and editing
+│   ├── report/         # Comprehensive reports and analytics
 │   ├── settings/       # Settings and configuration
 │   ├── login/          # Authentication screens
 │   └── theme/          # Material 3 theming system

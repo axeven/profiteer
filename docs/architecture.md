@@ -151,6 +151,8 @@ com.axeven.profiteerapp/
 │   ├── transaction/    # Transaction creation and editing
 │   │   ├── CreateTransactionScreen.kt # New transaction interface
 │   │   └── EditTransactionScreen.kt # Transaction modification
+│   ├── report/         # Comprehensive reports and analytics
+│   │   └── ReportScreenSimple.kt # Unified analytics dashboard
 │   ├── settings/       # Configuration and preferences
 │   │   └── SettingsScreen.kt # Currency rates and wallet management
 │   ├── login/          # Authentication screens
@@ -168,6 +170,7 @@ com.axeven.profiteerapp/
 │   ├── WalletListViewModel.kt # Wallet list state and operations
 │   ├── WalletDetailViewModel.kt # Individual wallet analysis
 │   ├── TransactionViewModel.kt # Transaction CRUD operations
+│   ├── ReportViewModel.kt # Reports and analytics data management
 │   └── SettingsViewModel.kt # Configuration management
 ├── MainActivity.kt     # Single activity hosting all Compose screens
 └── ProfiteerApplication.kt # Hilt application class
@@ -223,6 +226,11 @@ Main Navigation (Bottom Navigation)
 │   ├── Edit Transaction Screen (Tag Management)
 │   ├── Transaction List Screen (Advanced Filtering)
 │   └── Transaction History with Pagination
+├── Reports & Analytics
+│   ├── Portfolio Composition Analysis (by Physical Form)
+│   ├── Physical/Logical Wallet Balance Analytics
+│   ├── Transaction Analytics by Tags (Income/Expense)
+│   └── Visual Charts and Data Insights
 └── Settings & Configuration
     ├── Currency Rate Management (Default/Monthly)
     ├── Wallet Type Configuration
@@ -242,7 +250,7 @@ Authentication Flow
 - **Balance Discrepancy Detection**: Alerts when logical wallet totals don't match physical totals
 - **Monthly Analytics**: Net income, total expenses, and spending trends
 - **Recent Transaction Feed**: Last 10 transactions with tag display
-- **Quick Actions**: Direct navigation to create transaction and manage wallets
+- **Quick Actions**: Direct navigation to create transaction, manage wallets, and view reports
 - **Missing Rate Warnings**: Alerts when currency conversion rates are needed
 
 **Wallet List Screen (WalletListScreen.kt)**
@@ -266,6 +274,14 @@ Authentication Flow
 - **Transfer Validation**: Same currency and wallet type enforcement
 - **Date Selection**: Custom transaction date with DatePicker integration
 - **Real-time Validation**: Immediate feedback on wallet selection and amount validation
+
+**Reports Screen (ReportScreenSimple.kt)**
+- **Portfolio Composition Analysis**: Visual breakdown of assets by physical form (Cash, Bank, Gold, Bitcoin)
+- **Wallet Balance Analytics**: Separate analysis for physical and logical wallet balances
+- **Transaction Analytics by Tags**: Income and expense tracking grouped by transaction tags
+- **Interactive Chart Selection**: Toggle between different chart types and data views
+- **Visual Data Insights**: Pie charts and legends with comprehensive data breakdown
+- **Real-time Data Updates**: Live synchronization with transaction and wallet changes
 
 **Settings Screen (SettingsScreen.kt)**
 - **Currency Rate Management**: Default and monthly rate configuration
