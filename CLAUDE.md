@@ -130,6 +130,13 @@ com.axeven.profiteerapp/
 - Every module should have a docstring explaining its purpose
 - Public functions must have complete docstrings
 
+## Plan Documentation Maintenance
+- **CRITICAL**: When implementing features/changes based on a plan document (e.g., files in `docs/plans/`), ALWAYS update the plan document upon completion
+- Mark completed tasks with ✅ and update progress metrics
+- Document actual implementation approaches vs. planned approaches
+- Update status sections to reflect current progress
+- This ensures documentation stays accurate and serves as a reliable project history
+
 # Recent Changes to Be Aware Of
 
 ## Transaction System Updates
