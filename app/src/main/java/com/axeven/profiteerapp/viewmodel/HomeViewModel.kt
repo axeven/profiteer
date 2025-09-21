@@ -10,6 +10,7 @@ import com.axeven.profiteerapp.data.repository.CurrencyRateRepository
 import com.axeven.profiteerapp.data.repository.TransactionRepository
 import com.axeven.profiteerapp.data.repository.UserPreferencesRepository
 import com.axeven.profiteerapp.data.repository.WalletRepository
+import com.axeven.profiteerapp.utils.logging.Logger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -43,7 +44,8 @@ class HomeViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val walletRepository: WalletRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
-    private val currencyRateRepository: CurrencyRateRepository
+    private val currencyRateRepository: CurrencyRateRepository,
+    private val logger: Logger
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -61,7 +63,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             
-            android.util.Log.d("HomeViewModel", "Starting loadUserData for user: $userId")
+            logger.d("HomeViewModel", "Starting loadUserData for user: $userId")
 
             try {
                 // Get current month start and end dates for filtering calculations
@@ -90,7 +92,7 @@ class HomeViewModel @Inject constructor(
                 ) { displayTransactions, calculationTransactions, wallets, preferences ->
                     Quadruple(displayTransactions, calculationTransactions, wallets, preferences)
                 }.collect { (displayTransactions, calculationTransactions, wallets, preferences) ->
-                    android.util.Log.d("HomeViewModel", "Data update received - display: ${displayTransactions.size}, calculation: ${calculationTransactions.size}, wallets: ${wallets.size}")
+                    logger.d("HomeViewModel", "Data update received - display: ${displayTransactions.size}, calculation: ${calculationTransactions.size}, wallets: ${wallets.size}")
                     
                     val defaultCurrency = preferences?.defaultCurrency ?: "USD"
                     val displayCurrency = preferences?.displayCurrency ?: defaultCurrency
@@ -131,7 +133,7 @@ class HomeViewModel @Inject constructor(
                         )
                     }
                     
-                    android.util.Log.d("HomeViewModel", "UI state updated - balance: $totalBalance, income: $totalIncome, expenses: $totalExpenses")
+                    logger.d("HomeViewModel", "UI state updated - balance: $totalBalance, income: $totalIncome, expenses: $totalExpenses")
                 }
             } catch (e: Exception) {
                 _uiState.update {
@@ -222,11 +224,11 @@ class HomeViewModel @Inject constructor(
     }
 
     fun refreshData() {
-        android.util.Log.d("HomeViewModel", "refreshData called for user: $userId")
+        logger.d("HomeViewModel", "refreshData called for user: $userId")
         if (userId.isNotEmpty()) {
             loadUserData()
         } else {
-            android.util.Log.w("HomeViewModel", "refreshData called but userId is empty")
+            logger.w("HomeViewModel", "refreshData called but userId is empty")
         }
     }
 

@@ -10,6 +10,7 @@ import com.axeven.profiteerapp.data.repository.AuthRepository
 import com.axeven.profiteerapp.data.repository.TransactionRepository
 import com.axeven.profiteerapp.data.repository.UserPreferencesRepository
 import com.axeven.profiteerapp.data.repository.WalletRepository
+import com.axeven.profiteerapp.utils.logging.Logger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -46,7 +47,8 @@ class ReportViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val walletRepository: WalletRepository,
     private val transactionRepository: TransactionRepository,
-    private val userPreferencesRepository: UserPreferencesRepository
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val logger: Logger
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ReportUiState())
@@ -68,7 +70,7 @@ class ReportViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             
-            android.util.Log.d("ReportViewModel", "Loading portfolio data for user: $userId")
+            logger.d("ReportViewModel", "Loading portfolio data for user: $userId")
 
             try {
                 combine(
@@ -78,7 +80,7 @@ class ReportViewModel @Inject constructor(
                 ) { wallets, transactions, preferences ->
                     Triple(wallets, transactions, preferences)
                 }.collect { (wallets, transactions, preferences) ->
-                    android.util.Log.d("ReportViewModel", "Data received - wallets: ${wallets.size}, transactions: ${transactions.size}")
+                    logger.d("ReportViewModel", "Data received - wallets: ${wallets.size}, transactions: ${transactions.size}")
                     
                     val defaultCurrency = preferences?.defaultCurrency ?: "USD"
                     
@@ -100,11 +102,11 @@ class ReportViewModel @Inject constructor(
                     val incomeTransactionsByTag = calculateIncomeTransactionsByTag(transactions)
                     val totalIncomeByTag = incomeTransactionsByTag.values.sum()
                     
-                    android.util.Log.d("ReportViewModel", "Portfolio composition: $portfolioComposition, total: $totalPortfolioValue")
-                    android.util.Log.d("ReportViewModel", "Physical wallet balances: $physicalWalletBalances, total: $totalPhysicalWalletValue")
-                    android.util.Log.d("ReportViewModel", "Logical wallet balances: $logicalWalletBalances, total: $totalLogicalWalletValue")
-                    android.util.Log.d("ReportViewModel", "Expense transactions by tag: $expenseTransactionsByTag, total: $totalExpensesByTag")
-                    android.util.Log.d("ReportViewModel", "Income transactions by tag: $incomeTransactionsByTag, total: $totalIncomeByTag")
+                    logger.d("ReportViewModel", "Portfolio composition: $portfolioComposition, total: $totalPortfolioValue")
+                    logger.d("ReportViewModel", "Physical wallet balances: $physicalWalletBalances, total: $totalPhysicalWalletValue")
+                    logger.d("ReportViewModel", "Logical wallet balances: $logicalWalletBalances, total: $totalLogicalWalletValue")
+                    logger.d("ReportViewModel", "Expense transactions by tag: $expenseTransactionsByTag, total: $totalExpensesByTag")
+                    logger.d("ReportViewModel", "Income transactions by tag: $incomeTransactionsByTag, total: $totalIncomeByTag")
                     
                     _uiState.update {
                         it.copy(
@@ -126,7 +128,7 @@ class ReportViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.e("ReportViewModel", "Error loading portfolio data", e)
+                logger.e("ReportViewModel", "Error loading portfolio data", e)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -147,7 +149,7 @@ class ReportViewModel @Inject constructor(
                 val currentAmount = composition[wallet.physicalForm] ?: 0.0
                 composition[wallet.physicalForm] = currentAmount + wallet.balance
                 
-                android.util.Log.d("ReportViewModel", 
+                logger.d("ReportViewModel", 
                     "Adding physical wallet '${wallet.name}': ${wallet.physicalForm} = ${wallet.balance}")
             }
         }
@@ -185,12 +187,12 @@ class ReportViewModel @Inject constructor(
                 val currentAmount = tagAmounts[tag] ?: 0.0
                 tagAmounts[tag] = currentAmount + kotlin.math.abs(transaction.amount)
                 
-                android.util.Log.d("ReportViewModel", 
+                logger.d("ReportViewModel", 
                     "Adding expense transaction '${transaction.title}': tag=$tag, amount=${kotlin.math.abs(transaction.amount)}")
             }
         }
         
-        android.util.Log.d("ReportViewModel", "Final expense tag amounts: $tagAmounts")
+        logger.d("ReportViewModel", "Final expense tag amounts: $tagAmounts")
         return tagAmounts.toMap()
     }
     
@@ -210,17 +212,17 @@ class ReportViewModel @Inject constructor(
                 val currentAmount = tagAmounts[tag] ?: 0.0
                 tagAmounts[tag] = currentAmount + kotlin.math.abs(transaction.amount)
                 
-                android.util.Log.d("ReportViewModel", 
+                logger.d("ReportViewModel", 
                     "Adding income transaction '${transaction.title}': tag=$tag, amount=${kotlin.math.abs(transaction.amount)}")
             }
         }
         
-        android.util.Log.d("ReportViewModel", "Final income tag amounts: $tagAmounts")
+        logger.d("ReportViewModel", "Final income tag amounts: $tagAmounts")
         return tagAmounts.toMap()
     }
     
     fun refreshData() {
-        android.util.Log.d("ReportViewModel", "Refreshing portfolio data")
+        logger.d("ReportViewModel", "Refreshing portfolio data")
         loadPortfolioData()
     }
     

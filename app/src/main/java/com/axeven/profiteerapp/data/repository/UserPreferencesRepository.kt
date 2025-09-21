@@ -1,17 +1,27 @@
 package com.axeven.profiteerapp.data.repository
 
 import com.axeven.profiteerapp.data.model.UserPreferences
+import com.axeven.profiteerapp.service.AuthTokenManager
+import com.axeven.profiteerapp.utils.FirestoreErrorHandler
+import com.axeven.profiteerapp.utils.logging.Logger
+import com.axeven.profiteerapp.viewmodel.SharedErrorViewModel
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class UserPreferencesRepository @Inject constructor(
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val sharedErrorViewModel: SharedErrorViewModel,
+    private val authTokenManager: AuthTokenManager,
+    private val logger: Logger
 ) {
     private val preferencesCollection = firestore.collection("user_preferences")
 
@@ -21,6 +31,20 @@ class UserPreferencesRepository @Inject constructor(
             .limit(1)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
+                    logger.e("UserPreferencesRepo", "User preferences listener error", error)
+                    val errorInfo = FirestoreErrorHandler.handleError(error, logger)
+
+                    // Handle authentication errors gracefully
+                    if (errorInfo.requiresReauth) {
+                        handleAuthenticationError("getUserPreferences", error)
+                    }
+
+                    sharedErrorViewModel.showError(
+                        message = errorInfo.userMessage,
+                        shouldRetry = errorInfo.shouldRetry,
+                        requiresReauth = errorInfo.requiresReauth,
+                        isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    )
                     close(error)
                     return@addSnapshotListener
                 }
@@ -182,6 +206,25 @@ class UserPreferencesRepository @Inject constructor(
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    private fun handleAuthenticationError(operation: String, error: Throwable) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                logger.w("UserPreferencesRepo", "Authentication error in $operation - attempting graceful recovery...")
+
+                // First try to refresh the token
+                val refreshSuccess = authTokenManager.attemptTokenRefresh()
+
+                if (refreshSuccess) {
+                    logger.i("UserPreferencesRepo", "Token refresh successful - operation may retry automatically")
+                } else {
+                    logger.w("UserPreferencesRepo", "Token refresh failed - triggering re-authentication flow")
+                }
+            } catch (e: Exception) {
+                logger.e("UserPreferencesRepo", "Failed to handle authentication error gracefully", e)
+            }
         }
     }
 }

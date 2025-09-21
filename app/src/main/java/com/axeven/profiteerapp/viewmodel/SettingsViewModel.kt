@@ -8,6 +8,7 @@ import com.axeven.profiteerapp.data.repository.AuthRepository
 import com.axeven.profiteerapp.data.repository.CurrencyRateRepository
 import com.axeven.profiteerapp.data.repository.UserPreferencesRepository
 import com.axeven.profiteerapp.data.repository.WalletRepository
+import com.axeven.profiteerapp.utils.logging.Logger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -26,7 +27,8 @@ class SettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val walletRepository: WalletRepository,
     private val currencyRateRepository: CurrencyRateRepository,
-    private val userPreferencesRepository: UserPreferencesRepository
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val logger: Logger
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -52,9 +54,9 @@ class SettingsViewModel @Inject constructor(
                 ) { wallets, rates, preferences ->
                     Triple(wallets, rates, preferences)
                 }.collect { (wallets, rates, preferences) ->
-                    android.util.Log.d("SettingsViewModel", "Data update received - wallets: ${wallets.size}, rates: ${rates.size}")
+                    logger.d("SettingsViewModel", "Data update received - wallets: ${wallets.size}, rates: ${rates.size}")
                     wallets.forEach { wallet ->
-                        android.util.Log.d("SettingsViewModel", "Wallet in UI: ${wallet.name} (${wallet.id})")
+                        logger.d("SettingsViewModel", "Wallet in UI: ${wallet.name} (${wallet.id})")
                     }
                     
                     _uiState.update {
@@ -80,11 +82,11 @@ class SettingsViewModel @Inject constructor(
 
     fun createWallet(name: String, currency: String, walletType: String, initialBalance: Double) {
         if (userId.isEmpty()) {
-            android.util.Log.e("SettingsViewModel", "Cannot create wallet - userId is empty")
+            logger.e("SettingsViewModel", "Cannot create wallet - userId is empty")
             return
         }
 
-        android.util.Log.d("SettingsViewModel", "Creating wallet: $name, type: $walletType, currency: $currency, balance: $initialBalance")
+        logger.d("SettingsViewModel", "Creating wallet: $name, type: $walletType, currency: $currency, balance: $initialBalance")
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
@@ -99,13 +101,13 @@ class SettingsViewModel @Inject constructor(
 
             walletRepository.createWallet(wallet)
                 .onSuccess { walletId ->
-                    android.util.Log.d("SettingsViewModel", "Wallet created successfully with ID: $walletId")
+                    logger.d("SettingsViewModel", "Wallet created successfully with ID: $walletId")
                     _uiState.update {
                         it.copy(isLoading = false, error = null)
                     }
                 }
                 .onFailure { error ->
-                    android.util.Log.e("SettingsViewModel", "Failed to create wallet: ${error.message}", error)
+                    logger.e("SettingsViewModel", "Failed to create wallet: ${error.message}", error)
                     _uiState.update {
                         it.copy(isLoading = false, error = error.message)
                     }

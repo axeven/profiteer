@@ -2,6 +2,10 @@ package com.axeven.profiteerapp.data.repository
 
 import com.axeven.profiteerapp.data.model.Wallet
 import com.axeven.profiteerapp.data.model.PhysicalForm
+import com.axeven.profiteerapp.service.AuthTokenManager
+import com.axeven.profiteerapp.utils.FirestoreErrorHandler
+import com.axeven.profiteerapp.utils.logging.Logger
+import com.axeven.profiteerapp.viewmodel.SharedErrorViewModel
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
@@ -17,58 +21,81 @@ import javax.inject.Singleton
 
 @Singleton
 class WalletRepository @Inject constructor(
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val sharedErrorViewModel: SharedErrorViewModel,
+    private val authTokenManager: AuthTokenManager,
+    private val logger: Logger
 ) {
     private val walletsCollection = firestore.collection("wallets")
 
     fun getUserWallets(userId: String): Flow<List<Wallet>> = callbackFlow {
-        android.util.Log.d("WalletRepo", "Setting up wallet listener for user: $userId")
+        logger.d("WalletRepo", "Setting up wallet listener for user: $userId")
         
         val listener = walletsCollection
             .whereEqualTo("userId", userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    android.util.Log.e("WalletRepo", "Wallet listener error for user $userId", error)
+                    logger.e("WalletRepo", "Wallet listener error for user $userId", error)
+                    val errorInfo = FirestoreErrorHandler.handleError(error, logger)
+
+                    // Handle authentication errors gracefully
+                    if (errorInfo.requiresReauth) {
+                        handleAuthenticationError("getUserWallets", error)
+                    }
+
+                    sharedErrorViewModel.showError(
+                        message = errorInfo.userMessage,
+                        shouldRetry = errorInfo.shouldRetry,
+                        requiresReauth = errorInfo.requiresReauth,
+                        isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    )
                     close(error)
                     return@addSnapshotListener
                 }
                 
-                android.util.Log.d("WalletRepo", "Wallet snapshot received - documents: ${snapshot?.documents?.size ?: 0}")
+                logger.d("WalletRepo", "Wallet snapshot received - documents: ${snapshot?.documents?.size ?: 0}")
                 
                 val wallets = snapshot?.documents?.mapNotNull { document ->
                     try {
-                        android.util.Log.d("WalletRepo", "Processing wallet document: ${document.id}, exists: ${document.exists()}")
+                        logger.d("WalletRepo", "Processing wallet document: ${document.id}, exists: ${document.exists()}")
                         val data = document.data
                         
                         val wallet = document.toObject(Wallet::class.java)?.copy(id = document.id)
                         
-                        android.util.Log.d("WalletRepo", "Parsed wallet: ${wallet?.name}, userId: ${wallet?.userId}")
+                        logger.d("WalletRepo", "Parsed wallet: ${wallet?.name}, userId: ${wallet?.userId}")
                         wallet
                     } catch (e: Exception) {
-                        android.util.Log.e("WalletRepo", "Error parsing wallet document: ${document.id}", e)
+                        logger.e("WalletRepo", "Error parsing wallet document: ${document.id}", e)
                         null
                     }
                 }?.filter { it.id.isNotEmpty() }
                 ?.sortedByDescending { it.createdAt ?: java.util.Date(0) } ?: emptyList()
                 
-                android.util.Log.d("WalletRepo", "Final wallet list - count: ${wallets.size}, names: ${wallets.map { it.name }}")
+                logger.d("WalletRepo", "Final wallet list - count: ${wallets.size}, names: ${wallets.map { it.name }}")
                 trySend(wallets)
             }
         
         awaitClose { 
-            android.util.Log.d("WalletRepo", "Removing wallet listener for user: $userId")
+            logger.d("WalletRepo", "Removing wallet listener for user: $userId")
             listener.remove() 
         }
     }
 
     suspend fun createWallet(wallet: Wallet): Result<String> {
         return try {
-            android.util.Log.d("WalletRepo", "Creating wallet: ${wallet.name} for user: ${wallet.userId}")
+            logger.d("WalletRepo", "Creating wallet: ${wallet.name} for user: ${wallet.userId}")
             val documentRef = walletsCollection.add(wallet).await()
-            android.util.Log.d("WalletRepo", "Wallet created successfully with ID: ${documentRef.id}")
+            logger.d("WalletRepo", "Wallet created successfully with ID: ${documentRef.id}")
             Result.success(documentRef.id)
         } catch (e: Exception) {
-            android.util.Log.e("WalletRepo", "Error creating wallet: ${wallet.name}", e)
+            logger.e("WalletRepo", "Error creating wallet: ${wallet.name}", e)
+
+            // Handle authentication errors gracefully
+            val errorInfo = FirestoreErrorHandler.handleError(e, logger)
+            if (errorInfo.requiresReauth) {
+                handleAuthenticationError("createWallet", e)
+            }
+
             Result.failure(e)
         }
     }
@@ -78,6 +105,14 @@ class WalletRepository @Inject constructor(
             walletsCollection.document(wallet.id).set(wallet).await()
             Result.success(Unit)
         } catch (e: Exception) {
+            logger.e("WalletRepo", "Error updating wallet: ${wallet.id}", e)
+
+            // Handle authentication errors gracefully
+            val errorInfo = FirestoreErrorHandler.handleError(e, logger)
+            if (errorInfo.requiresReauth) {
+                handleAuthenticationError("updateWallet", e)
+            }
+
             Result.failure(e)
         }
     }
@@ -95,10 +130,10 @@ class WalletRepository @Inject constructor(
         return try {
             val document = walletsCollection.document(walletId).get().await()
             val wallet = document.toObject(Wallet::class.java)?.copy(id = document.id)
-            android.util.Log.d("WalletRepo", "Retrieved wallet by ID: $walletId, exists: ${document.exists()}")
+            logger.d("WalletRepo", "Retrieved wallet by ID: $walletId, exists: ${document.exists()}")
             Result.success(wallet)
         } catch (e: Exception) {
-            android.util.Log.e("WalletRepo", "Error getting wallet by ID: $walletId", e)
+            logger.e("WalletRepo", "Error getting wallet by ID: $walletId", e)
             Result.failure(e)
         }
     }
@@ -113,6 +148,13 @@ class WalletRepository @Inject constructor(
             .whereEqualTo("physicalForm", physicalForm.name)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
+                    val errorInfo = FirestoreErrorHandler.handleError(error, logger)
+                    sharedErrorViewModel.showError(
+                        message = errorInfo.userMessage,
+                        shouldRetry = errorInfo.shouldRetry,
+                        requiresReauth = errorInfo.requiresReauth,
+                        isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    )
                     close(error)
                     return@addSnapshotListener
                 }
@@ -121,7 +163,7 @@ class WalletRepository @Inject constructor(
                     try {
                         document.toObject(Wallet::class.java)?.copy(id = document.id)
                     } catch (e: Exception) {
-                        android.util.Log.e("WalletRepo", "Error parsing wallet document: ${document.id}", e)
+                        logger.e("WalletRepo", "Error parsing wallet document: ${document.id}", e)
                         null
                     }
                 }?.filter { it.id.isNotEmpty() }
@@ -147,7 +189,7 @@ class WalletRepository @Inject constructor(
                 try {
                     document.toObject(Wallet::class.java)?.copy(id = document.id)
                 } catch (e: Exception) {
-                    android.util.Log.e("WalletRepo", "Error parsing wallet document: ${document.id}", e)
+                    logger.e("WalletRepo", "Error parsing wallet document: ${document.id}", e)
                     null
                 }
             }.filter { it.id.isNotEmpty() }
@@ -155,8 +197,27 @@ class WalletRepository @Inject constructor(
             val groupedWallets = wallets.groupBy { it.physicalForm }
             Result.success(groupedWallets)
         } catch (e: Exception) {
-            android.util.Log.e("WalletRepo", "Error getting grouped wallets", e)
+            logger.e("WalletRepo", "Error getting grouped wallets", e)
             Result.failure(e)
+        }
+    }
+
+    private fun handleAuthenticationError(operation: String, error: Throwable) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                logger.w("WalletRepo", "Authentication error in $operation - attempting graceful recovery...")
+
+                // First try to refresh the token
+                val refreshSuccess = authTokenManager.attemptTokenRefresh()
+
+                if (refreshSuccess) {
+                    logger.i("WalletRepo", "Token refresh successful - operation may retry automatically")
+                } else {
+                    logger.w("WalletRepo", "Token refresh failed - triggering re-authentication flow")
+                }
+            } catch (e: Exception) {
+                logger.e("WalletRepo", "Failed to handle authentication error gracefully", e)
+            }
         }
     }
 }

@@ -1,6 +1,9 @@
 package com.axeven.profiteerapp.data.repository
 
 import android.content.Context
+import com.axeven.profiteerapp.service.AuthTokenManager
+import com.axeven.profiteerapp.service.AuthTokenState
+import com.axeven.profiteerapp.utils.logging.Logger
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -14,7 +17,9 @@ import javax.inject.Singleton
 @Singleton
 class AuthRepository @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val firebaseAuth: FirebaseAuth
+    private val firebaseAuth: FirebaseAuth,
+    private val tokenManager: AuthTokenManager,
+    private val logger: Logger
 ) {
     
     val googleSignInClient: GoogleSignInClient by lazy {
@@ -32,10 +37,10 @@ class AuthRepository @Inject constructor(
             Result.success(Unit)
         } catch (e: SecurityException) {
             // Log but don't fail for Google Play Services internal errors
-            android.util.Log.w("AuthRepository", "Google Play Services SecurityException (non-critical): ${e.message}")
+            logger.w("AuthRepository", "Google Play Services SecurityException (non-critical): ${e.message}")
             Result.success(Unit) // Continue anyway as auth likely succeeded
         } catch (e: Exception) {
-            android.util.Log.e("AuthRepository", "Sign-in failed: ${e.message}", e)
+            logger.e("AuthRepository", "Sign-in failed: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -53,7 +58,23 @@ class AuthRepository @Inject constructor(
     }
     
     suspend fun signOut() {
-        firebaseAuth.signOut()
+        tokenManager.signOut()
         googleSignInClient.signOut().await()
     }
+
+    suspend fun validateToken(forceRefresh: Boolean = false): AuthTokenState {
+        return tokenManager.validateToken(forceRefresh)
+    }
+
+    suspend fun attemptTokenRefresh(): Boolean {
+        return tokenManager.attemptTokenRefresh()
+    }
+
+    fun getTokenState() = tokenManager.tokenState
+
+    fun getReauthRequirement() = tokenManager.requiresReauth
+
+    fun clearReauthFlag() = tokenManager.clearReauthFlag()
+
+    fun getUserDebugInfo(): String = tokenManager.getUserDebugInfo()
 }

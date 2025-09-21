@@ -24,10 +24,12 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.collectAsState
 import com.axeven.profiteerapp.viewmodel.HomeViewModel
+import com.axeven.profiteerapp.viewmodel.SharedErrorViewModel
 import com.axeven.profiteerapp.data.model.Transaction
 import com.axeven.profiteerapp.data.model.TransactionType
 import com.axeven.profiteerapp.data.model.Wallet
 import com.axeven.profiteerapp.utils.NumberFormatter
+import com.axeven.profiteerapp.ui.components.ErrorMessage
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -46,10 +48,14 @@ fun HomeScreen(
     onNavigateToCreateTransaction: (TransactionType) -> Unit = {},
     onEditTransaction: (Transaction) -> Unit = {},
     onNavigateToReports: () -> Unit = {},
+    onNavigateToTransactionList: () -> Unit = {},
+    onNavigateToAuth: () -> Unit = {},
     refreshTrigger: Int = 0, // Add refresh trigger parameter
-    viewModel: HomeViewModel = hiltViewModel()
+    viewModel: HomeViewModel = hiltViewModel(),
+    sharedErrorViewModel: SharedErrorViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val errorState by sharedErrorViewModel.errorState.collectAsState()
 
     // Refresh data when refreshTrigger changes
     LaunchedEffect(refreshTrigger) {
@@ -62,7 +68,8 @@ fun HomeScreen(
         QuickAction("Add Income", Icons.Default.Add, Color(0xFF4CAF50)),
         QuickAction("Add Expense", Icons.Default.Delete, Color(0xFFF44336)),
         QuickAction("Transfer", Icons.Default.Refresh, Color(0xFF2196F3)),
-        QuickAction("Reports", Icons.Default.DateRange, Color(0xFF00BCD4))
+        QuickAction("Reports", Icons.Default.DateRange, Color(0xFF00BCD4)),
+        QuickAction("Transaction List", Icons.Default.List, Color(0xFF9C27B0))
     )
 
     // Show error if any
@@ -100,6 +107,22 @@ fun HomeScreen(
                 .padding(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Show error message if there's an error
+            errorState.message?.let { errorMessage ->
+                item {
+                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        ErrorMessage(
+                            message = errorMessage,
+                            shouldRetry = errorState.shouldRetry,
+                            requiresReauth = errorState.requiresReauth,
+                            isOffline = errorState.isOffline,
+                            onRetry = { viewModel.refreshData() },
+                            onSignIn = { onNavigateToAuth() },
+                            onDismiss = { sharedErrorViewModel.clearError() }
+                        )
+                    }
+                }
+            }
             item {
                 Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                     BalanceCard(
@@ -136,6 +159,7 @@ fun HomeScreen(
                                     "Add Expense" -> onNavigateToCreateTransaction(TransactionType.EXPENSE)
                                     "Transfer" -> onNavigateToCreateTransaction(TransactionType.TRANSFER)
                                     "Reports" -> onNavigateToReports()
+                                    "Transaction List" -> onNavigateToTransactionList()
                                     // Other actions can be implemented later
                                 }
                             }

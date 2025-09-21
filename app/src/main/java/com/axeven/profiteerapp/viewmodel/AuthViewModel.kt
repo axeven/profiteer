@@ -16,7 +16,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    val authRepository: AuthRepository
 ) : ViewModel() {
     
     private val _authState = MutableStateFlow<AuthState>(AuthState.Initial)
@@ -97,6 +97,20 @@ class AuthViewModel @Inject constructor(
             } catch (e: Exception) {
                 _authState.value = AuthState.Error("Sign out failed")
             }
+        }
+    }
+
+    fun getCurrentUserEmail(): String? {
+        return authRepository.getCurrentUserEmail()
+    }
+
+    fun clearReauthFlag() {
+        authRepository.clearReauthFlag()
+    }
+
+    fun validateToken(forceRefresh: Boolean = false) {
+        viewModelScope.launch {
+            authRepository.validateToken(forceRefresh)
         }
     }
 }

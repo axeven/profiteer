@@ -9,12 +9,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.axeven.profiteerapp.ui.auth.ReauthScreen
 import com.axeven.profiteerapp.ui.home.HomeScreen
 import com.axeven.profiteerapp.ui.login.AuthState
 import com.axeven.profiteerapp.ui.login.LoginScreen
 import com.axeven.profiteerapp.ui.settings.SettingsScreen
 import com.axeven.profiteerapp.ui.transaction.CreateTransactionScreen
 import com.axeven.profiteerapp.ui.transaction.EditTransactionScreen
+import com.axeven.profiteerapp.ui.transaction.TransactionListScreen
 import com.axeven.profiteerapp.ui.wallet.WalletListScreen
 import com.axeven.profiteerapp.ui.wallet.WalletDetailScreen
 import com.axeven.profiteerapp.ui.report.ReportScreenSimple
@@ -38,18 +40,28 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class AppScreen {
-    HOME, SETTINGS, CREATE_TRANSACTION, EDIT_TRANSACTION, WALLET_LIST, WALLET_DETAIL, REPORTS
+    HOME, SETTINGS, CREATE_TRANSACTION, EDIT_TRANSACTION, WALLET_LIST, WALLET_DETAIL, REPORTS, TRANSACTION_LIST, REAUTH
 }
 
 @Composable
 fun ProfiteerApp(authViewModel: AuthViewModel = viewModel()) {
     val authState by authViewModel.authState.collectAsState()
     val googleSignInIntent by authViewModel.googleSignInIntent.collectAsState()
+    val requiresReauth by authViewModel.authRepository.getReauthRequirement().collectAsState()
+
     var currentScreen by remember { mutableStateOf(AppScreen.HOME) }
     var selectedTransaction by remember { mutableStateOf<Transaction?>(null) }
     var selectedWalletId by remember { mutableStateOf<String?>(null) }
     var initialTransactionType by remember { mutableStateOf<TransactionType?>(null) }
     var homeRefreshTrigger by remember { mutableStateOf(0) }
+    var previousScreen by remember { mutableStateOf<AppScreen?>(null) }
+
+    // Monitor re-authentication requirement
+    LaunchedEffect(requiresReauth) {
+        if (requiresReauth && authState is AuthState.Authenticated) {
+            currentScreen = AppScreen.REAUTH
+        }
+    }
     
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -82,6 +94,8 @@ fun ProfiteerApp(authViewModel: AuthViewModel = viewModel()) {
                             currentScreen = AppScreen.EDIT_TRANSACTION
                         },
                         onNavigateToReports = { currentScreen = AppScreen.REPORTS },
+                        onNavigateToTransactionList = { currentScreen = AppScreen.TRANSACTION_LIST },
+                        onNavigateToAuth = { authViewModel.signOut() },
                         refreshTrigger = homeRefreshTrigger
                     )
                 }
@@ -108,8 +122,13 @@ fun ProfiteerApp(authViewModel: AuthViewModel = viewModel()) {
                             transaction = transaction,
                             onNavigateBack = { 
                                 homeRefreshTrigger++ // Trigger refresh
-                                // Return to wallet detail if we came from there, otherwise home
-                                currentScreen = if (selectedWalletId != null) AppScreen.WALLET_DETAIL else AppScreen.HOME
+                                // Return to previous screen or appropriate default
+                                currentScreen = when {
+                                    previousScreen == AppScreen.TRANSACTION_LIST -> AppScreen.TRANSACTION_LIST
+                                    selectedWalletId != null -> AppScreen.WALLET_DETAIL
+                                    else -> AppScreen.HOME
+                                }
+                                previousScreen = null // Reset
                             }
                         )
                     }
@@ -146,6 +165,31 @@ fun ProfiteerApp(authViewModel: AuthViewModel = viewModel()) {
                 AppScreen.REPORTS -> {
                     ReportScreenSimple(
                         onNavigateBack = { currentScreen = AppScreen.HOME }
+                    )
+                }
+                AppScreen.TRANSACTION_LIST -> {
+                    TransactionListScreen(
+                        onNavigateBack = { currentScreen = AppScreen.HOME },
+                        onEditTransaction = { transaction ->
+                            selectedTransaction = transaction
+                            previousScreen = AppScreen.TRANSACTION_LIST
+                            currentScreen = AppScreen.EDIT_TRANSACTION
+                        }
+                    )
+                }
+                AppScreen.REAUTH -> {
+                    ReauthScreen(
+                        reason = "Your session has expired for security reasons",
+                        userEmail = authViewModel.getCurrentUserEmail(),
+                        onReauthSuccess = {
+                            authViewModel.clearReauthFlag()
+                            currentScreen = AppScreen.HOME
+                            homeRefreshTrigger++
+                        },
+                        onSignOut = {
+                            // Will trigger login screen via authState change
+                        },
+                        authViewModel = authViewModel
                     )
                 }
             }

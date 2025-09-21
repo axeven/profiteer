@@ -10,6 +10,7 @@ import com.axeven.profiteerapp.data.repository.CurrencyRateRepository
 import com.axeven.profiteerapp.data.repository.TransactionRepository
 import com.axeven.profiteerapp.data.repository.UserPreferencesRepository
 import com.axeven.profiteerapp.data.repository.WalletRepository
+import com.axeven.profiteerapp.utils.logging.Logger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -49,7 +50,8 @@ class WalletDetailViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val walletRepository: WalletRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
-    private val currencyRateRepository: CurrencyRateRepository
+    private val currencyRateRepository: CurrencyRateRepository,
+    private val logger: Logger
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WalletDetailUiState())
@@ -70,7 +72,7 @@ class WalletDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             
-            android.util.Log.d("WalletDetailViewModel", "Loading wallet details for: $walletId")
+            logger.d("WalletDetailViewModel", "Loading wallet details for: $walletId")
 
             try {
                 combine(
@@ -80,7 +82,7 @@ class WalletDetailViewModel @Inject constructor(
                 ) { transactions, wallets, preferences ->
                     Triple(transactions, wallets, preferences)
                 }.collect { (transactions, wallets, preferences) ->
-                    android.util.Log.d("WalletDetailViewModel", "Data update received - transactions: ${transactions.size}, wallets: ${wallets.size}")
+                    logger.d("WalletDetailViewModel", "Data update received - transactions: ${transactions.size}, wallets: ${wallets.size}")
                     
                     val wallet = wallets.find { it.id == walletId }
                     val defaultCurrency = preferences?.defaultCurrency ?: "USD"
@@ -145,10 +147,10 @@ class WalletDetailViewModel @Inject constructor(
                         )
                     }
                     
-                    android.util.Log.d("WalletDetailViewModel", "UI state updated - balance: ${wallet?.balance}, monthly income: $monthlyIncome, monthly expenses: $monthlyExpenses")
+                    logger.d("WalletDetailViewModel", "UI state updated - balance: ${wallet?.balance}, monthly income: $monthlyIncome, monthly expenses: $monthlyExpenses")
                 }
             } catch (e: Exception) {
-                android.util.Log.e("WalletDetailViewModel", "Error loading wallet details", e)
+                logger.e("WalletDetailViewModel", "Error loading wallet details", e)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -161,7 +163,7 @@ class WalletDetailViewModel @Inject constructor(
     
     
     fun refreshData() {
-        android.util.Log.d("WalletDetailViewModel", "refreshData called for wallet: $currentWalletId")
+        logger.d("WalletDetailViewModel", "refreshData called for wallet: $currentWalletId")
         if (currentWalletId.isNotEmpty()) {
             loadWalletDetails(currentWalletId)
         }
@@ -176,7 +178,7 @@ class WalletDetailViewModel @Inject constructor(
     }
     
     fun recalculateBalance() {
-        android.util.Log.d("WalletDetailViewModel", "recalculateBalance called for wallet: $currentWalletId")
+        logger.d("WalletDetailViewModel", "recalculateBalance called for wallet: $currentWalletId")
         
         if (currentWalletId.isEmpty() || userId.isEmpty()) {
             _uiState.update { it.copy(recalculationError = "Unable to recalculate: wallet or user not found") }
@@ -191,7 +193,7 @@ class WalletDetailViewModel @Inject constructor(
         
         // Prevent multiple simultaneous recalculations
         if (_uiState.value.isRecalculatingBalance) {
-            android.util.Log.d("WalletDetailViewModel", "Recalculation already in progress, ignoring request")
+            logger.d("WalletDetailViewModel", "Recalculation already in progress, ignoring request")
             return
         }
         
@@ -199,7 +201,7 @@ class WalletDetailViewModel @Inject constructor(
             try {
                 _uiState.update { it.copy(isRecalculatingBalance = true, recalculationError = null) }
                 
-                android.util.Log.d("WalletDetailViewModel", "Starting balance recalculation for wallet: ${currentWallet.name}")
+                logger.d("WalletDetailViewModel", "Starting balance recalculation for wallet: ${currentWallet.name}")
                 
                 // Get all transactions for this wallet (not just current month)
                 val allTransactions = _uiState.value.transactions
@@ -228,7 +230,7 @@ class WalletDetailViewModel @Inject constructor(
                 // Calculate new balance: initial balance + income - expenses
                 val newBalance = currentWallet.initialBalance + income - expenses
                 
-                android.util.Log.d("WalletDetailViewModel", "Balance calculation: initial=${currentWallet.initialBalance}, income=$income, expenses=$expenses, new=$newBalance")
+                logger.d("WalletDetailViewModel", "Balance calculation: initial=${currentWallet.initialBalance}, income=$income, expenses=$expenses, new=$newBalance")
                 
                 // Update wallet in Firestore
                 val updatedWallet = currentWallet.copy(balance = newBalance)
@@ -236,7 +238,7 @@ class WalletDetailViewModel @Inject constructor(
                 
                 updateResult.fold(
                     onSuccess = {
-                        android.util.Log.d("WalletDetailViewModel", "Balance recalculation successful: $newBalance")
+                        logger.d("WalletDetailViewModel", "Balance recalculation successful: $newBalance")
                         _uiState.update { 
                             it.copy(
                                 isRecalculatingBalance = false, 
@@ -246,7 +248,7 @@ class WalletDetailViewModel @Inject constructor(
                         }
                     },
                     onFailure = { exception ->
-                        android.util.Log.e("WalletDetailViewModel", "Error updating wallet balance", exception)
+                        logger.e("WalletDetailViewModel", "Error updating wallet balance", exception)
                         _uiState.update { 
                             it.copy(
                                 isRecalculatingBalance = false,
@@ -257,7 +259,7 @@ class WalletDetailViewModel @Inject constructor(
                 )
                 
             } catch (e: Exception) {
-                android.util.Log.e("WalletDetailViewModel", "Error during balance recalculation", e)
+                logger.e("WalletDetailViewModel", "Error during balance recalculation", e)
                 _uiState.update { 
                     it.copy(
                         isRecalculatingBalance = false,
@@ -358,7 +360,7 @@ class WalletDetailViewModel @Inject constructor(
     }
     
     fun setSelectedMonth(month: Int, year: Int) {
-        android.util.Log.d("WalletDetailViewModel", "Setting selected month: $month/$year")
+        logger.d("WalletDetailViewModel", "Setting selected month: $month/$year")
         _uiState.update { 
             it.copy(selectedMonth = month, selectedYear = year) 
         }

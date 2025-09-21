@@ -1,20 +1,34 @@
 package com.axeven.profiteerapp.data.repository
 
+import android.content.Context
 import com.axeven.profiteerapp.data.model.Transaction
 import com.axeven.profiteerapp.data.model.TransactionType
+import com.axeven.profiteerapp.service.AuthTokenManager
+import com.axeven.profiteerapp.utils.FirestoreErrorHandler
+import com.axeven.profiteerapp.utils.CredentialDiagnostics
+import com.axeven.profiteerapp.utils.logging.Logger
+import com.axeven.profiteerapp.viewmodel.SharedErrorViewModel
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class TransactionRepository @Inject constructor(
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val sharedErrorViewModel: SharedErrorViewModel,
+    private val authTokenManager: AuthTokenManager,
+    private val logger: Logger,
+    @ApplicationContext private val context: Context
 ) {
     private val transactionsCollection = firestore.collection("transactions")
 
@@ -25,6 +39,19 @@ class TransactionRepository @Inject constructor(
             .limit(20)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
+                    val errorInfo = FirestoreErrorHandler.handleError(error, logger)
+
+                    // Handle authentication errors gracefully
+                    if (errorInfo.requiresReauth) {
+                        handleAuthenticationError("getUserTransactions", error)
+                    }
+
+                    sharedErrorViewModel.showError(
+                        message = errorInfo.userMessage,
+                        shouldRetry = errorInfo.shouldRetry,
+                        requiresReauth = errorInfo.requiresReauth,
+                        isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    )
                     close(error)
                     return@addSnapshotListener
                 }
@@ -34,17 +61,17 @@ class TransactionRepository @Inject constructor(
                         val transaction = document.toObject(Transaction::class.java)?.copy(id = document.id)
                         // Debug: Log transaction details
                         transaction?.let {
-                            android.util.Log.d("TransactionRepo", "Retrieved transaction: ${it.id}, title: ${it.title}")
+                            logger.d("TransactionRepo", "Retrieved transaction: ${it.id}, title: ${it.title}")
                         }
                         transaction
                     } catch (e: Exception) {
                         // Log the error and skip this document
-                        android.util.Log.e("TransactionRepo", "Error parsing transaction document: ${document.id}", e)
+                        logger.e("TransactionRepo", "Error parsing transaction document: ${document.id}", e)
                         null
                     }
                 }?.filter { it.id.isNotEmpty() } ?: emptyList()
                 
-                android.util.Log.d("TransactionRepo", "Total transactions retrieved: ${transactions.size}")
+                logger.d("TransactionRepo", "Total transactions retrieved: ${transactions.size}")
                 trySend(transactions)
             }
         
@@ -52,7 +79,7 @@ class TransactionRepository @Inject constructor(
     }
 
     fun getUserTransactionsForCalculations(userId: String, startDate: Date? = null, endDate: Date? = null): Flow<List<Transaction>> = callbackFlow {
-        android.util.Log.d("TransactionRepo", "Starting getUserTransactionsForCalculations for user: $userId")
+        logger.d("TransactionRepo", "Starting getUserTransactionsForCalculations for user: $userId")
         
         var query = transactionsCollection
             .whereEqualTo("userId", userId)
@@ -67,7 +94,20 @@ class TransactionRepository @Inject constructor(
         
         val listener = query.addSnapshotListener { snapshot, error ->
             if (error != null) {
-                android.util.Log.e("TransactionRepo", "Error in calculation query", error)
+                logger.e("TransactionRepo", "Error in calculation query", error)
+                val errorInfo = FirestoreErrorHandler.handleError(error, logger)
+
+                // Handle authentication errors gracefully
+                if (errorInfo.requiresReauth) {
+                    handleAuthenticationError("getUserTransactionsForCalculations", error)
+                }
+
+                sharedErrorViewModel.showError(
+                    message = errorInfo.userMessage,
+                    shouldRetry = errorInfo.shouldRetry,
+                    requiresReauth = errorInfo.requiresReauth,
+                    isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                )
                 close(error)
                 return@addSnapshotListener
             }
@@ -79,17 +119,17 @@ class TransactionRepository @Inject constructor(
                     // If no transactionDate, use createdAt, if neither exists, still include but note in logs
                     transaction?.let {
                         if (it.transactionDate == null && it.createdAt == null) {
-                            android.util.Log.w("TransactionRepo", "Transaction ${it.id} has no date information")
+                            logger.w("TransactionRepo", "Transaction ${it.id} has no date information")
                         }
                         it
                     }
                 } catch (e: Exception) {
-                    android.util.Log.e("TransactionRepo", "Error parsing calculation transaction: ${document.id}", e)
+                    logger.e("TransactionRepo", "Error parsing calculation transaction: ${document.id}", e)
                     null
                 }
             }?.filter { it.id.isNotEmpty() } ?: emptyList()
             
-            android.util.Log.d("TransactionRepo", "Calculation transactions retrieved: ${transactions.size} for user $userId")
+            logger.d("TransactionRepo", "Calculation transactions retrieved: ${transactions.size} for user $userId")
             trySend(transactions)
         }
         
@@ -108,7 +148,7 @@ class TransactionRepository @Inject constructor(
                 .distinctBy { it.id }
                 .sortedByDescending { it.transactionDate ?: it.createdAt ?: java.util.Date(0) }
             
-            android.util.Log.d("TransactionRepo", "Combined transactions for wallet $walletId: ${allTransactions.size} " +
+            logger.d("TransactionRepo", "Combined transactions for wallet $walletId: ${allTransactions.size} " +
                 "(primary: ${primaryWalletTransactions.size}, affected: ${affectedWalletTransactions.size}, " +
                 "source: ${sourceWalletTransactions.size}, destination: ${destinationWalletTransactions.size})")
             
@@ -120,7 +160,14 @@ class TransactionRepository @Inject constructor(
             .whereEqualTo("walletId", walletId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    android.util.Log.e("TransactionRepo", "Error in primary wallet query", error)
+                    logger.e("TransactionRepo", "Error in primary wallet query", error)
+                    val errorInfo = FirestoreErrorHandler.handleError(error, logger)
+                    sharedErrorViewModel.showError(
+                        message = errorInfo.userMessage,
+                        shouldRetry = errorInfo.shouldRetry,
+                        requiresReauth = errorInfo.requiresReauth,
+                        isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    )
                     return@addSnapshotListener
                 }
                 
@@ -128,7 +175,7 @@ class TransactionRepository @Inject constructor(
                     try {
                         document.toObject(Transaction::class.java)?.copy(id = document.id)
                     } catch (e: Exception) {
-                        android.util.Log.e("TransactionRepo", "Error parsing primary wallet transaction: ${document.id}", e)
+                        logger.e("TransactionRepo", "Error parsing primary wallet transaction: ${document.id}", e)
                         null
                     }
                 }?.filter { it.id.isNotEmpty() } ?: emptyList()
@@ -141,7 +188,14 @@ class TransactionRepository @Inject constructor(
             .whereArrayContains("affectedWalletIds", walletId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    android.util.Log.e("TransactionRepo", "Error in affected wallets query", error)
+                    logger.e("TransactionRepo", "Error in affected wallets query", error)
+                    val errorInfo = FirestoreErrorHandler.handleError(error, logger)
+                    sharedErrorViewModel.showError(
+                        message = errorInfo.userMessage,
+                        shouldRetry = errorInfo.shouldRetry,
+                        requiresReauth = errorInfo.requiresReauth,
+                        isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    )
                     return@addSnapshotListener
                 }
                 
@@ -149,7 +203,7 @@ class TransactionRepository @Inject constructor(
                     try {
                         document.toObject(Transaction::class.java)?.copy(id = document.id)
                     } catch (e: Exception) {
-                        android.util.Log.e("TransactionRepo", "Error parsing affected wallet transaction: ${document.id}", e)
+                        logger.e("TransactionRepo", "Error parsing affected wallet transaction: ${document.id}", e)
                         null
                     }
                 }?.filter { it.id.isNotEmpty() } ?: emptyList()
@@ -162,7 +216,14 @@ class TransactionRepository @Inject constructor(
             .whereEqualTo("sourceWalletId", walletId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    android.util.Log.e("TransactionRepo", "Error in source wallet query", error)
+                    logger.e("TransactionRepo", "Error in source wallet query", error)
+                    val errorInfo = FirestoreErrorHandler.handleError(error, logger)
+                    sharedErrorViewModel.showError(
+                        message = errorInfo.userMessage,
+                        shouldRetry = errorInfo.shouldRetry,
+                        requiresReauth = errorInfo.requiresReauth,
+                        isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    )
                     return@addSnapshotListener
                 }
                 
@@ -170,12 +231,12 @@ class TransactionRepository @Inject constructor(
                     try {
                         document.toObject(Transaction::class.java)?.copy(id = document.id)
                     } catch (e: Exception) {
-                        android.util.Log.e("TransactionRepo", "Error parsing source wallet transaction: ${document.id}", e)
+                        logger.e("TransactionRepo", "Error parsing source wallet transaction: ${document.id}", e)
                         null
                     }
                 }?.filter { it.id.isNotEmpty() } ?: emptyList()
                 
-                android.util.Log.d("TransactionRepo", "Source wallet transactions for $walletId: ${sourceWalletTransactions.size}")
+                logger.d("TransactionRepo", "Source wallet transactions for $walletId: ${sourceWalletTransactions.size}")
                 combineAndEmitTransactions()
             }
         
@@ -184,7 +245,14 @@ class TransactionRepository @Inject constructor(
             .whereEqualTo("destinationWalletId", walletId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    android.util.Log.e("TransactionRepo", "Error in destination wallet query", error)
+                    logger.e("TransactionRepo", "Error in destination wallet query", error)
+                    val errorInfo = FirestoreErrorHandler.handleError(error, logger)
+                    sharedErrorViewModel.showError(
+                        message = errorInfo.userMessage,
+                        shouldRetry = errorInfo.shouldRetry,
+                        requiresReauth = errorInfo.requiresReauth,
+                        isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    )
                     return@addSnapshotListener
                 }
                 
@@ -192,12 +260,12 @@ class TransactionRepository @Inject constructor(
                     try {
                         document.toObject(Transaction::class.java)?.copy(id = document.id)
                     } catch (e: Exception) {
-                        android.util.Log.e("TransactionRepo", "Error parsing destination wallet transaction: ${document.id}", e)
+                        logger.e("TransactionRepo", "Error parsing destination wallet transaction: ${document.id}", e)
                         null
                     }
                 }?.filter { it.id.isNotEmpty() } ?: emptyList()
                 
-                android.util.Log.d("TransactionRepo", "Destination wallet transactions for $walletId: ${destinationWalletTransactions.size}")
+                logger.d("TransactionRepo", "Destination wallet transactions for $walletId: ${destinationWalletTransactions.size}")
                 combineAndEmitTransactions()
             }
         
@@ -214,6 +282,14 @@ class TransactionRepository @Inject constructor(
             val documentRef = transactionsCollection.add(transaction).await()
             Result.success(documentRef.id)
         } catch (e: Exception) {
+            logger.e("TransactionRepo", "Error creating transaction: ${transaction.title}", e)
+
+            // Handle authentication errors gracefully
+            val errorInfo = FirestoreErrorHandler.handleError(e, logger)
+            if (errorInfo.requiresReauth) {
+                handleAuthenticationError("createTransaction", e)
+            }
+
             Result.failure(e)
         }
     }
@@ -233,40 +309,48 @@ class TransactionRepository @Inject constructor(
             transactionsCollection.document(transaction.id).set(transaction).await()
             Result.success(Unit)
         } catch (e: Exception) {
+            logger.e("TransactionRepo", "Error updating transaction: ${transaction.id}", e)
+
+            // Handle authentication errors gracefully
+            val errorInfo = FirestoreErrorHandler.handleError(e, logger)
+            if (errorInfo.requiresReauth) {
+                handleAuthenticationError("updateTransaction", e)
+            }
+
             Result.failure(e)
         }
     }
 
     suspend fun deleteTransaction(transactionId: String): Result<Unit> {
         return try {
-            android.util.Log.d("TransactionRepo", "Starting deletion of transaction: $transactionId")
+            logger.d("TransactionRepo", "Starting deletion of transaction: $transactionId")
             
             // First verify the document exists
             val docSnapshot = transactionsCollection.document(transactionId).get().await()
             if (!docSnapshot.exists()) {
-                android.util.Log.e("TransactionRepo", "Transaction does not exist: $transactionId")
+                logger.e("TransactionRepo", "Transaction does not exist: $transactionId")
                 return Result.failure(Exception("Transaction with ID $transactionId does not exist"))
             }
             
-            android.util.Log.d("TransactionRepo", "Transaction exists, proceeding with deletion: $transactionId")
+            logger.d("TransactionRepo", "Transaction exists, proceeding with deletion: $transactionId")
             
             // Delete the document
             transactionsCollection.document(transactionId).delete().await()
             
-            android.util.Log.d("TransactionRepo", "Delete operation completed for: $transactionId")
+            logger.d("TransactionRepo", "Delete operation completed for: $transactionId")
             
             // Verify deletion (with a small delay to account for eventual consistency)
             kotlinx.coroutines.delay(100)
             val verifySnapshot = transactionsCollection.document(transactionId).get().await()
             if (verifySnapshot.exists()) {
-                android.util.Log.e("TransactionRepo", "Verification failed - document still exists: $transactionId")
+                logger.e("TransactionRepo", "Verification failed - document still exists: $transactionId")
                 return Result.failure(Exception("Transaction deletion verification failed - document still exists"))
             }
             
-            android.util.Log.d("TransactionRepo", "Transaction successfully deleted and verified: $transactionId")
+            logger.d("TransactionRepo", "Transaction successfully deleted and verified: $transactionId")
             Result.success(Unit)
         } catch (e: Exception) {
-            android.util.Log.e("TransactionRepo", "Error deleting transaction: $transactionId", e)
+            logger.e("TransactionRepo", "Error deleting transaction: $transactionId", e)
             Result.failure(e)
         }
     }
@@ -286,6 +370,41 @@ class TransactionRepository @Inject constructor(
             Result.success(transactions)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    private fun handleAuthenticationError(operation: String, error: Throwable) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                logger.w("TransactionRepo", "Authentication error in $operation - attempting graceful recovery...")
+
+                // First try to refresh the token
+                val refreshSuccess = authTokenManager.attemptTokenRefresh()
+
+                if (refreshSuccess) {
+                    logger.i("TransactionRepo", "Token refresh successful - operation may retry automatically")
+                } else {
+                    logger.w("TransactionRepo", "Token refresh failed - triggering re-authentication flow")
+
+                    // Run diagnostics for detailed troubleshooting
+                    val report = CredentialDiagnostics.runFullDiagnostics(context)
+                    CredentialDiagnostics.logDiagnosticReport(report, logger)
+                }
+            } catch (e: Exception) {
+                logger.e("TransactionRepo", "Failed to handle authentication error gracefully", e)
+            }
+        }
+    }
+
+    private fun triggerCredentialDiagnostics(operation: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                logger.w("TransactionRepo", "Authentication error in $operation - running diagnostics...")
+                val report = CredentialDiagnostics.runFullDiagnostics(context)
+                CredentialDiagnostics.logDiagnosticReport(report, logger)
+            } catch (e: Exception) {
+                logger.e("TransactionRepo", "Failed to run credential diagnostics", e)
+            }
         }
     }
 }
