@@ -116,6 +116,20 @@ object LogSanitizer {
     }
 
     /**
+     * Sanitizes user ID for analytics purposes
+     */
+    fun sanitizeUserId(userId: String): String {
+        if (userId.isEmpty()) return userId
+
+        // Hash or truncate user ID for analytics while preserving uniqueness
+        return if (userId.length > 8) {
+            "user_${userId.hashCode().toString().takeLast(8)}"
+        } else {
+            "user_anonymous"
+        }
+    }
+
+    /**
      * Convenience method to sanitize all types of sensitive data
      */
     fun sanitizeAll(message: String): String {

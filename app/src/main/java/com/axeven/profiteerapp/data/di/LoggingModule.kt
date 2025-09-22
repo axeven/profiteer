@@ -1,11 +1,16 @@
 package com.axeven.profiteerapp.data.di
 
+import android.content.Context
+import android.content.pm.ApplicationInfo
+import com.axeven.profiteerapp.utils.logging.AnalyticsLogger
 import com.axeven.profiteerapp.utils.logging.DebugLogger
+import com.axeven.profiteerapp.utils.logging.FirebaseCrashlyticsLogger
 import com.axeven.profiteerapp.utils.logging.Logger
 import com.axeven.profiteerapp.utils.logging.ReleaseLogger
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
@@ -24,10 +29,27 @@ object LoggingModule {
      */
     @Provides
     @Singleton
-    fun provideLogger(): Logger {
-        // For now, default to DebugLogger for development
-        // This will be properly configured with BuildConfig later
-        return DebugLogger()
+    fun provideLogger(
+        @ApplicationContext context: Context
+    ): Logger {
+        // Check if app is in debug mode by checking application flags
+        val isDebug = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        return if (isDebug) {
+            DebugLogger()
+        } else {
+            ReleaseLogger()
+        }
+    }
+
+    /**
+     * Provides the analytics logger for Firebase Crashlytics integration.
+     */
+    @Provides
+    @Singleton
+    fun provideAnalyticsLogger(
+        @ApplicationContext context: Context
+    ): AnalyticsLogger {
+        return FirebaseCrashlyticsLogger(context)
     }
 
     /**

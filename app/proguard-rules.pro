@@ -31,3 +31,43 @@
 # Keep Google Auth classes
 -keep class com.google.android.gms.auth.** { *; }
 -keep class com.google.android.gms.common.** { *; }
+
+# Logging optimization rules for release builds
+# Remove debug and info logging in release builds to improve performance and reduce APK size
+-assumenosideeffects class com.axeven.profiteerapp.utils.logging.Logger {
+    public void d(...);
+    public void i(...);
+}
+
+-assumenosideeffects class com.axeven.profiteerapp.utils.logging.DebugLogger {
+    public void d(...);
+    public void i(...);
+}
+
+-assumenosideeffects class com.axeven.profiteerapp.utils.logging.ReleaseLogger {
+    public void d(...);
+    public void i(...);
+}
+
+-assumenosideeffects class com.axeven.profiteerapp.utils.logging.PerformanceOptimizedLogger {
+    public void d(...);
+    public void i(...);
+}
+
+# Remove debug-only logging utilities in release builds
+-assumenosideeffects class com.axeven.profiteerapp.utils.logging.LogFormatter {
+    public static java.lang.String formatUserAction(...);
+    public static java.lang.String formatTransaction(...);
+    public static java.lang.String formatPerformance(...);
+}
+
+# Keep error and warning logging in all builds for crash reporting
+-keep class com.axeven.profiteerapp.utils.logging.Logger {
+    public void w(...);
+    public void e(...);
+}
+
+# Preserve logging infrastructure for dependency injection
+-keep class com.axeven.profiteerapp.utils.logging.** { *; }
+-keep @dagger.hilt.android.qualifiers.* class * { *; }
+-keep @javax.inject.* class * { *; }

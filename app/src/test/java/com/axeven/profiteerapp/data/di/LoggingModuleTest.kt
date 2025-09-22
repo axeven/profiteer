@@ -1,38 +1,57 @@
 package com.axeven.profiteerapp.data.di
 
+import android.content.Context
+import android.content.pm.ApplicationInfo
 import com.axeven.profiteerapp.utils.logging.DebugLogger
 import com.axeven.profiteerapp.utils.logging.Logger
 import com.axeven.profiteerapp.utils.logging.ReleaseLogger
 import org.junit.Test
 import org.junit.Assert.*
+import org.junit.Before
+import org.mockito.Mock
+import org.mockito.Mockito.*
+import org.mockito.MockitoAnnotations
 
 class LoggingModuleTest {
 
-    @Test
-    fun `should provide logger without crashing`() {
-        // Arrange
-        val module = LoggingModule
+    @Mock
+    private lateinit var mockContext: Context
 
-        // Act
-        val logger = module.provideLogger()
+    @Mock
+    private lateinit var mockApplicationInfo: ApplicationInfo
 
-        // Assert
-        assertNotNull("Should provide a logger instance", logger)
-        assertTrue("Should provide a Logger implementation", logger is Logger)
+    @Before
+    fun setup() {
+        MockitoAnnotations.openMocks(this)
+        `when`(mockContext.applicationInfo).thenReturn(mockApplicationInfo)
     }
 
     @Test
-    fun `should provide consistent logger type`() {
+    fun `should provide debug logger for debug build`() {
         // Arrange
         val module = LoggingModule
+        mockApplicationInfo.flags = ApplicationInfo.FLAG_DEBUGGABLE
 
         // Act
-        val logger1 = module.provideLogger()
-        val logger2 = module.provideLogger()
+        val logger = module.provideLogger(mockContext)
 
         // Assert
-        assertEquals("Should return same logger type for consistent calls",
-                    logger1::class, logger2::class)
+        assertNotNull("Should provide a logger instance", logger)
+        assertTrue("Should provide DebugLogger for debug build", logger is DebugLogger)
+    }
+
+    @Test
+    fun `should provide release logger for release build`() {
+        // Arrange
+        val module = LoggingModule
+        mockApplicationInfo.flags = 0 // Not debuggable
+
+        // Act
+        val logger = module.provideLogger(mockContext)
+
+        // Assert
+        assertNotNull("Should provide a logger instance", logger)
+        assertTrue("Should provide ReleaseLogger for release build", logger is ReleaseLogger)
     }
 
     @Test
