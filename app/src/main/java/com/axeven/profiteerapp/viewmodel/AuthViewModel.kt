@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.axeven.profiteerapp.data.repository.AuthRepository
 import com.axeven.profiteerapp.ui.login.AuthState
+import com.axeven.profiteerapp.utils.logging.Logger
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,7 +17,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    val authRepository: AuthRepository
+    val authRepository: AuthRepository,
+    private val logger: Logger
 ) : ViewModel() {
     
     private val _authState = MutableStateFlow<AuthState>(AuthState.Initial)

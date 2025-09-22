@@ -164,3 +164,84 @@ com.axeven.profiteerapp/
 6. **Maintain backward compatibility** when modifying data models
 7. **Test currency conversion** logic thoroughly
 8. **Verify balance integrity** in wallet and transaction operations
+9. **Use proper logging practices** following the established logging framework
+
+# Logging Guidelines
+
+## Quick Reference
+
+The project uses a custom logging framework with automatic data sanitization and build-variant optimization. **Never use `android.util.Log` directly.**
+
+### Basic Usage
+
+```kotlin
+@HiltViewModel
+class MyViewModel @Inject constructor(
+    private val logger: Logger,
+    // ... other dependencies
+) : ViewModel() {
+
+    fun performOperation() {
+        logger.d("MyViewModel", "Starting operation")
+        try {
+            // Business logic
+            logger.i("MyViewModel", "Operation completed successfully")
+        } catch (e: Exception) {
+            logger.e("MyViewModel", "Operation failed", e)
+        }
+    }
+}
+```
+
+### Logging Levels
+
+- **Debug (d)**: Development only, removed in release builds
+- **Info (i)**: Development only, removed in release builds
+- **Warning (w)**: All builds, preserved for monitoring
+- **Error (e)**: All builds, sent to Firebase Crashlytics
+
+### Automatic Security Features
+
+- **Data Sanitization**: Emails, amounts, IDs automatically sanitized
+- **Privacy Protection**: No sensitive data in production logs
+- **Performance Optimization**: Debug/info logs removed in release builds
+- **Analytics Integration**: Critical errors tracked in Crashlytics
+
+### Required Dependencies
+
+All ViewModels, Repositories, and Services **must** inject Logger:
+
+```kotlin
+@Inject constructor(
+    private val logger: Logger,
+    // ... other dependencies
+)
+```
+
+### Forbidden Patterns
+
+```kotlin
+// ❌ NEVER use these:
+android.util.Log.d("TAG", "message")
+System.out.println("debug message")
+println("debug info")
+
+// ✅ Always use:
+logger.d("TAG", "message")
+```
+
+### Error Handling Pattern
+
+```kotlin
+try {
+    // risky operation
+} catch (e: SpecificException) {
+    logger.w("MyClass", "Recoverable error: ${e.message}")
+    // handle gracefully
+} catch (e: Exception) {
+    logger.e("MyClass", "Critical error occurred", e)
+    // handle or rethrow
+}
+```
+
+For complete documentation, see [LOGGING_GUIDELINES.md](docs/LOGGING_GUIDELINES.md).

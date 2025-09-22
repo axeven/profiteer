@@ -284,11 +284,12 @@ object CredentialDiagnostics {
     }
 
     fun logDiagnosticReport(report: DiagnosticReport, logger: Logger? = null) {
+        // If no logger is provided, create a no-op logger to avoid android.util.Log usage
         val log = logger ?: object : Logger {
-            override fun d(tag: String, message: String) { android.util.Log.d(tag, message) }
-            override fun i(tag: String, message: String) { android.util.Log.i(tag, message) }
-            override fun w(tag: String, message: String) { android.util.Log.w(tag, message) }
-            override fun e(tag: String, message: String, throwable: Throwable?) { android.util.Log.e(tag, message, throwable) }
+            override fun d(tag: String, message: String) { /* No-op - use proper logging injection */ }
+            override fun i(tag: String, message: String) { /* No-op - use proper logging injection */ }
+            override fun w(tag: String, message: String) { /* No-op - use proper logging injection */ }
+            override fun e(tag: String, message: String, throwable: Throwable?) { /* No-op - use proper logging injection */ }
         }
 
         log.i("CredentialDiagnostics", "=== DIAGNOSTIC SUMMARY ===")

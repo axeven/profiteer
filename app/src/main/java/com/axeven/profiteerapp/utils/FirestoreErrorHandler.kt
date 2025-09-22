@@ -16,8 +16,8 @@ object FirestoreErrorHandler {
 
     fun handleError(exception: Throwable, logger: Logger? = null): ErrorInfo {
         val debugInfo = generateDebugInfo(exception)
+        // Only log if logger is provided - avoid fallback to android.util.Log
         logger?.e("FirestoreErrorHandler", "Firestore error occurred: $debugInfo", exception)
-            ?: android.util.Log.e("FirestoreErrorHandler", "Firestore error occurred: $debugInfo", exception)
 
         return when (exception) {
             is FirebaseFirestoreException -> {

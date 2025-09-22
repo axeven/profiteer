@@ -1005,7 +1005,7 @@ fun ComposeChartsPieChartAsset(
         data = pieData,
         onPieClick = { pie ->
             // Optional: Handle pie slice click
-            println("Clicked on ${pie.label}: ${pie.data}")
+            // TODO: Implement proper click handling with Logger
         },
         selectedScale = 1.2f,
         scaleAnimEnterSpec = androidx.compose.animation.core.spring(
@@ -1038,7 +1038,7 @@ fun ComposeChartsPieChartWallet(
         data = pieData,
         onPieClick = { pie ->
             // Optional: Handle pie slice click
-            println("Clicked on ${pie.label}: ${pie.data}")
+            // TODO: Implement proper click handling with Logger
         },
         selectedScale = 1.2f,
         scaleAnimEnterSpec = androidx.compose.animation.core.spring(
@@ -1098,7 +1098,7 @@ fun ComposeChartsLogicalWalletChart(
                         modifier = Modifier.size(180.dp),
                         data = positiveePieData,
                         onPieClick = { pie ->
-                            println("Clicked on positive ${pie.label}: ${pie.data}")
+                            // TODO: Implement proper click handling with Logger
                         },
                         selectedScale = 1.2f,
                         scaleAnimEnterSpec = androidx.compose.animation.core.spring(
@@ -1137,7 +1137,7 @@ fun ComposeChartsLogicalWalletChart(
                         modifier = Modifier.size(180.dp),
                         data = negativePieData,
                         onPieClick = { pie ->
-                            println("Clicked on negative ${pie.label}: ${pie.data}")
+                            // TODO: Implement proper click handling with Logger
                         },
                         selectedScale = 1.2f,
                         scaleAnimEnterSpec = androidx.compose.animation.core.spring(
@@ -1181,7 +1181,7 @@ fun ComposeChartsLogicalWalletChart(
                     modifier = Modifier.size(200.dp),
                     data = pieData,
                     onPieClick = { pie ->
-                        println("Clicked on ${pie.label}: ${pie.data}")
+                        // TODO: Implement proper click handling with Logger
                     },
                     selectedScale = 1.2f,
                     scaleAnimEnterSpec = androidx.compose.animation.core.spring(
@@ -1224,7 +1224,7 @@ fun ComposeChartsLogicalWalletChart(
                     modifier = Modifier.size(200.dp),
                     data = pieData,
                     onPieClick = { pie ->
-                        println("Clicked on negative ${pie.label}: ${pie.data}")
+                        // TODO: Implement proper click handling with Logger
                     },
                     selectedScale = 1.2f,
                     scaleAnimEnterSpec = androidx.compose.animation.core.spring(
@@ -1376,7 +1376,7 @@ fun ComposeChartsPieChartExpenseTransactionsByTag(
         data = pieData,
         onPieClick = { pie ->
             // Optional: Handle pie slice click
-            println("Clicked on expense transaction tag ${pie.label}: ${pie.data}")
+            // TODO: Implement proper click handling with Logger
         },
         selectedScale = 1.2f,
         scaleAnimEnterSpec = androidx.compose.animation.core.spring(
@@ -1409,7 +1409,7 @@ fun ComposeChartsPieChartIncomeTransactionsByTag(
         data = pieData,
         onPieClick = { pie ->
             // Optional: Handle pie slice click
-            println("Clicked on income transaction tag ${pie.label}: ${pie.data}")
+            // TODO: Implement proper click handling with Logger
         },
         selectedScale = 1.2f,
         scaleAnimEnterSpec = androidx.compose.animation.core.spring(
