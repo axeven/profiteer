@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.axeven.profiteerapp.data.model.TransactionType
 import com.axeven.profiteerapp.data.model.Wallet
+import com.axeven.profiteerapp.data.ui.*
 import com.axeven.profiteerapp.viewmodel.TransactionViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -34,55 +35,38 @@ fun CreateTransactionScreen(
     onNavigateBack: () -> Unit = {},
     viewModel: TransactionViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    
-    var title by remember { mutableStateOf("") }
-    var amount by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
-    var selectedType by remember { mutableStateOf(initialTransactionType ?: TransactionType.EXPENSE) }
-    var selectedPhysicalWallet by remember { mutableStateOf<Wallet?>(null) }
-    var selectedLogicalWallet by remember { mutableStateOf<Wallet?>(null) }
-    var tags by remember { mutableStateOf("") }
-    var selectedSourceWallet by remember { mutableStateOf<Wallet?>(null) }
-    var selectedDestinationWallet by remember { mutableStateOf<Wallet?>(null) }
-    var selectedDate by remember { mutableStateOf(Date()) }
-    var showDatePicker by remember { mutableStateOf(false) }
-    var showPhysicalWalletPicker by remember { mutableStateOf(false) }
-    var showLogicalWalletPicker by remember { mutableStateOf(false) }
-    var showSourceWalletPicker by remember { mutableStateOf(false) }
-    var showDestinationWalletPicker by remember { mutableStateOf(false) }
-    
-    val allSelectedWallets = listOfNotNull(selectedPhysicalWallet, selectedLogicalWallet)
+    val viewModelUiState by viewModel.uiState.collectAsState()
+
+    // Consolidated state management - replaces 18 individual mutableStateOf variables
+    var transactionState by remember {
+        mutableStateOf(
+            CreateTransactionUiState(
+                selectedType = initialTransactionType ?: TransactionType.EXPENSE
+            ).updateAndValidate()
+        )
+    }
     
     // Handle wallet pre-selection
-    LaunchedEffect(preSelectedWalletId, uiState.wallets) {
-        if (preSelectedWalletId != null && uiState.wallets.isNotEmpty()) {
-            val preSelectedWallet = uiState.wallets.find { it.id == preSelectedWalletId }
+    LaunchedEffect(preSelectedWalletId, viewModelUiState.wallets) {
+        if (preSelectedWalletId != null && viewModelUiState.wallets.isNotEmpty()) {
+            val preSelectedWallet = viewModelUiState.wallets.find { it.id == preSelectedWalletId }
             preSelectedWallet?.let { wallet ->
                 when (wallet.walletType) {
-                    "Physical" -> selectedPhysicalWallet = wallet
-                    "Logical" -> selectedLogicalWallet = wallet
+                    "Physical" -> {
+                        transactionState = updatePhysicalWallet(transactionState, wallet)
+                    }
+                    "Logical" -> {
+                        transactionState = updateLogicalWallet(transactionState, wallet)
+                    }
                 }
                 // For transfer transactions, pre-select as source wallet
-                if (selectedType == TransactionType.TRANSFER) {
-                    selectedSourceWallet = wallet
+                if (transactionState.selectedType == TransactionType.TRANSFER) {
+                    transactionState = updateSourceWallet(transactionState, wallet)
                 }
             }
         }
     }
     
-    val isFormValid = when (selectedType) {
-        TransactionType.INCOME, TransactionType.EXPENSE -> {
-            title.isNotBlank() && amount.isNotBlank() && allSelectedWallets.isNotEmpty() && amount.toDoubleOrNull() != null
-        }
-        TransactionType.TRANSFER -> {
-            title.isNotBlank() && amount.isNotBlank() && 
-            selectedSourceWallet != null && selectedDestinationWallet != null && 
-            selectedSourceWallet != selectedDestinationWallet &&
-            selectedSourceWallet?.walletType == selectedDestinationWallet?.walletType &&
-            amount.toDoubleOrNull() != null
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -122,8 +106,10 @@ fun CreateTransactionScreen(
                 ) {
                     TransactionType.values().forEach { type ->
                         FilterChip(
-                            onClick = { selectedType = type },
-                            label = { 
+                            onClick = {
+                                transactionState = updateTransactionType(transactionState, type)
+                            },
+                            label = {
                                 Text(
                                     when (type) {
                                         TransactionType.INCOME -> "Income"
@@ -132,7 +118,7 @@ fun CreateTransactionScreen(
                                     }
                                 )
                             },
-                            selected = selectedType == type,
+                            selected = transactionState.selectedType == type,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -142,46 +128,62 @@ fun CreateTransactionScreen(
             // Title Field
             item {
                 OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
+                    value = transactionState.title,
+                    onValueChange = { newTitle ->
+                        transactionState = updateTitle(transactionState, newTitle)
+                    },
                     label = { Text("Transaction Title") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = transactionState.validationErrors.titleError != null,
+                    supportingText = transactionState.validationErrors.titleError?.let {
+                        { Text(it, color = MaterialTheme.colorScheme.error) }
+                    }
                 )
             }
             
             // Amount Field
             item {
                 // All transactions now use the default currency
-                val currencySymbol = com.axeven.profiteerapp.utils.NumberFormatter.getCurrencySymbol(uiState.defaultCurrency)
-                
+                val currencySymbol = com.axeven.profiteerapp.utils.NumberFormatter.getCurrencySymbol(viewModelUiState.defaultCurrency)
+
                 OutlinedTextField(
-                    value = amount,
-                    onValueChange = { amount = it },
-                    label = { 
+                    value = transactionState.amount,
+                    onValueChange = { newAmount ->
+                        transactionState = updateAmount(transactionState, newAmount)
+                    },
+                    label = {
                         Text(
-                            if (selectedType == TransactionType.TRANSFER) "Transfer Amount" 
+                            if (transactionState.selectedType == TransactionType.TRANSFER) "Transfer Amount"
                             else "Amount"
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    prefix = { Text(currencySymbol) }
+                    prefix = { Text(currencySymbol) },
+                    isError = transactionState.validationErrors.amountError != null,
+                    supportingText = transactionState.validationErrors.amountError?.let {
+                        { Text(it, color = MaterialTheme.colorScheme.error) }
+                    }
                 )
             }
             
             // Tags Field (not for transfers)
-            if (selectedType != TransactionType.TRANSFER) {
+            if (transactionState.selectedType != TransactionType.TRANSFER) {
                 item {
                     TagInputField(
-                        value = tags,
-                        onValueChange = { tags = it },
-                        availableTags = uiState.availableTags,
-                        modifier = Modifier.fillMaxWidth()
+                        value = transactionState.tags,
+                        onValueChange = { newTags ->
+                            transactionState = updateTags(transactionState, newTags)
+                        },
+                        availableTags = viewModelUiState.availableTags,
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = transactionState.validationErrors.tagsError != null,
+                        supportingText = transactionState.validationErrors.tagsError
                     )
                 }
             }
             
             // Wallet Selection for Income/Expense
-            if (selectedType == TransactionType.INCOME || selectedType == TransactionType.EXPENSE) {
+            if (transactionState.selectedType == TransactionType.INCOME || transactionState.selectedType == TransactionType.EXPENSE) {
                 // Physical Wallets Section
                 item {
                     Text(
@@ -189,11 +191,13 @@ fun CreateTransactionScreen(
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Medium
                     )
-                    
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { showPhysicalWalletPicker = true },
+                            .clickable {
+                                transactionState = openDialog(transactionState, DialogType.PHYSICAL_WALLET)
+                            },
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surface
                         )
@@ -210,11 +214,11 @@ fun CreateTransactionScreen(
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = selectedPhysicalWallet?.name ?: "Choose physical wallet",
+                                        text = transactionState.selectedWallets.physical?.name ?: "Choose physical wallet",
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.Medium
                                     )
-                                    selectedPhysicalWallet?.let { wallet ->
+                                    transactionState.selectedWallets.physical?.let { wallet ->
                                         Text(
                                             text = wallet.walletType,
                                             style = MaterialTheme.typography.bodySmall,
@@ -244,11 +248,13 @@ fun CreateTransactionScreen(
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Medium
                     )
-                    
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { showLogicalWalletPicker = true },
+                            .clickable {
+                                transactionState = openDialog(transactionState, DialogType.LOGICAL_WALLET)
+                            },
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surface
                         )
@@ -265,11 +271,11 @@ fun CreateTransactionScreen(
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = selectedLogicalWallet?.name ?: "Choose logical wallet",
+                                        text = transactionState.selectedWallets.logical?.name ?: "Choose logical wallet",
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.Medium
                                     )
-                                    selectedLogicalWallet?.let { wallet ->
+                                    transactionState.selectedWallets.logical?.let { wallet ->
                                         Text(
                                             text = wallet.walletType,
                                             style = MaterialTheme.typography.bodySmall,
@@ -294,18 +300,20 @@ fun CreateTransactionScreen(
             }
             
             // Source and Destination Wallet Selection for Transfer
-            if (selectedType == TransactionType.TRANSFER) {
+            if (transactionState.selectedType == TransactionType.TRANSFER) {
                 item {
                     Text(
                         text = "From Wallet",
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Medium
                     )
-                    
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { showSourceWalletPicker = true },
+                            .clickable {
+                                transactionState = openDialog(transactionState, DialogType.SOURCE_WALLET)
+                            },
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surface
                         )
@@ -319,11 +327,11 @@ fun CreateTransactionScreen(
                         ) {
                             Column {
                                 Text(
-                                    text = selectedSourceWallet?.name ?: "Choose source wallet",
+                                    text = transactionState.selectedWallets.source?.name ?: "Choose source wallet",
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Medium
                                 )
-                                selectedSourceWallet?.let { wallet ->
+                                transactionState.selectedWallets.source?.let { wallet ->
                                     Text(
                                         text = wallet.walletType,
                                         style = MaterialTheme.typography.bodySmall,
@@ -345,11 +353,13 @@ fun CreateTransactionScreen(
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Medium
                     )
-                    
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { showDestinationWalletPicker = true },
+                            .clickable {
+                                transactionState = openDialog(transactionState, DialogType.DESTINATION_WALLET)
+                            },
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surface
                         )
@@ -363,11 +373,11 @@ fun CreateTransactionScreen(
                         ) {
                             Column {
                                 Text(
-                                    text = selectedDestinationWallet?.name ?: "Choose destination wallet",
+                                    text = transactionState.selectedWallets.destination?.name ?: "Choose destination wallet",
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Medium
                                 )
-                                selectedDestinationWallet?.let { wallet ->
+                                transactionState.selectedWallets.destination?.let { wallet ->
                                     Text(
                                         text = wallet.walletType,
                                         style = MaterialTheme.typography.bodySmall,
@@ -383,33 +393,31 @@ fun CreateTransactionScreen(
                     }
                 }
                 
-                // Wallet type mismatch warnings
-                if (selectedSourceWallet != null && selectedDestinationWallet != null) {
-                    if (selectedSourceWallet?.walletType != selectedDestinationWallet?.walletType) {
-                        item {
-                            Card(
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.errorContainer
-                                )
+                // Display transfer validation errors
+                transactionState.validationErrors.transferError?.let { errorMessage ->
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Warning,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onErrorContainer
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "Source and destination wallets must have the same wallet type",
-                                        color = MaterialTheme.colorScheme.onErrorContainer,
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                }
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = errorMessage,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
                             }
                         }
                     }
@@ -423,11 +431,13 @@ fun CreateTransactionScreen(
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Medium
                 )
-                
+
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { showDatePicker = true },
+                        .clickable {
+                            transactionState = openDialog(transactionState, DialogType.DATE_PICKER)
+                        },
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface
                     )
@@ -440,7 +450,7 @@ fun CreateTransactionScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(selectedDate),
+                            text = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(transactionState.selectedDate),
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Icon(
@@ -455,33 +465,33 @@ fun CreateTransactionScreen(
             item {
                 Button(
                     onClick = {
-                        val amountValue = amount.toDoubleOrNull() ?: 0.0
-                        
-                        val tagsList = if (tags.isBlank()) listOf("Untagged") 
-                                       else tags.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                        
-                        when (selectedType) {
+                        val summary = getTransactionSummary(transactionState)
+
+                        when (transactionState.selectedType) {
                             TransactionType.INCOME, TransactionType.EXPENSE -> {
-                                if (allSelectedWallets.isNotEmpty()) {
+                                val affectedWallets = transactionState.selectedWallets.allSelected
+                                if (affectedWallets.isNotEmpty()) {
                                     viewModel.createTransaction(
-                                        title = title,
-                                        amount = amountValue,
+                                        title = summary.title,
+                                        amount = summary.amount,
                                         category = "Untagged", // Default category, will be replaced by tags
-                                        type = selectedType,
-                                        affectedWalletIds = allSelectedWallets.map { it.id },
-                                        tags = tagsList,
-                                        transactionDate = selectedDate
+                                        type = summary.type,
+                                        affectedWalletIds = affectedWallets.map { it.id },
+                                        tags = if (summary.tags.isEmpty()) listOf("Untagged") else summary.tags,
+                                        transactionDate = summary.date
                                     )
                                 }
                             }
                             TransactionType.TRANSFER -> {
-                                if (selectedSourceWallet != null && selectedDestinationWallet != null) {
+                                val sourceWallet = transactionState.selectedWallets.source
+                                val destinationWallet = transactionState.selectedWallets.destination
+                                if (sourceWallet != null && destinationWallet != null) {
                                     viewModel.createTransferTransaction(
-                                        title = title,
-                                        amount = amountValue,
-                                        sourceWalletId = selectedSourceWallet!!.id,
-                                        destinationWalletId = selectedDestinationWallet!!.id,
-                                        transactionDate = selectedDate
+                                        title = summary.title,
+                                        amount = summary.amount,
+                                        sourceWalletId = sourceWallet.id,
+                                        destinationWalletId = destinationWallet.id,
+                                        transactionDate = summary.date
                                     )
                                 }
                             }
@@ -489,7 +499,7 @@ fun CreateTransactionScreen(
                         onNavigateBack()
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = isFormValid
+                    enabled = transactionState.isFormValid
                 ) {
                     Text("Create Transaction")
                 }
@@ -498,65 +508,70 @@ fun CreateTransactionScreen(
     }
     
     // Date Picker Dialog
-    if (showDatePicker) {
+    if (transactionState.dialogStates.showDatePicker) {
         TransactionDatePickerDialog(
-            selectedDate = selectedDate,
+            selectedDate = transactionState.selectedDate,
             onDateSelected = { date: Date ->
-                selectedDate = date
-                showDatePicker = false
+                transactionState = updateSelectedDate(transactionState, date)
             },
-            onDismiss = { showDatePicker = false }
+            onDismiss = {
+                transactionState = closeAllDialogs(transactionState)
+            }
         )
     }
     
     // Physical Wallet Picker Dialog
-    if (showPhysicalWalletPicker) {
+    if (transactionState.dialogStates.showPhysicalWalletPicker) {
         WalletPickerDialog(
-            wallets = uiState.wallets.filter { it.walletType == "Physical" },
+            wallets = viewModelUiState.wallets.filter { it.walletType == "Physical" },
             title = "Select Physical Wallet",
-            onDismiss = { showPhysicalWalletPicker = false },
+            onDismiss = {
+                transactionState = closeAllDialogs(transactionState)
+            },
             onWalletSelected = { wallet ->
-                selectedPhysicalWallet = wallet
-                showPhysicalWalletPicker = false
+                transactionState = updatePhysicalWallet(transactionState, wallet)
             }
         )
     }
     
     // Logical Wallet Picker Dialog
-    if (showLogicalWalletPicker) {
+    if (transactionState.dialogStates.showLogicalWalletPicker) {
         WalletPickerDialog(
-            wallets = uiState.wallets.filter { it.walletType == "Logical" },
+            wallets = viewModelUiState.wallets.filter { it.walletType == "Logical" },
             title = "Select Logical Wallet",
-            onDismiss = { showLogicalWalletPicker = false },
+            onDismiss = {
+                transactionState = closeAllDialogs(transactionState)
+            },
             onWalletSelected = { wallet ->
-                selectedLogicalWallet = wallet
-                showLogicalWalletPicker = false
+                transactionState = updateLogicalWallet(transactionState, wallet)
             }
         )
     }
     
     // Source Wallet Picker Dialog
-    if (showSourceWalletPicker) {
+    if (transactionState.dialogStates.showSourceWalletPicker) {
         WalletPickerDialog(
-            wallets = uiState.wallets,
+            wallets = viewModelUiState.wallets,
             title = "Select Source Wallet",
-            onDismiss = { showSourceWalletPicker = false },
+            onDismiss = {
+                transactionState = closeAllDialogs(transactionState)
+            },
             onWalletSelected = { wallet ->
-                selectedSourceWallet = wallet
-                showSourceWalletPicker = false
+                transactionState = updateSourceWallet(transactionState, wallet)
             }
         )
     }
     
     // Destination Wallet Picker Dialog
-    if (showDestinationWalletPicker) {
+    if (transactionState.dialogStates.showDestinationWalletPicker) {
         WalletPickerDialog(
-            wallets = uiState.wallets.filter { it.id != selectedSourceWallet?.id },
+            wallets = viewModelUiState.wallets.filter { it.id != transactionState.selectedWallets.source?.id },
             title = "Select Destination Wallet",
-            onDismiss = { showDestinationWalletPicker = false },
+            onDismiss = {
+                transactionState = closeAllDialogs(transactionState)
+            },
             onWalletSelected = { wallet ->
-                selectedDestinationWallet = wallet
-                showDestinationWalletPicker = false
+                transactionState = updateDestinationWallet(transactionState, wallet)
             }
         )
     }
@@ -871,7 +886,9 @@ fun TagInputField(
     value: String,
     onValueChange: (String) -> Unit,
     availableTags: List<String>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isError: Boolean = false,
+    supportingText: String? = null
 ) {
     var showSuggestions by remember { mutableStateOf(false) }
     
@@ -893,7 +910,14 @@ fun TagInputField(
             label = { Text("Tags (optional)") },
             placeholder = { Text("Add tags separated by commas") },
             modifier = Modifier.fillMaxWidth(),
-            supportingText = { Text("Separate multiple tags with commas") },
+            isError = isError,
+            supportingText = {
+                if (supportingText != null) {
+                    Text(supportingText, color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    Text("Separate multiple tags with commas")
+                }
+            },
             trailingIcon = {
                 if (suggestions.isNotEmpty()) {
                     Icon(
