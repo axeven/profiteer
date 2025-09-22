@@ -2,6 +2,7 @@ package com.axeven.profiteerapp.ui.state
 
 import com.axeven.profiteerapp.data.model.TransactionType
 import com.axeven.profiteerapp.data.model.Wallet
+import com.axeven.profiteerapp.data.ui.*
 import org.junit.Test
 import org.junit.Assert.*
 import java.util.*
@@ -41,36 +42,57 @@ class StateManagementTest {
 
     @Test
     fun `should maintain state consistency when updating transaction type`() {
-        // RED: This test will fail because CreateTransactionUiState doesn't exist yet
+        // RED: Test the actual behavior with the new state implementation
 
-        // Test scenario: When changing from TRANSFER to EXPENSE,
-        // transfer-specific fields should be cleared
+        // Create initial state with transfer configuration
+        val initialState = CreateTransactionUiState(
+            selectedType = TransactionType.TRANSFER,
+            selectedWallets = SelectedWallets(
+                source = mockPhysicalWallet,
+                destination = mockPhysicalWallet2
+            )
+        )
 
-        // This test defines the expected behavior for state transitions
-        // Implementation will follow to make this test pass
+        // Update to EXPENSE transaction type
+        val updatedState = initialState.updateTransactionType(TransactionType.EXPENSE)
 
-        // Expected behavior:
-        // 1. State should update transaction type
-        // 2. Incompatible fields should be cleared
-        // 3. Form validation should be recalculated
-        // 4. State should remain immutable
+        // Verify transaction type updated
+        assertEquals(TransactionType.EXPENSE, updatedState.selectedType)
 
-        assertTrue("This test will be implemented after CreateTransactionUiState is created", true)
+        // Verify transfer-specific fields cleared
+        assertNull("Source wallet should be cleared", updatedState.selectedWallets.source)
+        assertNull("Destination wallet should be cleared", updatedState.selectedWallets.destination)
+
+        // Verify state immutability
+        assertEquals(TransactionType.TRANSFER, initialState.selectedType)
+        assertNotNull("Original state source wallet preserved", initialState.selectedWallets.source)
     }
 
     @Test
     fun `should validate state immutability on updates`() {
-        // RED: This test will fail because consolidated state doesn't exist yet
+        // RED: Test actual immutability behavior
 
-        // Test scenario: Any state update should create new instance,
-        // never mutate existing state
+        val originalState = CreateTransactionUiState(
+            title = "Original Title",
+            amount = "100.0"
+        )
 
-        // Expected behavior:
-        // 1. Original state object unchanged after updates
-        // 2. New state object with only intended changes
-        // 3. Structural sharing where possible for performance
+        // Update state
+        val updatedState = originalState.updateAndValidate(
+            title = "Updated Title",
+            amount = "200.0"
+        )
 
-        assertTrue("This test will be implemented after state data classes are created", true)
+        // Verify immutability - original state unchanged
+        assertEquals("Original Title", originalState.title)
+        assertEquals("100.0", originalState.amount)
+
+        // Verify new state has updates
+        assertEquals("Updated Title", updatedState.title)
+        assertEquals("200.0", updatedState.amount)
+
+        // Verify objects are different instances
+        assertNotSame("State objects should be different instances", originalState, updatedState)
     }
 
     @Test
