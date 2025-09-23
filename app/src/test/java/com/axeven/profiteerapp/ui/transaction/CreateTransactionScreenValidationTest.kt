@@ -22,10 +22,10 @@ class CreateTransactionScreenValidationTest {
     fun `should_not_show_validation_errors_on_initial_load`() {
         // Test 1: Initial state should have no validation errors displayed
 
-        // Create initial state as the screen would on first load
+        // Create initial state as the screen now does (FIXED implementation)
         val initialState = CreateTransactionUiState(
             selectedType = TransactionType.EXPENSE
-        ).updateAndValidate() // This is the current problematic code
+        ) // No .updateAndValidate() call - this is the fix!
 
         // Assert: No validation errors should be present on initial load
         assertFalse("Initial state should not have validation errors",
@@ -39,29 +39,27 @@ class CreateTransactionScreenValidationTest {
         assertNull("Wallet error should be null on initial load",
                   initialState.validationErrors.walletError)
 
-        // This test should FAIL with current implementation because
-        // .updateAndValidate() immediately triggers validation on empty required fields
+        // This test should now PASS with the fixed implementation
     }
 
     @Test
     fun `should_be_invalid_but_silent_on_initial_load`() {
         // Test 2: Form should be invalid (for submission) but not show errors
 
-        // Create initial state as the screen would on first load
+        // Create initial state as the screen now does (FIXED implementation)
         val initialState = CreateTransactionUiState(
             selectedType = TransactionType.EXPENSE
-        ).updateAndValidate() // This is the current problematic code
+        ) // No .updateAndValidate() call - this is the fix!
 
         // Assert: Form should be invalid for submission (empty required fields)
         assertFalse("Initial state should be invalid for submission",
                    initialState.isFormValid)
 
-        // But: No validation errors should be displayed to user
+        // And: No validation errors should be displayed to user
         assertFalse("No validation errors should be shown initially",
                    initialState.validationErrors.hasErrors)
 
-        // This test should FAIL with current implementation because
-        // validation errors are present even though form is correctly invalid
+        // This test should now PASS with the fixed implementation
     }
 
     @Test

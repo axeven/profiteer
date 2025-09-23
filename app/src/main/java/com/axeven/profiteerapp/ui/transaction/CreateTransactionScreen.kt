@@ -42,7 +42,7 @@ fun CreateTransactionScreen(
         mutableStateOf(
             CreateTransactionUiState(
                 selectedType = initialTransactionType ?: TransactionType.EXPENSE
-            ).updateAndValidate()
+            )
         )
     }
     
