@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.axeven.profiteerapp.data.model.PhysicalForm
 import com.axeven.profiteerapp.data.model.Wallet
+import com.axeven.profiteerapp.data.ui.WalletListUiState
 import com.axeven.profiteerapp.utils.NumberFormatter
 import com.axeven.profiteerapp.utils.WalletValidator
 import com.axeven.profiteerapp.viewmodel.WalletListViewModel
@@ -67,10 +68,8 @@ fun WalletListScreen(
     viewModel: WalletListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    
-    var showCreateWalletDialog by remember { mutableStateOf(false) }
-    var showEditWalletDialog by remember { mutableStateOf(false) }
-    var walletToEdit by remember { mutableStateOf<Wallet?>(null) }
+
+    var walletListState by remember { mutableStateOf(WalletListUiState()) }
 
     Scaffold(
         topBar = {
@@ -98,7 +97,7 @@ fun WalletListScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showCreateWalletDialog = true }
+                onClick = { walletListState = walletListState.openDialog(com.axeven.profiteerapp.data.ui.WalletListDialogType.CREATE) }
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Create wallet")
             }
@@ -189,8 +188,7 @@ fun WalletListScreen(
                         conversionRates = emptyMap(), // No longer needed
                         onWalletClick = onNavigateToWalletDetail,
                         onWalletEdit = { wallet ->
-                            walletToEdit = wallet
-                            showEditWalletDialog = true
+                            walletListState = walletListState.openEditWalletDialog(wallet).initializeEditForm(wallet)
                         },
                         onWalletDelete = { viewModel.deleteWallet(it) },
                         modifier = Modifier.fillMaxSize()
@@ -217,7 +215,7 @@ fun WalletListScreen(
                             item {
                                 EmptyWalletState(
                                     walletType = if (uiState.showPhysicalWallets) "physical" else "logical",
-                                    onCreateWallet = { showCreateWalletDialog = true }
+                                    onCreateWallet = { walletListState = walletListState.openDialog(com.axeven.profiteerapp.data.ui.WalletListDialogType.CREATE) }
                                 )
                             }
                         } else {
@@ -227,9 +225,8 @@ fun WalletListScreen(
                                     defaultCurrency = uiState.defaultCurrency,
                                     displayCurrency = uiState.displayCurrency,
                                     displayRate = uiState.displayRate,
-                                    onEdit = { 
-                                        walletToEdit = wallet
-                                        showEditWalletDialog = true
+                                    onEdit = {
+                                        walletListState = walletListState.openEditWalletDialog(wallet).initializeEditForm(wallet)
                                     },
                                     onDelete = { viewModel.deleteWallet(wallet.id) },
                                     onClick = { onNavigateToWalletDetail(wallet.id) }
@@ -243,40 +240,37 @@ fun WalletListScreen(
     }
 
     // Dialogs
-    if (showCreateWalletDialog) {
-        CreateWalletDialog(
-            onDismiss = { showCreateWalletDialog = false },
-            onConfirm = { name, walletType, _, initialBalance, physicalForm ->
-                viewModel.createWallet(name, walletType, initialBalance, physicalForm)
-                showCreateWalletDialog = false
+    if (walletListState.dialogStates.showCreateWalletDialog) {
+        CreateWalletDialogWithState(
+            walletListState = walletListState,
+            onStateChange = { walletListState = it },
+            onConfirm = { summary ->
+                viewModel.createWallet(summary.name, summary.walletType, summary.initialBalance, summary.physicalForm)
+                walletListState = walletListState.closeAllDialogs().resetForm()
             },
             defaultCurrency = uiState.defaultCurrency,
             defaultWalletType = if (uiState.showPhysicalWallets) "Physical" else "Logical",
             isWalletNameUnique = { name -> viewModel.isWalletNameUnique(name) }
         )
     }
-    
-    if (showEditWalletDialog && walletToEdit != null) {
-        EditWalletDialog(
-            wallet = walletToEdit!!,
-            onDismiss = { 
-                showEditWalletDialog = false
-                walletToEdit = null
-            },
-            onConfirm = { name, walletType, _, initialBalance, physicalForm ->
-                val updatedWallet = walletToEdit!!.copy(
-                    name = name,
-                    walletType = walletType,
-                    initialBalance = initialBalance,
-                    physicalForm = physicalForm,
-                    balance = walletToEdit!!.balance - walletToEdit!!.initialBalance + initialBalance
+
+    if (walletListState.dialogStates.showEditWalletDialog && walletListState.selectedWalletForEdit != null) {
+        EditWalletDialogWithState(
+            walletListState = walletListState,
+            onStateChange = { walletListState = it },
+            onConfirm = { summary ->
+                val updatedWallet = walletListState.selectedWalletForEdit!!.copy(
+                    name = summary.name,
+                    walletType = summary.walletType,
+                    initialBalance = summary.initialBalance,
+                    physicalForm = summary.physicalForm,
+                    balance = walletListState.selectedWalletForEdit!!.balance - walletListState.selectedWalletForEdit!!.initialBalance + summary.initialBalance
                 )
                 viewModel.updateWallet(updatedWallet)
-                showEditWalletDialog = false
-                walletToEdit = null
+                walletListState = walletListState.closeAllDialogs().resetForm()
             },
             defaultCurrency = uiState.defaultCurrency,
-            isWalletNameUnique = { name -> viewModel.isWalletNameUnique(name, walletToEdit!!.id) }
+            isWalletNameUnique = { name -> viewModel.isWalletNameUnique(name, walletListState.selectedWalletForEdit!!.id) }
         )
     }
 }
@@ -752,6 +746,273 @@ fun EditWalletDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun CreateWalletDialogWithState(
+    walletListState: WalletListUiState,
+    onStateChange: (WalletListUiState) -> Unit,
+    onConfirm: (com.axeven.profiteerapp.data.ui.WalletSummary) -> Unit,
+    defaultCurrency: String = "USD",
+    defaultWalletType: String = "Physical",
+    isWalletNameUnique: (String) -> Boolean = { true }
+) {
+    val isNameUnique = isWalletNameUnique(walletListState.formData.walletName)
+    val summary = walletListState.getWalletSummary()
+    val isFormValid = summary.isValid && isNameUnique
+
+    AlertDialog(
+        onDismissRequest = { onStateChange(walletListState.closeAllDialogs().resetForm()) },
+        title = { Text("Create New Wallet") },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OutlinedTextField(
+                    value = walletListState.formData.walletName,
+                    onValueChange = { onStateChange(walletListState.updateWalletName(it)) },
+                    label = { Text("Wallet Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = !isNameUnique && walletListState.formData.walletName.isNotBlank(),
+                    supportingText = if (!isNameUnique && walletListState.formData.walletName.isNotBlank()) {
+                        { Text("Wallet name already exists", color = MaterialTheme.colorScheme.error) }
+                    } else null
+                )
+
+                Box {
+                    OutlinedTextField(
+                        value = walletListState.formData.selectedWalletType,
+                        onValueChange = { },
+                        label = { Text("Wallet Type") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onStateChange(walletListState.updateDropdownState(com.axeven.profiteerapp.data.ui.WalletDropdownType.WALLET_TYPE, true))
+                            },
+                        readOnly = true,
+                        trailingIcon = {
+                            Icon(
+                                imageVector = if (walletListState.formData.dropdownStates.showWalletTypeDropdown) Icons.Default.KeyboardArrowUp
+                                            else Icons.Default.KeyboardArrowDown,
+                                contentDescription = null
+                            )
+                        }
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clickable {
+                                onStateChange(walletListState.updateDropdownState(com.axeven.profiteerapp.data.ui.WalletDropdownType.WALLET_TYPE, true))
+                            }
+                    )
+
+                    DropdownMenu(
+                        expanded = walletListState.formData.dropdownStates.showWalletTypeDropdown,
+                        onDismissRequest = {
+                            onStateChange(walletListState.updateDropdownState(com.axeven.profiteerapp.data.ui.WalletDropdownType.WALLET_TYPE, false))
+                        }
+                    ) {
+                        listOf("Physical", "Logical").forEach { type ->
+                            DropdownMenuItem(
+                                text = { Text(type) },
+                                onClick = {
+                                    onStateChange(
+                                        walletListState
+                                            .updateWalletType(type)
+                                            .updateDropdownState(com.axeven.profiteerapp.data.ui.WalletDropdownType.WALLET_TYPE, false)
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Text(
+                    text = "Currency: $defaultCurrency",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+
+                if (walletListState.formData.selectedWalletType == "Physical") {
+                    PhysicalFormSelector(
+                        selectedForm = walletListState.formData.selectedPhysicalForm,
+                        onFormSelected = { onStateChange(walletListState.updatePhysicalForm(it)) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                val balanceLabel = when (defaultCurrency) {
+                    "GOLD" -> "Initial Weight (grams)"
+                    "BTC" -> "Initial Amount (BTC)"
+                    else -> "Initial Balance"
+                }
+                val balancePlaceholder = when (defaultCurrency) {
+                    "GOLD" -> "0.000"
+                    "BTC" -> "0.00000000"
+                    else -> "0.00"
+                }
+
+                OutlinedTextField(
+                    value = walletListState.formData.initialBalanceText,
+                    onValueChange = { onStateChange(walletListState.updateInitialBalance(it)) },
+                    label = { Text(balanceLabel) },
+                    placeholder = { Text(balancePlaceholder) },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = NumberFormatter.parseDouble(walletListState.formData.initialBalanceText) == null && walletListState.formData.initialBalanceText.isNotBlank(),
+                    supportingText = if (NumberFormatter.parseDouble(walletListState.formData.initialBalanceText) == null && walletListState.formData.initialBalanceText.isNotBlank()) {
+                        { Text("Please enter a valid amount", color = MaterialTheme.colorScheme.error) }
+                    } else null
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(summary) },
+                enabled = isFormValid
+            ) {
+                Text("Create")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onStateChange(walletListState.closeAllDialogs().resetForm()) }) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun EditWalletDialogWithState(
+    walletListState: WalletListUiState,
+    onStateChange: (WalletListUiState) -> Unit,
+    onConfirm: (com.axeven.profiteerapp.data.ui.WalletSummary) -> Unit,
+    defaultCurrency: String = "USD",
+    isWalletNameUnique: (String) -> Boolean = { true }
+) {
+    val isNameUnique = isWalletNameUnique(walletListState.formData.walletName)
+    val summary = walletListState.getWalletSummary()
+    val isFormValid = summary.isValid && isNameUnique
+
+    AlertDialog(
+        onDismissRequest = { onStateChange(walletListState.closeAllDialogs().resetForm()) },
+        title = { Text("Edit Wallet") },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OutlinedTextField(
+                    value = walletListState.formData.walletName,
+                    onValueChange = { onStateChange(walletListState.updateWalletName(it)) },
+                    label = { Text("Wallet Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = !isNameUnique && walletListState.formData.walletName.isNotBlank(),
+                    supportingText = if (!isNameUnique && walletListState.formData.walletName.isNotBlank()) {
+                        { Text("Wallet name already exists", color = MaterialTheme.colorScheme.error) }
+                    } else null
+                )
+
+                Box {
+                    OutlinedTextField(
+                        value = walletListState.formData.selectedWalletType,
+                        onValueChange = { },
+                        label = { Text("Wallet Type") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onStateChange(walletListState.updateDropdownState(com.axeven.profiteerapp.data.ui.WalletDropdownType.WALLET_TYPE, true))
+                            },
+                        readOnly = true,
+                        trailingIcon = {
+                            Icon(
+                                imageVector = if (walletListState.formData.dropdownStates.showWalletTypeDropdown) Icons.Default.KeyboardArrowUp
+                                            else Icons.Default.KeyboardArrowDown,
+                                contentDescription = null
+                            )
+                        }
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clickable {
+                                onStateChange(walletListState.updateDropdownState(com.axeven.profiteerapp.data.ui.WalletDropdownType.WALLET_TYPE, true))
+                            }
+                    )
+
+                    DropdownMenu(
+                        expanded = walletListState.formData.dropdownStates.showWalletTypeDropdown,
+                        onDismissRequest = {
+                            onStateChange(walletListState.updateDropdownState(com.axeven.profiteerapp.data.ui.WalletDropdownType.WALLET_TYPE, false))
+                        }
+                    ) {
+                        listOf("Physical", "Logical").forEach { type ->
+                            DropdownMenuItem(
+                                text = { Text(type) },
+                                onClick = {
+                                    onStateChange(
+                                        walletListState
+                                            .updateWalletType(type)
+                                            .updateDropdownState(com.axeven.profiteerapp.data.ui.WalletDropdownType.WALLET_TYPE, false)
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Text(
+                    text = "Currency: $defaultCurrency",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+
+                if (walletListState.formData.selectedWalletType == "Physical") {
+                    PhysicalFormSelector(
+                        selectedForm = walletListState.formData.selectedPhysicalForm,
+                        onFormSelected = { onStateChange(walletListState.updatePhysicalForm(it)) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                val balanceLabel = when (defaultCurrency) {
+                    "GOLD" -> "Initial Weight (grams)"
+                    "BTC" -> "Initial Amount (BTC)"
+                    else -> "Initial Balance"
+                }
+                val balancePlaceholder = when (defaultCurrency) {
+                    "GOLD" -> "0.000"
+                    "BTC" -> "0.00000000"
+                    else -> "0.00"
+                }
+
+                OutlinedTextField(
+                    value = walletListState.formData.initialBalanceText,
+                    onValueChange = { onStateChange(walletListState.updateInitialBalance(it)) },
+                    label = { Text(balanceLabel) },
+                    placeholder = { Text(balancePlaceholder) },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = NumberFormatter.parseDouble(walletListState.formData.initialBalanceText) == null && walletListState.formData.initialBalanceText.isNotBlank(),
+                    supportingText = if (NumberFormatter.parseDouble(walletListState.formData.initialBalanceText) == null && walletListState.formData.initialBalanceText.isNotBlank()) {
+                        { Text("Please enter a valid amount", color = MaterialTheme.colorScheme.error) }
+                    } else null
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(summary) },
+                enabled = isFormValid
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onStateChange(walletListState.closeAllDialogs().resetForm()) }) {
                 Text("Cancel")
             }
         }
