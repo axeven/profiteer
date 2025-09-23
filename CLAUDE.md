@@ -165,6 +165,109 @@ com.axeven.profiteerapp/
 7. **Test currency conversion** logic thoroughly
 8. **Verify balance integrity** in wallet and transaction operations
 9. **Use proper logging practices** following the established logging framework
+10. **Follow consolidated state management patterns** for all Jetpack Compose screens
+
+# State Management Guidelines
+
+## Consolidated State Pattern
+
+**REQUIRED**: All Jetpack Compose screens must use consolidated state management instead of scattered `mutableStateOf` variables.
+
+### Core Principles
+
+- **Single Source of Truth**: Replace multiple `mutableStateOf` variables with one consolidated state object
+- **Immutable Updates**: All state changes return new state objects using data class `copy()`
+- **Automatic Validation**: State objects include built-in validation and derived properties
+- **Dialog Management**: Enforce business rules like "only one dialog open at a time"
+
+### Implementation Pattern
+
+```kotlin
+// ✅ Required: Consolidated state pattern
+data class ScreenUiState(
+    val dialogStates: ScreenDialogStates = ScreenDialogStates(),
+    val formData: ScreenFormData = ScreenFormData(),
+    val validationErrors: ValidationErrors = ValidationErrors()
+) {
+    val isFormValid: Boolean
+        get() = formData.requiredField.isNotBlank() &&
+                validationErrors.isEmpty()
+
+    fun updateField(value: String): ScreenUiState {
+        val newState = copy(formData = formData.copy(requiredField = value))
+        return newState.copy(validationErrors = validateState(newState))
+    }
+
+    fun openDialog(type: DialogType): ScreenUiState {
+        return copy(dialogStates = DialogStates.single(type))
+    }
+}
+
+@Composable
+fun MyScreen() {
+    var uiState by remember { mutableStateOf(ScreenUiState()) }
+
+    TextField(
+        value = uiState.formData.requiredField,
+        onValueChange = { uiState = uiState.updateField(it) }
+    )
+}
+```
+
+### Anti-Patterns (Forbidden)
+
+```kotlin
+// ❌ NEVER use scattered state variables
+@Composable
+fun MyScreen() {
+    var showDialog by remember { mutableStateOf(false) }
+    var titleText by remember { mutableStateOf("") }
+    var isValid by remember { mutableStateOf(false) }
+
+    // Manual validation scattered in UI
+    LaunchedEffect(titleText) {
+        isValid = titleText.isNotBlank()
+    }
+}
+```
+
+### Testing Requirements
+
+All state objects MUST have comprehensive unit tests:
+
+```kotlin
+class ScreenUiStateTest {
+    @Test
+    fun `should update state immutably`() {
+        val original = ScreenUiState()
+        val updated = original.updateField("test")
+
+        assertNotSame(original, updated)
+        assertEquals("", original.formData.requiredField)
+        assertEquals("test", updated.formData.requiredField)
+    }
+
+    @Test
+    fun `should validate automatically on update`() {
+        val state = ScreenUiState().updateField("valid input")
+        assertTrue(state.isFormValid)
+    }
+}
+```
+
+### Documentation
+
+For comprehensive guidance, see:
+- [State Management Guidelines](docs/STATE_MANAGEMENT_GUIDELINES.md) - Complete patterns and examples
+- [State Migration Checklist](docs/STATE_MIGRATION_CHECKLIST.md) - Step-by-step migration guide
+
+### Migration Requirements
+
+When updating existing screens:
+1. Follow the [State Migration Checklist](docs/STATE_MIGRATION_CHECKLIST.md)
+2. Create comprehensive tests for the new state model
+3. Ensure UI behavior remains identical
+4. Verify performance improvements or maintenance
 
 # Logging Guidelines
 
