@@ -18,6 +18,7 @@ import com.axeven.profiteerapp.viewmodel.SettingsViewModel
 
 import com.axeven.profiteerapp.data.model.Wallet
 import com.axeven.profiteerapp.data.model.CurrencyRate
+import com.axeven.profiteerapp.data.ui.*
 import com.axeven.profiteerapp.utils.NumberFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,11 +28,9 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    
-    var showCurrencyDialog by remember { mutableStateOf(false) }
-    var showRateDialog by remember { mutableStateOf(false) }
-    var showEditRateDialog by remember { mutableStateOf(false) }
-    var rateToEdit by remember { mutableStateOf<CurrencyRate?>(null) }
+
+    // Consolidated state management - replaces 4 individual mutableStateOf variables
+    var settingsState by remember { mutableStateOf(SettingsUiState()) }
     
     // Show error if any
     uiState.error?.let { error ->
@@ -73,7 +72,9 @@ fun SettingsScreen(
                 CurrencySelector(
                     selectedCurrency = uiState.defaultCurrency,
                     onCurrencySelected = { viewModel.updateDefaultCurrency(it) },
-                    onClick = { showCurrencyDialog = true }
+                    onClick = {
+                        settingsState = settingsState.openDialog(SettingsDialogType.CURRENCY)
+                    }
                 )
             }
             
@@ -87,7 +88,9 @@ fun SettingsScreen(
                     title = "Add Default Conversion Rate",
                     subtitle = "Set flat conversion rate for all times (including gold price per gram)",
                     icon = Icons.Default.Refresh,
-                    onClick = { showRateDialog = true }
+                    onClick = {
+                        settingsState = settingsState.openDialog(SettingsDialogType.RATE)
+                    }
                 )
             }
             
@@ -96,7 +99,9 @@ fun SettingsScreen(
                     title = "Add Monthly Conversion Rate",
                     subtitle = "Set specific conversion rate for certain month (including monthly gold price)",
                     icon = Icons.Default.DateRange,
-                    onClick = { showRateDialog = true }
+                    onClick = {
+                        settingsState = settingsState.openDialog(SettingsDialogType.RATE)
+                    }
                 )
             }
             
@@ -104,9 +109,8 @@ fun SettingsScreen(
                 val rate = uiState.currencyRates[index]
                 ConversionRateItem(
                     rate = rate,
-                    onEdit = { 
-                        rateToEdit = rate
-                        showEditRateDialog = true
+                    onEdit = {
+                        settingsState = settingsState.openEditRateDialog(rate).initializeEditForm(rate)
                     },
                     onDelete = { viewModel.deleteCurrencyRate(rate.id) }
                 )
@@ -115,40 +119,42 @@ fun SettingsScreen(
     }
     
     // Dialogs
-    
-    if (showCurrencyDialog) {
+
+    if (settingsState.dialogStates.showCurrencyDialog) {
         CurrencySelectionDialog(
             currentCurrency = uiState.defaultCurrency,
-            onDismiss = { showCurrencyDialog = false },
+            onDismiss = {
+                settingsState = settingsState.closeAllDialogs()
+            },
             onConfirm = { currency ->
                 viewModel.updateDefaultCurrency(currency)
-                showCurrencyDialog = false
+                settingsState = settingsState.updateSelectedCurrency(currency).closeAllDialogs()
             }
         )
     }
     
-    if (showRateDialog) {
+    if (settingsState.dialogStates.showRateDialog) {
         ConversionRateDialog(
-            onDismiss = { showRateDialog = false },
+            onDismiss = {
+                settingsState = settingsState.closeAllDialogs()
+            },
             onConfirm = { fromCurrency, toCurrency, rate, month ->
                 viewModel.createCurrencyRate(fromCurrency, toCurrency, rate, month)
-                showRateDialog = false
+                settingsState = settingsState.closeAllDialogs()
             },
             defaultCurrency = uiState.defaultCurrency
         )
     }
     
-    if (showEditRateDialog && rateToEdit != null) {
+    if (settingsState.dialogStates.showEditRateDialog && settingsState.selectedRateForEdit != null) {
         EditConversionRateDialog(
-            rate = rateToEdit!!,
-            onDismiss = { 
-                showEditRateDialog = false
-                rateToEdit = null
+            rate = settingsState.selectedRateForEdit!!,
+            onDismiss = {
+                settingsState = settingsState.closeAllDialogs()
             },
             onConfirm = { fromCurrency, toCurrency, rate, month ->
-                viewModel.updateCurrencyRate(rateToEdit!!.id, fromCurrency, toCurrency, rate, month)
-                showEditRateDialog = false
-                rateToEdit = null
+                viewModel.updateCurrencyRate(settingsState.selectedRateForEdit!!.id, fromCurrency, toCurrency, rate, month)
+                settingsState = settingsState.closeAllDialogs()
             },
             defaultCurrency = uiState.defaultCurrency
         )
@@ -399,7 +405,7 @@ fun ConversionRateDialog(
     var showMonthDropdown by remember { mutableStateOf(false) }
     val currencies = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD", "IDR", "GOLD", "BTC")
     val years = listOf("Default", "2024", "2025", "2026")
-    val months = listOf("All Months", "January", "February", "March", "April", "May", "June", 
+    val months = listOf("All Months", "January", "February", "March", "April", "May", "June",
                        "July", "August", "September", "October", "November", "December")
 
     val isSpecialRate = fromCurrency == "GOLD" || toCurrency == "GOLD" || fromCurrency == "BTC" || toCurrency == "BTC"
