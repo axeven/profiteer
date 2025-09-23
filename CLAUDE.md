@@ -67,6 +67,120 @@ Use the following commands to run tests
 - **Document ID Mapping**: Manual mapping required for proper model instantiation
 - **Security Rules**: User data isolation enforced through Firestore rules
 
+## Firestore Security Rules & Query Requirements
+
+**CRITICAL**: All Firestore queries MUST comply with security rules to prevent permission errors.
+
+### Current Security Rules
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // All collections require userId filter for data isolation
+    match /transactions/{transactionId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    match /wallets/{walletId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    match /user_preferences/{prefId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    match /currency_rates/{rateId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+  }
+}
+```
+
+### Mandatory Query Pattern
+
+**🚨 SECURITY REQUIREMENT**: Every Firestore query MUST include a `userId` filter as the FIRST condition.
+
+#### ✅ Correct Pattern:
+```kotlin
+// ALWAYS start with userId filter
+collection
+  .whereEqualTo("userId", userId)
+  .whereEqualTo("otherField", value)
+  .get()
+```
+
+#### ❌ FORBIDDEN Pattern:
+```kotlin
+// NEVER query without userId filter - this will cause permission errors
+collection
+  .whereEqualTo("walletId", walletId)  // Missing userId!
+  .get()
+```
+
+### Repository Implementation Rules
+
+1. **All Repository Methods**: Must accept `userId` as parameter when querying
+2. **Function Signatures**: Include `userId: String` parameter for all query methods
+3. **Compound Queries**: Always use `userId` as the first filter condition
+4. **Array Queries**: Use `.whereEqualTo("userId", userId)` before `.whereArrayContains()`
+
+#### Example Implementations:
+```kotlin
+// ✅ Correct Implementation
+fun getWalletTransactions(walletId: String, userId: String): Flow<List<Transaction>> = callbackFlow {
+  transactionsCollection
+    .whereEqualTo("userId", userId)        // Required first!
+    .whereEqualTo("walletId", walletId)
+    .addSnapshotListener { ... }
+}
+
+// ✅ Correct Array Query
+fun getAffectedTransactions(walletId: String, userId: String): Flow<List<Transaction>> = callbackFlow {
+  transactionsCollection
+    .whereEqualTo("userId", userId)              // Required first!
+    .whereArrayContains("affectedWalletIds", walletId)
+    .addSnapshotListener { ... }
+}
+```
+
+### Security Validation Checklist
+
+Before implementing any new Firestore query:
+- [ ] Does the function accept `userId: String` parameter?
+- [ ] Is `.whereEqualTo("userId", userId)` the FIRST filter condition?
+- [ ] Are all Repository callers passing the correct userId?
+- [ ] Does the query follow the established security pattern?
+
+### Common Security Violations
+
+1. **Missing userId Filter**:
+   ```kotlin
+   // ❌ This will fail with PERMISSION_DENIED
+   .whereEqualTo("sourceWalletId", walletId)
+   ```
+
+2. **Wrong Filter Order**:
+   ```kotlin
+   // ❌ userId should be first (may impact index performance)
+   .whereEqualTo("walletId", walletId)
+   .whereEqualTo("userId", userId)
+   ```
+
+3. **Missing userId Parameter**:
+   ```kotlin
+   // ❌ Function doesn't accept userId
+   fun getTransactions(walletId: String): Flow<List<Transaction>>
+   ```
+
+### Error Messages to Watch For
+
+If you see these Firebase errors, check for missing userId filters:
+- `PERMISSION_DENIED: Missing or insufficient permissions`
+- `Error in [query type] query` in TransactionRepository logs
+
+**Remember**: Security rules are enforced on every query. One missing userId filter will break the entire query.
+
 # Code Organization
 
 ## Package Structure
@@ -166,6 +280,7 @@ com.axeven.profiteerapp/
 8. **Verify balance integrity** in wallet and transaction operations
 9. **Use proper logging practices** following the established logging framework
 10. **Follow consolidated state management patterns** for all Jetpack Compose screens
+11. **🚨 CRITICAL: Follow Firebase security patterns** - All Firestore queries MUST include userId filters (see Firebase Security section above)
 
 # State Management Guidelines
 
@@ -348,3 +463,15 @@ try {
 ```
 
 For complete documentation, see [LOGGING_GUIDELINES.md](docs/LOGGING_GUIDELINES.md).
+
+# 🚨 CRITICAL SECURITY REMINDER
+
+**BEFORE WRITING ANY FIRESTORE QUERY:**
+
+1. ✅ **Check the Firebase Security section above** for mandatory userId filter requirements
+2. ✅ **Use the template** from `docs/FIRESTORE_QUERY_TEMPLATE.kt`
+3. ✅ **Always include userId parameter** in Repository method signatures
+4. ✅ **Always filter by userId FIRST** in every Firestore query
+5. ✅ **Reference security docs** at `docs/FIREBASE_SECURITY_GUIDELINES.md`
+
+**Security violations will cause PERMISSION_DENIED errors and break the app!**

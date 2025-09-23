@@ -136,7 +136,7 @@ class TransactionRepository @Inject constructor(
         awaitClose { listener.remove() }
     }
 
-    fun getWalletTransactions(walletId: String): Flow<List<Transaction>> = callbackFlow {
+    fun getWalletTransactions(walletId: String, userId: String): Flow<List<Transaction>> = callbackFlow {
         var primaryWalletTransactions = emptyList<Transaction>()
         var affectedWalletTransactions = emptyList<Transaction>()
         var sourceWalletTransactions = emptyList<Transaction>()
@@ -157,6 +157,7 @@ class TransactionRepository @Inject constructor(
         
         // Query 1: Transactions where wallet is the primary wallet
         val listener1 = transactionsCollection
+            .whereEqualTo("userId", userId)
             .whereEqualTo("walletId", walletId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -185,6 +186,7 @@ class TransactionRepository @Inject constructor(
         
         // Query 2: Transactions where wallet is in affectedWalletIds
         val listener2 = transactionsCollection
+            .whereEqualTo("userId", userId)
             .whereArrayContains("affectedWalletIds", walletId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -213,6 +215,7 @@ class TransactionRepository @Inject constructor(
         
         // Query 3: Transfer transactions where wallet is the source
         val listener3 = transactionsCollection
+            .whereEqualTo("userId", userId)
             .whereEqualTo("sourceWalletId", walletId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -242,6 +245,7 @@ class TransactionRepository @Inject constructor(
         
         // Query 4: Transfer transactions where wallet is the destination
         val listener4 = transactionsCollection
+            .whereEqualTo("userId", userId)
             .whereEqualTo("destinationWalletId", walletId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {

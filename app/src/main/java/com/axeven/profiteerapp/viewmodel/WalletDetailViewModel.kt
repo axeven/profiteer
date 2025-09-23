@@ -10,6 +10,8 @@ import com.axeven.profiteerapp.data.repository.CurrencyRateRepository
 import com.axeven.profiteerapp.data.repository.TransactionRepository
 import com.axeven.profiteerapp.data.repository.UserPreferencesRepository
 import com.axeven.profiteerapp.data.repository.WalletRepository
+import com.axeven.profiteerapp.data.service.BalanceCalculationService
+import com.axeven.profiteerapp.data.service.TransferDirection
 import com.axeven.profiteerapp.utils.logging.Logger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -18,10 +20,6 @@ import java.util.*
 import javax.inject.Inject
 import kotlin.math.abs
 import java.text.SimpleDateFormat
-
-enum class TransferDirection {
-    INCOMING, OUTGOING
-}
 
 data class WalletDetailUiState(
     val wallet: Wallet? = null,
@@ -51,6 +49,7 @@ class WalletDetailViewModel @Inject constructor(
     private val walletRepository: WalletRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val currencyRateRepository: CurrencyRateRepository,
+    private val balanceCalculationService: BalanceCalculationService,
     private val logger: Logger
 ) : ViewModel() {
 
@@ -76,7 +75,7 @@ class WalletDetailViewModel @Inject constructor(
 
             try {
                 combine(
-                    transactionRepository.getWalletTransactions(walletId),
+                    transactionRepository.getWalletTransactions(walletId, userId),
                     walletRepository.getUserWallets(userId),
                     userPreferencesRepository.getUserPreferences(userId)
                 ) { transactions, wallets, preferences ->
@@ -105,25 +104,8 @@ class WalletDetailViewModel @Inject constructor(
                     // Group transactions by date
                     val groupedTransactions = groupTransactionsByDate(filteredTransactions, walletId)
                     
-                    val monthlyIncome = filteredTransactions
-                        .filter { 
-                            it.type == TransactionType.INCOME || 
-                            (it.type == TransactionType.TRANSFER && isTransferIncome(it, walletId))
-                        }
-                        .sumOf { 
-                            val amount = if (it.type == TransactionType.TRANSFER) abs(it.amount) else it.amount
-                            amount // All transactions now use default currency
-                        }
-                    
-                    val monthlyExpenses = filteredTransactions
-                        .filter { 
-                            it.type == TransactionType.EXPENSE || 
-                            (it.type == TransactionType.TRANSFER && isTransferExpense(it, walletId))
-                        }
-                        .sumOf { 
-                            val amount = if (it.type == TransactionType.TRANSFER) abs(it.amount) else abs(it.amount)
-                            amount // All transactions now use default currency
-                        }
+                    val monthlyIncome = balanceCalculationService.calculateIncome(filteredTransactions, walletId)
+                    val monthlyExpenses = balanceCalculationService.calculateExpenses(filteredTransactions, walletId)
                     
                     // All wallets now use default currency - no conversion needed for storage
                     // Display conversion is handled by displayRate for UI presentation
@@ -206,31 +188,14 @@ class WalletDetailViewModel @Inject constructor(
                 // Get all transactions for this wallet (not just current month)
                 val allTransactions = _uiState.value.transactions
                 
-                // Calculate balance using same logic as existing monthly calculations
-                val income = allTransactions
-                    .filter { 
-                        it.type == TransactionType.INCOME || 
-                        (it.type == TransactionType.TRANSFER && isTransferIncome(it, currentWalletId))
-                    }
-                    .sumOf { 
-                        val amount = if (it.type == TransactionType.TRANSFER) abs(it.amount) else it.amount
-                        amount
-                    }
+                // Calculate balance using the balance calculation service
+                val newBalance = balanceCalculationService.calculateTotalBalance(
+                    allTransactions,
+                    currentWalletId,
+                    currentWallet.initialBalance
+                )
                 
-                val expenses = allTransactions
-                    .filter { 
-                        it.type == TransactionType.EXPENSE || 
-                        (it.type == TransactionType.TRANSFER && isTransferExpense(it, currentWalletId))
-                    }
-                    .sumOf { 
-                        val amount = if (it.type == TransactionType.TRANSFER) abs(it.amount) else abs(it.amount)
-                        amount
-                    }
-                
-                // Calculate new balance: initial balance + income - expenses
-                val newBalance = currentWallet.initialBalance + income - expenses
-                
-                logger.d("WalletDetailViewModel", "Balance calculation: initial=${currentWallet.initialBalance}, income=$income, expenses=$expenses, new=$newBalance")
+                logger.d("WalletDetailViewModel", "Balance calculation: initial=${currentWallet.initialBalance}, new=$newBalance")
                 
                 // Update wallet in Firestore
                 val updatedWallet = currentWallet.copy(balance = newBalance)
@@ -271,20 +236,15 @@ class WalletDetailViewModel @Inject constructor(
     }
     
     private fun isTransferIncome(transaction: Transaction, walletId: String): Boolean {
-        return transaction.type == TransactionType.TRANSFER && transaction.destinationWalletId == walletId
+        return balanceCalculationService.isTransferIncome(transaction, walletId)
     }
-    
+
     private fun isTransferExpense(transaction: Transaction, walletId: String): Boolean {
-        return transaction.type == TransactionType.TRANSFER && transaction.sourceWalletId == walletId
+        return balanceCalculationService.isTransferExpense(transaction, walletId)
     }
     
     fun getTransferDirection(transaction: Transaction, walletId: String): TransferDirection? {
-        return when {
-            transaction.type != TransactionType.TRANSFER -> null
-            transaction.sourceWalletId == walletId -> TransferDirection.OUTGOING
-            transaction.destinationWalletId == walletId -> TransferDirection.INCOMING
-            else -> null
-        }
+        return balanceCalculationService.getTransferDirection(transaction, walletId)
     }
     
     fun getEffectiveTransactionType(transaction: Transaction, walletId: String): TransactionType {
@@ -297,12 +257,7 @@ class WalletDetailViewModel @Inject constructor(
     }
     
     fun getTransferDisplayAmount(transaction: Transaction, walletId: String): Double {
-        return when {
-            transaction.type != TransactionType.TRANSFER -> transaction.amount
-            transaction.sourceWalletId == walletId -> -abs(transaction.amount) // Outgoing: negative
-            transaction.destinationWalletId == walletId -> abs(transaction.amount) // Incoming: positive
-            else -> transaction.amount
-        }
+        return balanceCalculationService.getEffectiveAmount(transaction, walletId)
     }
     
     fun getTransferCounterpartWallet(transaction: Transaction, walletId: String, allWallets: List<Wallet>): Wallet? {
@@ -346,17 +301,8 @@ class WalletDetailViewModel @Inject constructor(
     }
     
     fun calculateDailySummary(transactions: List<Transaction>, walletId: String): Pair<Int, Double> {
-        val count = transactions.size
-        val netAmount = transactions.sumOf { transaction ->
-            when {
-                transaction.type == TransactionType.INCOME -> transaction.amount
-                transaction.type == TransactionType.EXPENSE -> -abs(transaction.amount)
-                transaction.type == TransactionType.TRANSFER && transaction.sourceWalletId == walletId -> -abs(transaction.amount)
-                transaction.type == TransactionType.TRANSFER && transaction.destinationWalletId == walletId -> abs(transaction.amount)
-                else -> 0.0
-            }
-        }
-        return Pair(count, netAmount)
+        val summary = balanceCalculationService.calculateDailySummary(transactions, walletId)
+        return Pair(summary.transactionCount, summary.netAmount)
     }
     
     fun setSelectedMonth(month: Int, year: Int) {
