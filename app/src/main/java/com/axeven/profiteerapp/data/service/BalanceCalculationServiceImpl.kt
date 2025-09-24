@@ -148,12 +148,12 @@ class BalanceCalculationServiceImpl @Inject constructor(
     /**
      * Determines if a transaction represents income for the specified wallet.
      * Income includes:
-     * - INCOME transactions belonging to this wallet
+     * - INCOME transactions belonging to this wallet (both primary walletId and affectedWalletIds)
      * - TRANSFER transactions where this wallet is the destination
      */
     private fun isIncomeTransaction(transaction: Transaction, walletId: String): Boolean {
         return when (transaction.type) {
-            TransactionType.INCOME -> transaction.walletId == walletId
+            TransactionType.INCOME -> isTransactionAffectingWallet(transaction, walletId)
             TransactionType.TRANSFER -> isTransferIncome(transaction, walletId)
             else -> false
         }
@@ -162,15 +162,25 @@ class BalanceCalculationServiceImpl @Inject constructor(
     /**
      * Determines if a transaction represents an expense for the specified wallet.
      * Expenses include:
-     * - EXPENSE transactions belonging to this wallet
+     * - EXPENSE transactions belonging to this wallet (both primary walletId and affectedWalletIds)
      * - TRANSFER transactions where this wallet is the source
      */
     private fun isExpenseTransaction(transaction: Transaction, walletId: String): Boolean {
         return when (transaction.type) {
-            TransactionType.EXPENSE -> transaction.walletId == walletId
+            TransactionType.EXPENSE -> isTransactionAffectingWallet(transaction, walletId)
             TransactionType.TRANSFER -> isTransferExpense(transaction, walletId)
             else -> false
         }
+    }
+
+    /**
+     * Checks if a transaction affects the specified wallet.
+     * A transaction affects a wallet if:
+     * - The wallet is the primary wallet (transaction.walletId)
+     * - The wallet is in the affected wallets list (transaction.affectedWalletIds)
+     */
+    private fun isTransactionAffectingWallet(transaction: Transaction, walletId: String): Boolean {
+        return transaction.walletId == walletId || transaction.affectedWalletIds.contains(walletId)
     }
 
     /**

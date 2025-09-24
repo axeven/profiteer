@@ -46,23 +46,27 @@ fun CreateTransactionScreen(
         )
     }
     
-    // Handle wallet pre-selection
+    // Handle wallet pre-selection - NO VALIDATION on initial pre-selection
     LaunchedEffect(preSelectedWalletId, viewModelUiState.wallets) {
         if (preSelectedWalletId != null && viewModelUiState.wallets.isNotEmpty()) {
             val preSelectedWallet = viewModelUiState.wallets.find { it.id == preSelectedWalletId }
             preSelectedWallet?.let { wallet ->
-                when (wallet.walletType) {
-                    "Physical" -> {
-                        transactionState = updatePhysicalWallet(transactionState, wallet)
-                    }
-                    "Logical" -> {
-                        transactionState = updateLogicalWallet(transactionState, wallet)
-                    }
+                // Update state directly without validation to avoid showing errors on initial load
+                val updatedWallets = when (wallet.walletType) {
+                    "Physical" -> transactionState.selectedWallets.updatePhysical(wallet)
+                    "Logical" -> transactionState.selectedWallets.updateLogical(wallet)
+                    else -> transactionState.selectedWallets
                 }
+
                 // For transfer transactions, pre-select as source wallet
-                if (transactionState.selectedType == TransactionType.TRANSFER) {
-                    transactionState = updateSourceWallet(transactionState, wallet)
+                val finalWallets = if (transactionState.selectedType == TransactionType.TRANSFER) {
+                    updatedWallets.copy(source = wallet, destination = null)
+                } else {
+                    updatedWallets
                 }
+
+                // Update state WITHOUT validation (no updateAndValidate call)
+                transactionState = transactionState.copy(selectedWallets = finalWallets)
             }
         }
     }

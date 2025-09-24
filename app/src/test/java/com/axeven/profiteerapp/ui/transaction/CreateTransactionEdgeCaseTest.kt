@@ -47,16 +47,19 @@ class CreateTransactionEdgeCaseTest {
         ) // No .updateAndValidate() - this is our fix!
 
         // Simulate wallet pre-selection process (as done in LaunchedEffect)
-        val stateWithPreselection = updatePhysicalWallet(initialState, mockPhysicalWallet)
+        // This now uses direct state updates without validation
+        val stateWithPreselection = initialState.copy(
+            selectedWallets = initialState.selectedWallets.updatePhysical(mockPhysicalWallet)
+        )
 
-        // Assert: Pre-selection should not introduce validation errors
-        // (The updatePhysicalWallet function will trigger validation, which is correct)
-        // But the initial load should still be clean
+        // Assert: Both initial and pre-selected states should not have validation errors
         assertFalse("Initial state should not have validation errors",
                    initialState.validationErrors.hasErrors)
 
-        // After wallet selection, validation may occur (which is expected behavior)
-        // The key is that the INITIAL load was clean
+        assertFalse("Pre-selected state should not have validation errors",
+                   stateWithPreselection.validationErrors.hasErrors)
+
+        // The wallet should be properly selected
         assertEquals("Physical wallet should be selected",
                     mockPhysicalWallet, stateWithPreselection.selectedWallets.physical)
     }
