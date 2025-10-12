@@ -121,11 +121,12 @@ fun ProfiteerApp(authViewModel: AuthViewModel = viewModel()) {
                     selectedTransaction?.let { transaction ->
                         EditTransactionScreen(
                             transaction = transaction,
-                            onNavigateBack = { 
+                            onNavigateBack = {
                                 homeRefreshTrigger++ // Trigger refresh
                                 // Return to previous screen or appropriate default
                                 currentScreen = when {
                                     previousScreen == AppScreen.TRANSACTION_LIST -> AppScreen.TRANSACTION_LIST
+                                    previousScreen == AppScreen.DISCREPANCY_DEBUG -> AppScreen.DISCREPANCY_DEBUG
                                     selectedWalletId != null -> AppScreen.WALLET_DETAIL
                                     else -> AppScreen.HOME
                                 }
@@ -198,7 +199,12 @@ fun ProfiteerApp(authViewModel: AuthViewModel = viewModel()) {
                 }
                 AppScreen.DISCREPANCY_DEBUG -> {
                     DiscrepancyDebugScreen(
-                        onNavigateBack = { currentScreen = AppScreen.WALLET_LIST }
+                        onNavigateBack = { currentScreen = AppScreen.WALLET_LIST },
+                        onNavigateToEdit = { transaction ->
+                            selectedTransaction = transaction
+                            previousScreen = AppScreen.DISCREPANCY_DEBUG
+                            currentScreen = AppScreen.EDIT_TRANSACTION
+                        }
                     )
                 }
             }

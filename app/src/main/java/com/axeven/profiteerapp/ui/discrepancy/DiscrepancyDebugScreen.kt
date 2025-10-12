@@ -1,6 +1,7 @@
 package com.axeven.profiteerapp.ui.discrepancy
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,7 +58,8 @@ import java.util.Locale
 @Composable
 fun DiscrepancyDebugScreen(
     viewModel: DiscrepancyDebugViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit = {}
+    onNavigateBack: () -> Unit = {},
+    onNavigateToEdit: (com.axeven.profiteerapp.data.model.Transaction) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -99,7 +101,8 @@ fun DiscrepancyDebugScreen(
                     DiscrepancyContent(
                         uiState = uiState,
                         transactions = uiState.transactions,
-                        defaultCurrency = uiState.defaultCurrency
+                        defaultCurrency = uiState.defaultCurrency,
+                        onNavigateToEdit = onNavigateToEdit
                     )
                 }
             }
@@ -163,7 +166,8 @@ private fun ErrorState(error: String) {
 private fun DiscrepancyContent(
     uiState: com.axeven.profiteerapp.data.ui.DiscrepancyDebugUiState,
     transactions: List<TransactionWithBalances>,
-    defaultCurrency: String
+    defaultCurrency: String,
+    onNavigateToEdit: (com.axeven.profiteerapp.data.model.Transaction) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize()
@@ -192,7 +196,8 @@ private fun DiscrepancyContent(
             TransactionDiscrepancyCard(
                 transactionWithBalances = transactionWithBalances,
                 isFirstDiscrepancy = transactionWithBalances.isFirstDiscrepancy,
-                defaultCurrency = defaultCurrency
+                defaultCurrency = defaultCurrency,
+                onNavigateToEdit = onNavigateToEdit
             )
         }
 
@@ -364,7 +369,8 @@ private fun InfoCard(
 private fun TransactionDiscrepancyCard(
     transactionWithBalances: TransactionWithBalances,
     isFirstDiscrepancy: Boolean,
-    defaultCurrency: String
+    defaultCurrency: String,
+    onNavigateToEdit: (com.axeven.profiteerapp.data.model.Transaction) -> Unit
 ) {
     val transaction = transactionWithBalances.transaction
     val dateFormat = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
@@ -372,7 +378,8 @@ private fun TransactionDiscrepancyCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clickable { onNavigateToEdit(transaction) },
         colors = CardDefaults.cardColors(
             containerColor = if (isFirstDiscrepancy)
                 MaterialTheme.colorScheme.errorContainer
