@@ -52,6 +52,17 @@ Profiteer follows the **MVVM (Model-View-ViewModel)** architecture pattern with 
 - **Balance Integrity Monitoring**: Ensures logical wallet totals match physical wallet totals
 - **Real-time Credit/Debit Summaries**: Live calculation updates for filtered results
 
+### 🔍 Balance Discrepancy Debugging
+- **Automatic Discrepancy Detection**: Real-time monitoring of Physical vs Logical wallet balance integrity
+- **Discrepancy Indicator**: Visual warning card appears in Logical Wallet List when discrepancy detected
+- **Debug Screen**: Comprehensive discrepancy analysis showing:
+  - Current discrepancy amount and affected totals
+  - Chronological transaction list with running balances
+  - First problematic transaction highlighted
+  - Transaction-by-transaction balance tracking to identify where discrepancy occurred
+- **Test-Driven Implementation**: 85+ tests ensuring accuracy and reliability
+- **Integrated Logging**: Complete audit trail for debugging and troubleshooting
+
 ### 🔐 Security & Data Management
 - **Firebase Authentication**: Secure Google Sign-In integration
 - **User Data Isolation**: Complete data separation with Firestore subcollections
@@ -65,16 +76,18 @@ app/src/main/java/com/axeven/profiteerapp/
 ├── data/
 │   ├── di/              # Dependency injection modules
 │   ├── model/           # Data models (Wallet, Transaction, CurrencyRate, UserPreferences)
-│   └── repository/      # Repository pattern implementations
+│   ├── repository/      # Repository pattern implementations
+│   └── ui/              # UI state models (consolidated state pattern)
 ├── ui/
 │   ├── home/           # Home screen with balance aggregation
 │   ├── wallet/         # Wallet management screens
 │   ├── transaction/    # Transaction creation and editing
 │   ├── report/         # Comprehensive reports and analytics
+│   ├── discrepancy/    # Balance discrepancy debugging screen
 │   ├── settings/       # Settings and configuration
 │   ├── login/          # Authentication screens
 │   └── theme/          # Material 3 theming system
-├── utils/              # Utility classes (NumberFormatter, WalletValidator)
+├── utils/              # Utility classes (NumberFormatter, BalanceDiscrepancyDetector, DiscrepancyAnalyzer)
 └── viewmodel/          # ViewModels for business logic and state management
 ```
 
