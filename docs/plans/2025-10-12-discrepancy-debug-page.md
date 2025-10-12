@@ -6,7 +6,7 @@
 
 ## Overview
 
-Implement a debug page to identify and display balance discrepancies between Physical and Logical wallets. The page will be accessible from the Logical Wallet List page only when a discrepancy exists, and will display transactions in descending order starting from the first transaction where the discrepancy occurred.
+Implement a debug page to identify and display balance discrepancies between Physical and Logical wallets. The page will be accessible from the Logical Wallet List page only when a discrepancy exists, and will display transactions in ascending order starting from the first transaction where the discrepancy occurred.
 
 ## Business Requirements
 

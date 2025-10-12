@@ -58,14 +58,14 @@ class DiscrepancyAnalyzer @Inject constructor(
     }
 
     /**
-     * Calculates running balances for each transaction in descending order.
+     * Calculates running balances for each transaction in ascending order.
      *
      * Shows cumulative Physical and Logical wallet totals after each transaction,
-     * and marks the first transaction where a discrepancy occurred.
+     * starting from the first transaction where a discrepancy occurred.
      *
-     * @param transactions List of all transactions (will be sorted chronologically for calculation, returned in descending order)
+     * @param transactions List of all transactions (will be sorted chronologically)
      * @param wallets Map of wallet ID to Wallet object
-     * @return List of TransactionWithBalances in descending order (newest first)
+     * @return List of TransactionWithBalances in ascending order (oldest first), starting from first discrepancy
      */
     fun calculateRunningBalances(
         transactions: List<Transaction>,
@@ -81,9 +81,10 @@ class DiscrepancyAnalyzer @Inject constructor(
 
         // Track if we've found the first discrepancy
         var firstDiscrepancyId: String? = null
+        var firstDiscrepancyIndex: Int? = null
 
         // Calculate running balances
-        val results = sortedTransactions.map { transaction ->
+        val results = sortedTransactions.mapIndexed { index, transaction ->
             // Apply transaction to affected wallets
             applyTransactionToBalances(transaction, runningBalances)
 
@@ -96,6 +97,7 @@ class DiscrepancyAnalyzer @Inject constructor(
                 balanceDetector.hasDiscrepancy(physicalTotal, logicalTotal)
             ) {
                 firstDiscrepancyId = transaction.id
+                firstDiscrepancyIndex = index
                 true
             } else {
                 false
@@ -109,8 +111,13 @@ class DiscrepancyAnalyzer @Inject constructor(
             )
         }
 
-        // Return in descending order (newest first) for UI display
-        return results.reversed()
+        // Return in ascending order (oldest first), starting from first discrepancy
+        // If no discrepancy, return all transactions
+        return if (firstDiscrepancyIndex != null) {
+            results.subList(firstDiscrepancyIndex, results.size)
+        } else {
+            results
+        }
     }
 
     /**

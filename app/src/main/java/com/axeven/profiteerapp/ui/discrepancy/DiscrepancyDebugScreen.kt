@@ -98,7 +98,8 @@ fun DiscrepancyDebugScreen(
                 else -> {
                     DiscrepancyContent(
                         uiState = uiState,
-                        transactions = uiState.transactions
+                        transactions = uiState.transactions,
+                        defaultCurrency = uiState.defaultCurrency
                     )
                 }
             }
@@ -161,7 +162,8 @@ private fun ErrorState(error: String) {
 @Composable
 private fun DiscrepancyContent(
     uiState: com.axeven.profiteerapp.data.ui.DiscrepancyDebugUiState,
-    transactions: List<TransactionWithBalances>
+    transactions: List<TransactionWithBalances>,
+    defaultCurrency: String
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize()
@@ -172,7 +174,8 @@ private fun DiscrepancyContent(
                 physicalTotal = uiState.totalPhysicalBalance,
                 logicalTotal = uiState.totalLogicalBalance,
                 discrepancy = uiState.currentDiscrepancy,
-                isBalanced = uiState.isBalanced
+                isBalanced = uiState.isBalanced,
+                defaultCurrency = defaultCurrency
             )
         }
 
@@ -184,11 +187,12 @@ private fun DiscrepancyContent(
             )
         }
 
-        // Transaction list (already in descending order - newest first)
+        // Transaction list (in ascending order - oldest first, starting from first discrepancy)
         items(transactions) { transactionWithBalances ->
             TransactionDiscrepancyCard(
                 transactionWithBalances = transactionWithBalances,
-                isFirstDiscrepancy = transactionWithBalances.isFirstDiscrepancy
+                isFirstDiscrepancy = transactionWithBalances.isFirstDiscrepancy,
+                defaultCurrency = defaultCurrency
             )
         }
 
@@ -204,7 +208,8 @@ private fun DiscrepancySummaryCard(
     physicalTotal: Double,
     logicalTotal: Double,
     discrepancy: Double,
-    isBalanced: Boolean
+    isBalanced: Boolean,
+    defaultCurrency: String
 ) {
     Card(
         modifier = Modifier
@@ -258,7 +263,7 @@ private fun DiscrepancySummaryCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = NumberFormatter.formatCurrency(physicalTotal, "USD", showSymbol = true),
+                        text = NumberFormatter.formatCurrency(physicalTotal, defaultCurrency, showSymbol = true),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -270,7 +275,7 @@ private fun DiscrepancySummaryCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = NumberFormatter.formatCurrency(logicalTotal, "USD", showSymbol = true),
+                        text = NumberFormatter.formatCurrency(logicalTotal, defaultCurrency, showSymbol = true),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -295,7 +300,7 @@ private fun DiscrepancySummaryCard(
                         color = MaterialTheme.colorScheme.error
                     )
                     Text(
-                        text = NumberFormatter.formatCurrency(discrepancy, "USD", showSymbol = true),
+                        text = NumberFormatter.formatCurrency(discrepancy, defaultCurrency, showSymbol = true),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.error
@@ -358,7 +363,8 @@ private fun InfoCard(
 @Composable
 private fun TransactionDiscrepancyCard(
     transactionWithBalances: TransactionWithBalances,
-    isFirstDiscrepancy: Boolean
+    isFirstDiscrepancy: Boolean,
+    defaultCurrency: String
 ) {
     val transaction = transactionWithBalances.transaction
     val dateFormat = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
@@ -425,9 +431,9 @@ private fun TransactionDiscrepancyCard(
                     )
                     Text(
                         text = when (transaction.type) {
-                            TransactionType.INCOME -> "+${NumberFormatter.formatCurrency(transaction.amount)}"
-                            TransactionType.EXPENSE -> "-${NumberFormatter.formatCurrency(transaction.amount)}"
-                            TransactionType.TRANSFER -> "↔ ${NumberFormatter.formatCurrency(transaction.amount)}"
+                            TransactionType.INCOME -> "+${NumberFormatter.formatCurrency(transaction.amount, defaultCurrency, showSymbol = false)}"
+                            TransactionType.EXPENSE -> NumberFormatter.formatCurrency(-transaction.amount, defaultCurrency, showSymbol = false)
+                            TransactionType.TRANSFER -> "↔ ${NumberFormatter.formatCurrency(transaction.amount, defaultCurrency, showSymbol = false)}"
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = when (transaction.type) {
@@ -461,7 +467,7 @@ private fun TransactionDiscrepancyCard(
                     Text(
                         text = NumberFormatter.formatCurrency(
                             transactionWithBalances.physicalBalanceAfter,
-                            "USD",
+                            defaultCurrency,
                             showSymbol = true
                         ),
                         style = MaterialTheme.typography.bodyMedium,
@@ -478,7 +484,7 @@ private fun TransactionDiscrepancyCard(
                     Text(
                         text = NumberFormatter.formatCurrency(
                             transactionWithBalances.logicalBalanceAfter,
-                            "USD",
+                            defaultCurrency,
                             showSymbol = true
                         ),
                         style = MaterialTheme.typography.bodyMedium,

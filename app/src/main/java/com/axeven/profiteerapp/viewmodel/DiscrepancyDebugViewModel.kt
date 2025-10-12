@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.axeven.profiteerapp.data.repository.AuthRepository
 import com.axeven.profiteerapp.data.repository.TransactionRepository
+import com.axeven.profiteerapp.data.repository.UserPreferencesRepository
 import com.axeven.profiteerapp.data.repository.WalletRepository
 import com.axeven.profiteerapp.data.ui.DiscrepancyDebugUiState
 import com.axeven.profiteerapp.utils.BalanceDiscrepancyDetector
@@ -28,6 +29,7 @@ import javax.inject.Inject
  * @param authRepository Repository for authentication data
  * @param transactionRepository Repository for transaction data
  * @param walletRepository Repository for wallet data
+ * @param userPreferencesRepository Repository for user preferences
  * @param balanceDetector Utility for balance discrepancy detection
  * @param discrepancyAnalyzer Utility for transaction analysis
  * @param logger Logger for debugging
@@ -37,6 +39,7 @@ class DiscrepancyDebugViewModel @Inject constructor(
     authRepository: AuthRepository,
     private val transactionRepository: TransactionRepository,
     private val walletRepository: WalletRepository,
+    private val userPreferencesRepository: UserPreferencesRepository,
     private val balanceDetector: BalanceDiscrepancyDetector,
     private val discrepancyAnalyzer: DiscrepancyAnalyzer,
     private val logger: Logger
@@ -60,9 +63,10 @@ class DiscrepancyDebugViewModel @Inject constructor(
 
             combine(
                 transactionRepository.getAllTransactionsChronological(userId),
-                walletRepository.getUserWallets(userId)
-            ) { transactions, wallets ->
-                Pair(transactions, wallets)
+                walletRepository.getUserWallets(userId),
+                userPreferencesRepository.getUserPreferences(userId)
+            ) { transactions, wallets, preferences ->
+                Triple(transactions, wallets, preferences)
             }
                 .catch { error ->
                     logger.e("DiscrepancyDebugVM", "Error loading discrepancy data", error)
@@ -70,8 +74,10 @@ class DiscrepancyDebugViewModel @Inject constructor(
                         error.message ?: "Failed to load discrepancy data"
                     )
                 }
-                .collect { (transactions, wallets) ->
+                .collect { (transactions, wallets, preferences) ->
                     logger.d("DiscrepancyDebugVM", "Loaded ${transactions.size} transactions and ${wallets.size} wallets")
+
+                    val defaultCurrency = preferences?.defaultCurrency ?: "USD"
 
                     try {
                         // Calculate current totals
@@ -104,7 +110,8 @@ class DiscrepancyDebugViewModel @Inject constructor(
                             transactions = transactionsWithBalances,
                             firstDiscrepancyId = firstDiscrepancyId,
                             physicalTotal = physicalTotal,
-                            logicalTotal = logicalTotal
+                            logicalTotal = logicalTotal,
+                            defaultCurrency = defaultCurrency
                         )
 
                         logger.i("DiscrepancyDebugVM", "Discrepancy analysis complete. Has discrepancy: ${_uiState.value.hasDiscrepancy}")

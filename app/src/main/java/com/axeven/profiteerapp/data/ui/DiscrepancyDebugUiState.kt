@@ -24,6 +24,7 @@ data class DiscrepancyDebugUiState(
     val currentDiscrepancy: Double = 0.0,
     val totalPhysicalBalance: Double = 0.0,
     val totalLogicalBalance: Double = 0.0,
+    val defaultCurrency: String = "USD",
     val error: String? = null
 ) {
 
@@ -48,13 +49,15 @@ data class DiscrepancyDebugUiState(
      * @param firstDiscrepancyId ID of first transaction causing discrepancy
      * @param physicalTotal Total Physical wallet balance
      * @param logicalTotal Total Logical wallet balance
+     * @param defaultCurrency User's default currency for display
      * @return Updated state
      */
     fun withTransactions(
         transactions: List<TransactionWithBalances>,
         firstDiscrepancyId: String?,
         physicalTotal: Double,
-        logicalTotal: Double
+        logicalTotal: Double,
+        defaultCurrency: String = "USD"
     ): DiscrepancyDebugUiState {
         return copy(
             isLoading = false,
@@ -63,6 +66,7 @@ data class DiscrepancyDebugUiState(
             currentDiscrepancy = physicalTotal - logicalTotal,
             totalPhysicalBalance = physicalTotal,
             totalLogicalBalance = logicalTotal,
+            defaultCurrency = defaultCurrency,
             error = null
         )
     }

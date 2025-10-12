@@ -237,18 +237,18 @@ class DiscrepancyAnalyzerTest {
 
         assertEquals(3, result.size)
 
-        // Result is in descending order (newest first), so we access in reverse
-        // Third transaction (newest, index 0)
-        assertEquals(300.0, result[0].physicalBalanceAfter, 0.001)
-        assertEquals(300.0, result[0].logicalBalanceAfter, 0.001)
+        // Result is in ascending order (oldest first)
+        // First transaction (oldest, index 0)
+        assertEquals(100.0, result[0].physicalBalanceAfter, 0.001)
+        assertEquals(100.0, result[0].logicalBalanceAfter, 0.001)
 
         // Second transaction (middle, index 1)
         assertEquals(200.0, result[1].physicalBalanceAfter, 0.001)
         assertEquals(200.0, result[1].logicalBalanceAfter, 0.001)
 
-        // First transaction (oldest, index 2)
-        assertEquals(100.0, result[2].physicalBalanceAfter, 0.001)
-        assertEquals(100.0, result[2].logicalBalanceAfter, 0.001)
+        // Third transaction (newest, index 2)
+        assertEquals(300.0, result[2].physicalBalanceAfter, 0.001)
+        assertEquals(300.0, result[2].logicalBalanceAfter, 0.001)
     }
 
     @Test
@@ -286,19 +286,14 @@ class DiscrepancyAnalyzerTest {
 
         val result = analyzer.calculateRunningBalances(transactions, wallets)
 
-        assertEquals(3, result.size)
+        // Result should only contain transactions from first discrepancy onward (only t3)
+        assertEquals(1, result.size)
 
-        // Result is in descending order (newest first)
-        // Third transaction (newest, index 0) - should be marked as first discrepancy
+        // Third transaction (only one in result, index 0) - should be marked as first discrepancy
         assertTrue(result[0].isFirstDiscrepancy)
+        assertEquals("t3", result[0].transaction.id)
         assertEquals(250.0, result[0].physicalBalanceAfter, 0.001)
         assertEquals(200.0, result[0].logicalBalanceAfter, 0.001)
-
-        // Second transaction (index 1) - should not be marked
-        assertFalse(result[1].isFirstDiscrepancy)
-
-        // First transaction (oldest, index 2) - should not be marked
-        assertFalse(result[2].isFirstDiscrepancy)
     }
 
     @Test
@@ -406,14 +401,14 @@ class DiscrepancyAnalyzerTest {
 
         assertEquals(2, result.size)
 
-        // Result is in descending order (newest first)
-        // After second transaction (newest, index 0): p1=100, p2=50, l1=100, l2=50
-        assertEquals(150.0, result[0].physicalBalanceAfter, 0.001)
-        assertEquals(150.0, result[0].logicalBalanceAfter, 0.001)
+        // Result is in ascending order (oldest first)
+        // After first transaction (oldest, index 0): p1=100, p2=0, l1=100, l2=0
+        assertEquals(100.0, result[0].physicalBalanceAfter, 0.001)
+        assertEquals(100.0, result[0].logicalBalanceAfter, 0.001)
 
-        // After first transaction (oldest, index 1): p1=100, p2=0, l1=100, l2=0
-        assertEquals(100.0, result[1].physicalBalanceAfter, 0.001)
-        assertEquals(100.0, result[1].logicalBalanceAfter, 0.001)
+        // After second transaction (newest, index 1): p1=100, p2=50, l1=100, l2=50
+        assertEquals(150.0, result[1].physicalBalanceAfter, 0.001)
+        assertEquals(150.0, result[1].logicalBalanceAfter, 0.001)
     }
 
     // Helper functions

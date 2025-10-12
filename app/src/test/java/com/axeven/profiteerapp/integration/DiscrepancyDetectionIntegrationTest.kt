@@ -116,18 +116,23 @@ class DiscrepancyDetectionIntegrationTest {
         assertNotNull("Should identify discrepancy transaction", firstDiscrepancyId)
         assertEquals("t2", firstDiscrepancyId) // Transaction 2 is the culprit
 
-        // Step 4: Get running balances for all transactions
+        // Step 4: Get running balances from first discrepancy onward
         val transactionsWithBalances = discrepancyAnalyzer.calculateRunningBalances(
             transactions = transactions,
             wallets = walletMap
         )
 
-        assertEquals(3, transactionsWithBalances.size)
+        // Should only return transactions from first discrepancy (t2) onward (t2 and t3)
+        assertEquals(2, transactionsWithBalances.size)
 
         // Verify the first discrepancy is flagged correctly
         val firstDiscrepancyTxn = transactionsWithBalances.find { it.isFirstDiscrepancy }
         assertNotNull("Should have a transaction marked as first discrepancy", firstDiscrepancyTxn)
         assertEquals("t2", firstDiscrepancyTxn!!.transaction.id)
+
+        // Verify transactions are in ascending order (t2 first, then t3)
+        assertEquals("t2", transactionsWithBalances[0].transaction.id)
+        assertEquals("t3", transactionsWithBalances[1].transaction.id)
 
         // Step 5: Fix scenario - update transaction2 to include both wallets
         val fixedTransaction2 = transaction2.copy(
