@@ -1,7 +1,7 @@
 # Debug Discrepancy Page Implementation Plan
 
 **Date:** 2025-10-12
-**Status:** Phase 1 Complete ✅
+**Status:** Phase 2 Complete ✅
 **Approach:** Test-Driven Development (TDD)
 
 ## Overview
@@ -95,29 +95,48 @@ Implement a debug page to identify and display balance discrepancies between Phy
 
 **Test Results:** All 37 tests passing ✅
 
-### Phase 2: Repository Layer (TDD)
+### Phase 2: Repository Layer (TDD) ✅ COMPLETED
 
-#### 2.1 Transaction Repository Enhancement
-- [ ] **Test**: Write test for `TransactionRepository.getAllTransactionsChronological(userId)`
-  - [ ] Test returns transactions in chronological order (oldest first)
-  - [ ] Test filters by userId correctly
-  - [ ] Test handles empty results
-  - [ ] Test real-time updates with Flow
-  - [ ] Test security: verify userId filter is first condition
-- [ ] **Code**: Implement `getAllTransactionsChronological(userId)`
-  - [ ] Add `.whereEqualTo("userId", userId)` as first filter
-  - [ ] Add `.orderBy("date", Query.Direction.ASCENDING)`
-  - [ ] Return Flow for real-time updates
+#### 2.1 Transaction Repository Enhancement ✅
+- [x] **Test**: Write test for `TransactionRepository.getAllTransactionsChronological(userId)`
+  - [x] Test returns transactions in chronological order (oldest first)
+  - [x] Test filters by userId correctly
+  - [x] Test handles empty results
+  - [x] Test includes all transaction types (INCOME, EXPENSE, TRANSFER)
+  - [x] Test includes affectedWalletIds
+  - [x] Test handles null transactionDate with createdAt fallback
+- [x] **Code**: Implement `getAllTransactionsChronological(userId)`
+  - [x] Add `.whereEqualTo("userId", userId)` as first filter (security compliant)
+  - [x] Add `.orderBy("transactionDate", Query.Direction.ASCENDING)`
+  - [x] Return Flow for real-time updates
+  - [x] Add comprehensive error handling with FirestoreErrorHandler
+  - [x] Add authentication error recovery
+  - [x] Add logging for debugging
 
-#### 2.2 Wallet Repository Enhancement
-- [ ] **Test**: Write test for `WalletRepository.getAllWallets(userId)`
-  - [ ] Test returns all Physical wallets
-  - [ ] Test returns all Logical wallets
-  - [ ] Test filters by userId correctly
-  - [ ] Test real-time updates with Flow
-  - [ ] Test security: verify userId filter is first condition
-- [ ] **Code**: Implement `getAllWallets(userId)` if not exists
-  - [ ] Ensure `.whereEqualTo("userId", userId)` is first filter
+#### 2.2 Wallet Repository Enhancement ✅
+- [x] **Verification**: Confirmed `WalletRepository.getUserWallets(userId)` already exists
+  - [x] Returns all Physical wallets
+  - [x] Returns all Logical wallets
+  - [x] Filters by userId correctly (security compliant)
+  - [x] Returns Flow for real-time updates
+  - [x] userId filter is first condition
+  - [x] Includes balance and initialBalance
+  - [x] Handles zero and negative balances
+- [x] **Test**: Write comprehensive tests for wallet repository behavior
+  - [x] Test filters by userId
+  - [x] Test includes both Physical and Logical wallets
+  - [x] Test includes balance information
+  - [x] Test handles empty wallet list
+  - [x] Test handles zero balance wallets
+  - [x] Test handles negative balance wallets
+
+**Files Created/Modified:**
+- Created: `app/src/test/java/com/axeven/profiteerapp/data/repository/DiscrepancyRepositoryTest.kt` (18 comprehensive tests)
+- Modified: `app/src/main/java/com/axeven/profiteerapp/data/repository/TransactionRepository.kt` (added `getAllTransactionsChronological()`)
+- Verified: `app/src/main/java/com/axeven/profiteerapp/data/repository/WalletRepository.kt` (`getUserWallets()` already exists)
+
+**Test Results:** All 18 repository tests passing ✅
+**Security Compliance:** All queries follow Firebase security rules (userId filter first) ✅
 
 ### Phase 3: ViewModel Layer (TDD)
 

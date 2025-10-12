@@ -366,7 +366,7 @@ class TransactionRepository @Inject constructor(
                 .whereEqualTo("type", type.name)
                 .get()
                 .await()
-            
+
             val transactions = snapshot.documents.map { document ->
                 document.toObject(Transaction::class.java)?.copy(id = document.id)
                     ?: Transaction()
@@ -374,6 +374,62 @@ class TransactionRepository @Inject constructor(
             Result.success(transactions)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Gets all transactions for a user in chronological order (oldest first).
+     * This method is designed for discrepancy analysis and running balance calculations.
+     *
+     * Security: userId filter is applied first as per Firebase security rules.
+     * Ordering: Transactions are ordered by transactionDate ascending (oldest to newest).
+     * Real-time: Returns Flow for reactive updates.
+     *
+     * @param userId User ID to filter transactions
+     * @return Flow emitting list of transactions in chronological order
+     */
+    fun getAllTransactionsChronological(userId: String): Flow<List<Transaction>> = callbackFlow {
+        logger.d("TransactionRepo", "Setting up chronological transaction listener for user: $userId")
+
+        val listener = transactionsCollection
+            .whereEqualTo("userId", userId) // Security: userId filter MUST be first
+            .orderBy("transactionDate", Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    logger.e("TransactionRepo", "Error in chronological transaction query", error)
+                    val errorInfo = FirestoreErrorHandler.handleError(error, logger)
+
+                    // Handle authentication errors gracefully
+                    if (errorInfo.requiresReauth) {
+                        handleAuthenticationError("getAllTransactionsChronological", error)
+                    }
+
+                    sharedErrorViewModel.showError(
+                        message = errorInfo.userMessage,
+                        shouldRetry = errorInfo.shouldRetry,
+                        requiresReauth = errorInfo.requiresReauth,
+                        isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    )
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                val transactions = snapshot?.documents?.mapNotNull { document ->
+                    try {
+                        document.toObject(Transaction::class.java)?.copy(id = document.id)
+                    } catch (e: Exception) {
+                        logger.e("TransactionRepo", "Error parsing chronological transaction: ${document.id}", e)
+                        null
+                    }
+                }?.filter { it.id.isNotEmpty() } ?: emptyList()
+
+                logger.d("TransactionRepo", "Chronological transactions retrieved: ${transactions.size} for user $userId")
+                trySend(transactions)
+            }
+
+        awaitClose {
+            logger.d("TransactionRepo", "Removing chronological transaction listener for user: $userId")
+            listener.remove()
         }
     }
 
