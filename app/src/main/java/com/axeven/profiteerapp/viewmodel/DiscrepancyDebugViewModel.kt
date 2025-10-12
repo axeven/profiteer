@@ -2,21 +2,21 @@ package com.axeven.profiteerapp.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.axeven.profiteerapp.data.repository.AuthRepository
 import com.axeven.profiteerapp.data.repository.TransactionRepository
 import com.axeven.profiteerapp.data.repository.WalletRepository
 import com.axeven.profiteerapp.data.ui.DiscrepancyDebugUiState
 import com.axeven.profiteerapp.utils.BalanceDiscrepancyDetector
 import com.axeven.profiteerapp.utils.DiscrepancyAnalyzer
 import com.axeven.profiteerapp.utils.logging.Logger
-import dagger.assisted.Assisted
-import dagger.assisted.AssistedFactory
-import dagger.assisted.AssistedInject
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * ViewModel for the Discrepancy Debug Screen.
@@ -25,21 +25,24 @@ import kotlinx.coroutines.launch
  * for balance discrepancies, and provides running balance information for each
  * transaction to help identify where the discrepancy occurred.
  *
- * @param userId User ID to load data for
+ * @param authRepository Repository for authentication data
  * @param transactionRepository Repository for transaction data
  * @param walletRepository Repository for wallet data
  * @param balanceDetector Utility for balance discrepancy detection
  * @param discrepancyAnalyzer Utility for transaction analysis
  * @param logger Logger for debugging
  */
-class DiscrepancyDebugViewModel @AssistedInject constructor(
-    @Assisted private val userId: String,
+@HiltViewModel
+class DiscrepancyDebugViewModel @Inject constructor(
+    authRepository: AuthRepository,
     private val transactionRepository: TransactionRepository,
     private val walletRepository: WalletRepository,
     private val balanceDetector: BalanceDiscrepancyDetector,
     private val discrepancyAnalyzer: DiscrepancyAnalyzer,
     private val logger: Logger
 ) : ViewModel() {
+
+    private val userId = authRepository.getCurrentUserId() ?: ""
 
     private val _uiState = MutableStateFlow(DiscrepancyDebugUiState())
     val uiState: StateFlow<DiscrepancyDebugUiState> = _uiState.asStateFlow()
@@ -123,10 +126,5 @@ class DiscrepancyDebugViewModel @AssistedInject constructor(
         logger.d("DiscrepancyDebugVM", "Refreshing discrepancy data")
         _uiState.value = DiscrepancyDebugUiState() // Reset to loading state
         loadDiscrepancyData()
-    }
-
-    @AssistedFactory
-    interface Factory {
-        fun create(userId: String): DiscrepancyDebugViewModel
     }
 }

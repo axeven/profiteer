@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -56,15 +58,18 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.axeven.profiteerapp.data.model.PhysicalForm
 import com.axeven.profiteerapp.data.model.Wallet
 import com.axeven.profiteerapp.data.ui.WalletListUiState
+import com.axeven.profiteerapp.utils.BalanceDiscrepancyDetector
 import com.axeven.profiteerapp.utils.NumberFormatter
 import com.axeven.profiteerapp.utils.WalletValidator
 import com.axeven.profiteerapp.viewmodel.WalletListViewModel
+import androidx.hilt.navigation.compose.hiltViewModel as getHiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WalletListScreen(
     onNavigateBack: () -> Unit = {},
     onNavigateToWalletDetail: (String) -> Unit = {},
+    onNavigateToDiscrepancyDebug: () -> Unit = {},
     viewModel: WalletListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -209,8 +214,16 @@ fun WalletListScreen(
                                     defaultCurrency = uiState.defaultCurrency
                                 )
                             }
+
+                            // Show discrepancy indicator when viewing logical wallets
+                            item {
+                                DiscrepancyIndicatorCard(
+                                    wallets = uiState.wallets,
+                                    onNavigateToDebug = onNavigateToDiscrepancyDebug
+                                )
+                            }
                         }
-                        
+
                         if (uiState.wallets.isEmpty()) {
                             item {
                                 EmptyWalletState(
@@ -1100,6 +1113,69 @@ fun UnallocatedBalanceCard(
                     text = "All physical balance is allocated",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun DiscrepancyIndicatorCard(
+    wallets: List<Wallet>,
+    onNavigateToDebug: () -> Unit
+) {
+    // Calculate discrepancy
+    val physicalTotal = wallets.filter { it.walletType == "Physical" }.sumOf { it.balance }
+    val logicalTotal = wallets.filter { it.walletType == "Logical" }.sumOf { it.balance }
+    val discrepancy = physicalTotal - logicalTotal
+    val hasDiscrepancy = kotlin.math.abs(discrepancy) > 0.01
+
+    // Only show card if there's a discrepancy
+    if (hasDiscrepancy) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+                .clickable { onNavigateToDebug() },
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Column {
+                        Text(
+                            text = "Balance Discrepancy Detected",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            text = "Discrepancy: ${NumberFormatter.formatCurrency(discrepancy, "USD", showSymbol = true)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "View details",
+                    tint = MaterialTheme.colorScheme.onErrorContainer
                 )
             }
         }

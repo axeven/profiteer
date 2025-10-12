@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.axeven.profiteerapp.ui.auth.ReauthScreen
+import com.axeven.profiteerapp.ui.discrepancy.DiscrepancyDebugScreen
 import com.axeven.profiteerapp.ui.home.HomeScreen
 import com.axeven.profiteerapp.ui.login.AuthState
 import com.axeven.profiteerapp.ui.login.LoginScreen
@@ -40,7 +41,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class AppScreen {
-    HOME, SETTINGS, CREATE_TRANSACTION, EDIT_TRANSACTION, WALLET_LIST, WALLET_DETAIL, REPORTS, TRANSACTION_LIST, REAUTH
+    HOME, SETTINGS, CREATE_TRANSACTION, EDIT_TRANSACTION, WALLET_LIST, WALLET_DETAIL, REPORTS, TRANSACTION_LIST, REAUTH, DISCREPANCY_DEBUG
 }
 
 @Composable
@@ -140,6 +141,9 @@ fun ProfiteerApp(authViewModel: AuthViewModel = viewModel()) {
                             selectedWalletId = walletId
                             currentScreen = AppScreen.WALLET_DETAIL
                         },
+                        onNavigateToDiscrepancyDebug = {
+                            currentScreen = AppScreen.DISCREPANCY_DEBUG
+                        }
                     )
                 }
                 AppScreen.WALLET_DETAIL -> {
@@ -190,6 +194,11 @@ fun ProfiteerApp(authViewModel: AuthViewModel = viewModel()) {
                             // Will trigger login screen via authState change
                         },
                         authViewModel = authViewModel
+                    )
+                }
+                AppScreen.DISCREPANCY_DEBUG -> {
+                    DiscrepancyDebugScreen(
+                        onNavigateBack = { currentScreen = AppScreen.WALLET_LIST }
                     )
                 }
             }
