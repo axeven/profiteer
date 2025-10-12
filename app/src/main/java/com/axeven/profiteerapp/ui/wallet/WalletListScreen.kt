@@ -211,14 +211,7 @@ fun WalletListScreen(
                             item {
                                 UnallocatedBalanceCard(
                                     unallocatedBalance = uiState.unallocatedBalance,
-                                    defaultCurrency = uiState.defaultCurrency
-                                )
-                            }
-
-                            // Show discrepancy indicator when viewing logical wallets
-                            item {
-                                DiscrepancyIndicatorCard(
-                                    wallets = uiState.wallets,
+                                    defaultCurrency = uiState.defaultCurrency,
                                     onNavigateToDebug = onNavigateToDiscrepancyDebug
                                 )
                             }
@@ -1035,12 +1028,22 @@ fun EditWalletDialogWithState(
 @Composable
 fun UnallocatedBalanceCard(
     unallocatedBalance: Double,
-    defaultCurrency: String
+    defaultCurrency: String,
+    onNavigateToDebug: () -> Unit = {}
 ) {
+    val hasDiscrepancy = kotlin.math.abs(unallocatedBalance) > 0.01
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 8.dp)
+            .then(
+                if (hasDiscrepancy) {
+                    Modifier.clickable { onNavigateToDebug() }
+                } else {
+                    Modifier
+                }
+            ),
         colors = CardDefaults.cardColors(
             containerColor = if (unallocatedBalance >= 0) {
                 MaterialTheme.colorScheme.primaryContainer
@@ -1056,32 +1059,52 @@ fun UnallocatedBalanceCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = if (unallocatedBalance >= 0) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onErrorContainer
-                    }
-                )
-                Text(
-                    text = "Unallocated Physical Balance",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (unallocatedBalance >= 0) {
-                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                    } else {
-                        MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
-                    }
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = if (hasDiscrepancy) Icons.Default.Warning else Icons.Default.Info,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = if (unallocatedBalance >= 0) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onErrorContainer
+                        }
+                    )
+                    Text(
+                        text = "Unallocated Physical Balance",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (unallocatedBalance >= 0) {
+                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        } else {
+                            MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+                        }
+                    )
+                }
+
+                // Show arrow when there's a discrepancy (clickable)
+                if (hasDiscrepancy) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "View debug details",
+                        tint = if (unallocatedBalance >= 0) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onErrorContainer
+                        },
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             Text(
                 text = NumberFormatter.formatCurrency(unallocatedBalance, defaultCurrency, showSymbol = true),
                 style = MaterialTheme.typography.headlineMedium,
@@ -1092,7 +1115,7 @@ fun UnallocatedBalanceCard(
                     MaterialTheme.colorScheme.onErrorContainer
                 }
             )
-            
+
             if (unallocatedBalance < 0) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -1100,6 +1123,15 @@ fun UnallocatedBalanceCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
                 )
+                if (hasDiscrepancy) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Tap to view debug details",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
             } else if (unallocatedBalance > 0) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -1107,6 +1139,15 @@ fun UnallocatedBalanceCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                 )
+                if (hasDiscrepancy) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Tap to view debug details",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
             } else {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -1119,65 +1160,3 @@ fun UnallocatedBalanceCard(
     }
 }
 
-@Composable
-fun DiscrepancyIndicatorCard(
-    wallets: List<Wallet>,
-    onNavigateToDebug: () -> Unit
-) {
-    // Calculate discrepancy
-    val physicalTotal = wallets.filter { it.walletType == "Physical" }.sumOf { it.balance }
-    val logicalTotal = wallets.filter { it.walletType == "Logical" }.sumOf { it.balance }
-    val discrepancy = physicalTotal - logicalTotal
-    val hasDiscrepancy = kotlin.math.abs(discrepancy) > 0.01
-
-    // Only show card if there's a discrepancy
-    if (hasDiscrepancy) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
-                .clickable { onNavigateToDebug() },
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Column {
-                        Text(
-                            text = "Balance Discrepancy Detected",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                        Text(
-                            text = "Discrepancy: ${NumberFormatter.formatCurrency(discrepancy, "USD", showSymbol = true)}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = "View details",
-                    tint = MaterialTheme.colorScheme.onErrorContainer
-                )
-            }
-        }
-    }
-}
