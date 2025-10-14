@@ -32,6 +32,22 @@
 -keep class com.google.android.gms.auth.** { *; }
 -keep class com.google.android.gms.common.** { *; }
 
+# Keep Google API Client classes
+-keep class com.google.api.client.** { *; }
+-dontwarn com.google.api.client.**
+
+# Keep Google Sheets API classes
+-keep class com.google.api.services.sheets.** { *; }
+-dontwarn com.google.api.services.sheets.**
+
+# Keep HTTP transport classes
+-keep class com.google.api.client.http.** { *; }
+-dontwarn com.google.api.client.http.**
+
+# Keep JSON factory classes
+-keep class com.google.api.client.json.** { *; }
+-dontwarn com.google.api.client.json.**
+
 # Logging optimization rules for release builds
 # Remove debug and info logging in release builds to improve performance and reduce APK size
 -assumenosideeffects class com.axeven.profiteerapp.utils.logging.Logger {

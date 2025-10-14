@@ -41,6 +41,19 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        resources {
+            excludes += setOf(
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/license.txt",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.txt",
+                "META-INF/notice.txt"
+            )
+        }
+    }
 }
 
 dependencies {
@@ -78,6 +91,10 @@ dependencies {
 
     // Logging
     implementation(libs.timber)
+
+    // Google Sheets API
+    implementation(libs.google.api.client.android)
+    implementation(libs.google.api.services.sheets)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockito.core)

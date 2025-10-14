@@ -7,6 +7,7 @@ import com.axeven.profiteerapp.utils.logging.Logger
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.Scope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -22,12 +23,36 @@ class AuthRepository @Inject constructor(
     private val logger: Logger
 ) {
     
+    companion object {
+        const val SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets"
+    }
+
     val googleSignInClient: GoogleSignInClient by lazy {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken("103782623354-2o33osadigv28sdamdb5p1otfolj1hk5.apps.googleusercontent.com")
             .requestEmail()
             .build()
         GoogleSignIn.getClient(context, gso)
+    }
+
+    /**
+     * Check if the user has granted the Google Sheets scope
+     */
+    fun hasSheetsScope(): Boolean {
+        val account = GoogleSignIn.getLastSignedInAccount(context)
+        return account?.grantedScopes?.contains(Scope(SHEETS_SCOPE)) == true
+    }
+
+    /**
+     * Get GoogleSignInClient with additional scopes for requesting Sheets access
+     */
+    fun getGoogleSignInClientWithSheets(): GoogleSignInClient {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken("103782623354-2o33osadigv28sdamdb5p1otfolj1hk5.apps.googleusercontent.com")
+            .requestEmail()
+            .requestScopes(Scope(SHEETS_SCOPE))
+            .build()
+        return GoogleSignIn.getClient(context, gso)
     }
     
     suspend fun signInWithGoogle(idToken: String): Result<Unit> {

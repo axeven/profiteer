@@ -19,6 +19,8 @@ composeCharts = "0.1.10"
 timber = "5.0.1"
 mockito = "5.6.0"
 mockitoKotlin = "5.1.0"
+googleApiClient = "2.2.0"
+googleSheetsApi = "v4-rev20230815-2.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -51,6 +53,8 @@ compose-charts = { group = "io.github.ehsannarmani", name = "compose-charts", ve
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
 mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
 mockito-kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version.ref = "mockitoKotlin" }
+google-api-client-android = { group = "com.google.api-client", name = "google-api-client-android", version.ref = "googleApiClient" }
+google-api-services-sheets = { group = "com.google.apis", name = "google-api-services-sheets", version.ref = "googleSheetsApi" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
