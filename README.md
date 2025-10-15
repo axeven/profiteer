@@ -52,6 +52,14 @@ Profiteer follows the **MVVM (Model-View-ViewModel)** architecture pattern with 
 - **Balance Integrity Monitoring**: Ensures logical wallet totals match physical wallet totals
 - **Real-time Credit/Debit Summaries**: Live calculation updates for filtered results
 
+### 📤 Export & Sharing
+- **Google Sheets Export**: Export transactions directly to Google Sheets with one tap
+- **Smart Filtering**: Exports only currently filtered/displayed transactions
+- **Rich Data Format**: Includes date, title, type, amount, currency, wallets, tags, and notes
+- **Formatted Output**: Auto-formatted spreadsheets with headers, proper column widths, and date/currency formatting
+- **Quick Actions**: Open exported sheet in browser or share via system share dialog
+- **OAuth Integration**: Secure Google Sign-In integration with minimal permissions (Sheets API only)
+
 ### 🔍 Balance Discrepancy Debugging
 - **Automatic Discrepancy Detection**: Real-time monitoring of Physical vs Logical wallet balance integrity
 - **Discrepancy Indicator**: Visual warning card appears in Logical Wallet List when discrepancy detected
@@ -78,6 +86,7 @@ app/src/main/java/com/axeven/profiteerapp/
 │   ├── model/           # Data models (Wallet, Transaction, CurrencyRate, UserPreferences)
 │   ├── repository/      # Repository pattern implementations
 │   └── ui/              # UI state models (consolidated state pattern)
+├── service/            # External service integrations (Google Sheets API)
 ├── ui/
 │   ├── home/           # Home screen with balance aggregation
 │   ├── wallet/         # Wallet management screens
@@ -87,7 +96,7 @@ app/src/main/java/com/axeven/profiteerapp/
 │   ├── settings/       # Settings and configuration
 │   ├── login/          # Authentication screens
 │   └── theme/          # Material 3 theming system
-├── utils/              # Utility classes (NumberFormatter, BalanceDiscrepancyDetector, DiscrepancyAnalyzer)
+├── utils/              # Utility classes (NumberFormatter, ExportFormatter, logging)
 └── viewmodel/          # ViewModels for business logic and state management
 ```
 
