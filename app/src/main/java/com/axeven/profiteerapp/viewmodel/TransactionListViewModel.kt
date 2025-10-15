@@ -21,11 +21,18 @@ class TransactionListViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val walletRepository: WalletRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
+    private val transactionExportRepository: com.axeven.profiteerapp.data.repository.TransactionExportRepository,
+    private val googleSheetsService: com.axeven.profiteerapp.service.GoogleSheetsService,
     private val logger: Logger
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TransactionListUiState())
     val uiState: StateFlow<TransactionListUiState> = _uiState.asStateFlow()
+
+    private val _exportUiState = MutableStateFlow(com.axeven.profiteerapp.data.ui.ExportUiState())
+    val exportUiState: StateFlow<com.axeven.profiteerapp.data.ui.ExportUiState> = _exportUiState.asStateFlow()
+
+    private var exportJob: kotlinx.coroutines.Job? = null
 
     private val userId = authRepository.getCurrentUserId() ?: ""
 
@@ -293,5 +300,113 @@ class TransactionListViewModel @Inject constructor(
         if (userId.isNotEmpty()) {
             loadTransactionData()
         }
+    }
+
+    // ========== Export Functionality ==========
+
+    /**
+     * Exports the currently filtered transaction list to Google Sheets.
+     *
+     * This method:
+     * 1. Cancels any ongoing export operation
+     * 2. Updates export UI state to "exporting"
+     * 3. Gets the current filtered transactions from the grouped transactions
+     * 4. Calls the export repository with the transactions and currency
+     * 5. Updates export UI state based on success or failure
+     */
+    fun exportTransactions() {
+        logger.d("TransactionListViewModel", "Starting transaction export")
+
+        // Cancel any ongoing export
+        exportJob?.cancel()
+
+        exportJob = viewModelScope.launch {
+            try {
+                // Update state to exporting
+                _exportUiState.value = _exportUiState.value.withExporting()
+
+                // Get current filtered transactions
+                val currentState = _uiState.value
+                val transactionsToExport = currentState.groupedTransactions.values.flatten()
+                val currency = currentState.defaultCurrency
+
+                logger.d(
+                    "TransactionListViewModel",
+                    "Exporting ${transactionsToExport.size} transactions with currency: $currency"
+                )
+
+                // Perform export
+                val result = transactionExportRepository.exportToGoogleSheets(
+                    transactions = transactionsToExport,
+                    currency = currency,
+                    userId = userId
+                )
+
+                // Update state based on result
+                if (result.isSuccess) {
+                    val url = result.getOrNull() ?: ""
+                    logger.i("TransactionListViewModel", "Export successful. URL: $url")
+                    _exportUiState.value = _exportUiState.value.withSuccess(url)
+                } else {
+                    val exception = result.exceptionOrNull()
+                    val errorMessage = exception?.message ?: "Unknown export error"
+                    logger.e("TransactionListViewModel", "Export failed", exception)
+                    _exportUiState.value = _exportUiState.value.withError(errorMessage)
+                }
+
+            } catch (e: Exception) {
+                logger.e("TransactionListViewModel", "Unexpected error during export", e)
+                _exportUiState.value = _exportUiState.value.withError(
+                    e.message ?: "Unexpected error during export"
+                )
+            }
+        }
+    }
+
+    /**
+     * Requests Google Sheets export permissions.
+     *
+     * Returns an Intent that should be launched by the UI to request OAuth permissions.
+     *
+     * @return Intent to launch for authorization
+     */
+    fun requestExportPermissions(): android.content.Intent {
+        logger.d("TransactionListViewModel", "Requesting export permissions")
+        return googleSheetsService.requestAuthorization()
+    }
+
+    /**
+     * Handles the result of a permission request.
+     *
+     * @param granted true if permissions were granted, false if denied
+     */
+    fun handlePermissionResult(granted: Boolean) {
+        logger.d("TransactionListViewModel", "Permission result: $granted")
+
+        viewModelScope.launch {
+            if (granted) {
+                // Verify permissions were actually granted
+                val hasPermissions = transactionExportRepository.checkExportPermissions()
+                if (!hasPermissions) {
+                    _exportUiState.value = _exportUiState.value.withError(
+                        "Failed to obtain Google Sheets permissions"
+                    )
+                }
+            } else {
+                _exportUiState.value = _exportUiState.value.withError(
+                    "Google Sheets permissions are required to export transactions"
+                )
+            }
+        }
+    }
+
+    /**
+     * Dismisses the current export result (success or error).
+     *
+     * Resets the export UI state to its default state.
+     */
+    fun dismissExportResult() {
+        logger.d("TransactionListViewModel", "Dismissing export result")
+        _exportUiState.value = com.axeven.profiteerapp.data.ui.ExportUiState()
     }
 }

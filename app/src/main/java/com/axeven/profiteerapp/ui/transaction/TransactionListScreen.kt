@@ -1,5 +1,7 @@
 package com.axeven.profiteerapp.ui.transaction
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,20 +36,33 @@ fun TransactionListScreen(
     viewModel: TransactionListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val exportUiState by viewModel.exportUiState.collectAsState()
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(
-                        "All Transactions", 
+                        "All Transactions",
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp
-                    ) 
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = { viewModel.exportTransactions() },
+                        enabled = !exportUiState.isExporting && uiState.groupedTransactions.isNotEmpty()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Export to Google Sheets"
+                        )
                     }
                 }
             )
@@ -139,6 +155,41 @@ fun TransactionListScreen(
                     }
                 }
             }
+        }
+    }
+
+    // Export Dialogs
+    when {
+        exportUiState.isExporting -> {
+            ExportProgressDialog()
+        }
+        exportUiState.successUrl != null -> {
+            ExportSuccessDialog(
+                url = exportUiState.successUrl!!,
+                transactionCount = uiState.groupedTransactions.values.flatten().size,
+                onOpen = {
+                    // Open the Google Sheets URL in browser
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(exportUiState.successUrl))
+                    context.startActivity(intent)
+                },
+                onShare = {
+                    // Share the Google Sheets URL
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, exportUiState.successUrl)
+                        putExtra(Intent.EXTRA_SUBJECT, "Profiteer Transaction Export")
+                    }
+                    context.startActivity(Intent.createChooser(shareIntent, "Share Google Sheet"))
+                },
+                onDismiss = { viewModel.dismissExportResult() }
+            )
+        }
+        exportUiState.errorMessage != null -> {
+            ExportErrorDialog(
+                errorMessage = exportUiState.errorMessage!!,
+                onRetry = { viewModel.exportTransactions() },
+                onDismiss = { viewModel.dismissExportResult() }
+            )
         }
     }
 }
@@ -624,4 +675,158 @@ private fun TagFilter(
             }
         }
     }
+}
+
+// Export Dialogs
+
+@Composable
+private fun ExportProgressDialog() {
+    AlertDialog(
+        onDismissRequest = { /* Cannot dismiss while exporting */ },
+        title = {
+            Text(
+                text = "Exporting Transactions",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(48.dp)
+                )
+                Text(
+                    text = "Creating Google Sheet...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
+        },
+        confirmButton = { /* No buttons while exporting */ }
+    )
+}
+
+@Composable
+private fun ExportSuccessDialog(
+    url: String,
+    transactionCount: Int,
+    onOpen: () -> Unit,
+    onShare: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(48.dp)
+            )
+        },
+        title = {
+            Text(
+                text = "Export Successful",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Successfully exported $transactionCount transaction${if (transactionCount != 1) "s" else ""} to Google Sheets.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "You can now view or share your spreadsheet.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
+        },
+        confirmButton = {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                TextButton(onClick = onShare) {
+                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Share")
+                }
+                Button(onClick = onOpen) {
+                    Text("Open Sheet")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Done")
+            }
+        }
+    )
+}
+
+@Composable
+private fun ExportErrorDialog(
+    errorMessage: String,
+    onRetry: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(48.dp)
+            )
+        },
+        title = {
+            Text(
+                text = "Export Failed",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.error
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Failed to export transactions:",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                    )
+                ) {
+                    Text(
+                        text = errorMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(12.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onRetry) {
+                Text("Retry")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

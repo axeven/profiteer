@@ -9,6 +9,7 @@ import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.sheets.v4.Sheets
 import com.google.api.services.sheets.v4.SheetsScopes
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,7 +21,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class GoogleSheetsService @Inject constructor(
-    private val context: Context,
+    @ApplicationContext private val context: Context,
     private val authRepository: AuthRepository,
     private val logger: Logger
 ) {
