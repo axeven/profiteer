@@ -10,6 +10,8 @@ import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.sheets.v4.Sheets
 import com.google.api.services.sheets.v4.SheetsScopes
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -59,24 +61,24 @@ class GoogleSheetsService @Inject constructor(
      *
      * @return Result containing Sheets service instance or exception if not authorized
      */
-    fun createSheetsService(): Result<Sheets> {
-        return try {
+    suspend fun createSheetsService(): Result<Sheets> = withContext(Dispatchers.IO) {
+        try {
             logger.d("GoogleSheetsService", "Creating Google Sheets service")
 
             if (!isAuthorized()) {
                 val exception = SecurityException("User is not authorized for Google Sheets")
                 logger.e("GoogleSheetsService", "Failed to create Google Sheets service: not authorized", exception)
-                return Result.failure(exception)
+                return@withContext Result.failure(exception)
             }
 
             val userEmail = authRepository.getCurrentUserEmail()
             if (userEmail == null) {
                 val exception = SecurityException("User email not available")
                 logger.e("GoogleSheetsService", "Failed to create Google Sheets service: no email", exception)
-                return Result.failure(exception)
+                return@withContext Result.failure(exception)
             }
 
-            // Create credentials
+            // Create credentials - this must run on IO thread due to GoogleAuthUtil.getAccountId()
             val credential = GoogleAccountCredential.usingOAuth2(
                 context,
                 listOf(SheetsScopes.SPREADSHEETS)

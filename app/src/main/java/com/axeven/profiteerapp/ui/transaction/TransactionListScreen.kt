@@ -39,6 +39,17 @@ fun TransactionListScreen(
     val exportUiState by viewModel.exportUiState.collectAsState()
     val context = LocalContext.current
 
+    // Activity result launcher for permission request
+    val authorizationLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        // Handle authorization result
+        val granted = result.resultCode == android.app.Activity.RESULT_OK
+        // Dismiss the permission dialog regardless of result
+        // User can manually retry export after granting permissions
+        viewModel.dismissExportResult()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -185,9 +196,19 @@ fun TransactionListScreen(
             )
         }
         exportUiState.errorMessage != null -> {
+            val isAuthError = exportUiState.errorMessage!!.contains("not authorized", ignoreCase = true) ||
+                    exportUiState.errorMessage!!.contains("authorization", ignoreCase = true) ||
+                    exportUiState.errorMessage!!.contains("permission", ignoreCase = true)
+
             ExportErrorDialog(
                 errorMessage = exportUiState.errorMessage!!,
+                isAuthorizationError = isAuthError,
                 onRetry = { viewModel.exportTransactions() },
+                onGrantPermission = {
+                    // Launch authorization flow
+                    val authIntent = viewModel.requestExportPermissions()
+                    authorizationLauncher.launch(authIntent)
+                },
                 onDismiss = { viewModel.dismissExportResult() }
             )
         }
@@ -751,22 +772,26 @@ private fun ExportSuccessDialog(
             }
         },
         confirmButton = {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                TextButton(onClick = onShare) {
-                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Share")
-                }
-                Button(onClick = onOpen) {
-                    Text("Open Sheet")
-                }
+            Button(onClick = onOpen) {
+                Text("Open Sheet")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Done")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                TextButton(onClick = onDismiss) {
+                    Text("Done")
+                }
+                TextButton(onClick = onShare) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Share")
+                }
             }
         }
     )
@@ -775,25 +800,27 @@ private fun ExportSuccessDialog(
 @Composable
 private fun ExportErrorDialog(
     errorMessage: String,
+    isAuthorizationError: Boolean,
     onRetry: () -> Unit,
+    onGrantPermission: () -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = {
             Icon(
-                imageVector = Icons.Default.Warning,
+                imageVector = if (isAuthorizationError) Icons.Default.Lock else Icons.Default.Warning,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
+                tint = if (isAuthorizationError) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(48.dp)
             )
         },
         title = {
             Text(
-                text = "Export Failed",
+                text = if (isAuthorizationError) "Permission Required" else "Export Failed",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.error
+                color = if (isAuthorizationError) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
             )
         },
         text = {
@@ -801,26 +828,42 @@ private fun ExportErrorDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "Failed to export transactions:",
+                    text = if (isAuthorizationError) {
+                        "To export transactions to Google Sheets, you need to grant permission to access your Google account."
+                    } else {
+                        "Failed to export transactions:"
+                    },
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Card(
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                        containerColor = if (isAuthorizationError) {
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        } else {
+                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                        }
                     )
                 ) {
                     Text(
-                        text = errorMessage,
+                        text = if (isAuthorizationError) {
+                            "Profiteer needs permission to:\n• Create Google Sheets\n• Write transaction data to sheets\n\nYour data is only shared with Google Sheets and remains under your control."
+                        } else {
+                            errorMessage
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(12.dp),
-                        color = MaterialTheme.colorScheme.onErrorContainer
+                        color = if (isAuthorizationError) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onErrorContainer
+                        }
                     )
                 }
             }
         },
         confirmButton = {
-            Button(onClick = onRetry) {
-                Text("Retry")
+            Button(onClick = if (isAuthorizationError) onGrantPermission else onRetry) {
+                Text(if (isAuthorizationError) "Grant Permission" else "Retry")
             }
         },
         dismissButton = {

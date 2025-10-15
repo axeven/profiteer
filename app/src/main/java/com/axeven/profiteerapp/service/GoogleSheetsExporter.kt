@@ -18,6 +18,8 @@ import com.google.api.services.sheets.v4.model.Spreadsheet
 import com.google.api.services.sheets.v4.model.SpreadsheetProperties
 import com.google.api.services.sheets.v4.model.TextFormat
 import com.google.api.services.sheets.v4.model.ValueRange
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -58,11 +60,11 @@ class GoogleSheetsExporter @Inject constructor(
      *                  a default name with timestamp will be used.
      * @return Result containing the created Spreadsheet or exception on failure
      */
-    fun createSpreadsheet(
+    suspend fun createSpreadsheet(
         sheetsService: Sheets,
         sheetName: String = generateDefaultSheetName()
-    ): Result<Spreadsheet> {
-        return try {
+    ): Result<Spreadsheet> = withContext(Dispatchers.IO) {
+        try {
             logger.d("GoogleSheetsExporter", "Creating spreadsheet: $sheetName")
 
             val spreadsheet = Spreadsheet().apply {
@@ -98,12 +100,12 @@ class GoogleSheetsExporter @Inject constructor(
      * @param data List of rows, where each row is a list of cell values
      * @return Result indicating success or failure
      */
-    fun writeData(
+    suspend fun writeData(
         sheetsService: Sheets,
         spreadsheetId: String,
         data: List<List<String>>
-    ): Result<AppendValuesResponse> {
-        return try {
+    ): Result<AppendValuesResponse> = withContext(Dispatchers.IO) {
+        try {
             logger.d(
                 "GoogleSheetsExporter",
                 "Writing ${data.size} rows to spreadsheet: $spreadsheetId"
@@ -147,12 +149,12 @@ class GoogleSheetsExporter @Inject constructor(
      * @param sheetId The ID of the specific sheet within the spreadsheet (typically 0)
      * @return Result indicating success or failure
      */
-    fun formatCells(
+    suspend fun formatCells(
         sheetsService: Sheets,
         spreadsheetId: String,
         sheetId: Int
-    ): Result<BatchUpdateSpreadsheetResponse> {
-        return try {
+    ): Result<BatchUpdateSpreadsheetResponse> = withContext(Dispatchers.IO) {
+        try {
             logger.d("GoogleSheetsExporter", "Formatting cells in spreadsheet: $spreadsheetId")
 
             val requests = mutableListOf<Request>()
@@ -277,7 +279,7 @@ class GoogleSheetsExporter @Inject constructor(
      * @param sheetName Optional custom name for the spreadsheet
      * @return Result containing the spreadsheet URL or exception on failure
      */
-    fun exportTransactions(
+    suspend fun exportTransactions(
         sheetsService: Sheets,
         transactionData: List<List<String>>,
         sheetName: String = generateDefaultSheetName()
