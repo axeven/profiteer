@@ -160,14 +160,14 @@ class ReportViewModel @Inject constructor(
     private fun calculatePhysicalWalletBalances(wallets: List<Wallet>): Map<String, Double> {
         // Get only physical wallets with positive balances
         return wallets
-            .filter { it.walletType == "Physical" && it.balance > 0 }
+            .filter { it.isPhysical && it.balance > 0 }
             .associate { wallet -> wallet.name to wallet.balance }
     }
     
     private fun calculateLogicalWalletBalances(wallets: List<Wallet>): Map<String, Double> {
         // Get only logical wallets with non-zero balances (including negative)
         return wallets
-            .filter { it.walletType == "Logical" && it.balance != 0.0 }
+            .filter { it.isLogical && it.balance != 0.0 }
             .associate { wallet -> wallet.name to wallet.balance }
     }
     

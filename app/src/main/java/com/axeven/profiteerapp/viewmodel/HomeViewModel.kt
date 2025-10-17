@@ -115,7 +115,7 @@ class HomeViewModel @Inject constructor(
                         .sumOf { abs(it.amount) }
                     
                     // Calculate total balance - all wallets now use default currency
-                    val physicalWallets = wallets.filter { it.walletType == "Physical" }
+                    val physicalWallets = wallets.filter { it.isPhysical }
                     val totalBalance = physicalWallets.sumOf { it.balance }
 
                     _uiState.update {

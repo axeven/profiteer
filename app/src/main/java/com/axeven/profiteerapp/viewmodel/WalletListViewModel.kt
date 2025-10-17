@@ -78,9 +78,9 @@ class WalletListViewModel @Inject constructor(
                     // Filter and sort wallets based on current view type
                     val baseFilteredWallets = wallets.filter { wallet ->
                         if (_uiState.value.showPhysicalWallets) {
-                            wallet.walletType == "Physical"
+                            wallet.isPhysical
                         } else {
-                            wallet.walletType != "Physical"
+                            wallet.isLogical
                         }
                     }
                     
@@ -98,7 +98,7 @@ class WalletListViewModel @Inject constructor(
                     
                     // Get available physical forms from current wallets
                     val availablePhysicalForms = baseFilteredWallets
-                        .filter { it.walletType == "Physical" }
+                        .filter { it.isPhysical }
                         .map { it.physicalForm }
                         .toSet()
                     
@@ -244,8 +244,8 @@ class WalletListViewModel @Inject constructor(
     private fun calculateUnallocatedBalance(
         wallets: List<Wallet>
     ): Double {
-        val physicalWallets = wallets.filter { it.walletType == "Physical" }
-        val logicalWallets = wallets.filter { it.walletType == "Logical" }
+        val physicalWallets = wallets.filter { it.isPhysical }
+        val logicalWallets = wallets.filter { it.isLogical }
         
         val totalPhysicalBalance = physicalWallets.sumOf { it.balance }
         val totalLogicalBalance = logicalWallets.sumOf { it.balance }
