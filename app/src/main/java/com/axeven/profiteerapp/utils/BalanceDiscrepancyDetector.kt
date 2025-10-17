@@ -24,7 +24,7 @@ class BalanceDiscrepancyDetector @Inject constructor() {
      */
     fun calculateTotalPhysicalBalance(wallets: List<Wallet>): Double {
         return wallets
-            .filter { it.walletType == "Physical" }
+            .filter { it.isPhysical }
             .sumOf { it.balance }
     }
 
@@ -37,7 +37,7 @@ class BalanceDiscrepancyDetector @Inject constructor() {
      */
     fun calculateTotalLogicalBalance(wallets: List<Wallet>): Double {
         return wallets
-            .filter { it.walletType == "Logical" }
+            .filter { it.isLogical }
             .sumOf { it.balance }
     }
 

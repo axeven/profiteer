@@ -166,7 +166,7 @@ class DiscrepancyAnalyzer @Inject constructor(
         wallets: Map<String, Wallet>
     ): Double {
         return wallets
-            .filter { it.value.walletType == "Physical" }
+            .filter { it.value.isPhysical }
             .mapNotNull { runningBalances[it.key] }
             .sum()
     }
@@ -179,7 +179,7 @@ class DiscrepancyAnalyzer @Inject constructor(
         wallets: Map<String, Wallet>
     ): Double {
         return wallets
-            .filter { it.value.walletType == "Logical" }
+            .filter { it.value.isLogical }
             .mapNotNull { runningBalances[it.key] }
             .sum()
     }
