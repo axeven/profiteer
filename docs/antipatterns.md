@@ -1,6 +1,6 @@
 # Anti-Patterns in Profiteer Codebase
 
-**Last Updated**: 2025-09-22
+**Last Updated**: 2025-10-17
 **Status**: Updated to reflect current codebase state
 
 This document identifies anti-patterns found in the Profiteer Android application codebase and tracks progress on addressing them.
@@ -178,45 +178,120 @@ val errorInfo = FirestoreErrorHandler.handleError(operation, error)
 - Create specialized use cases for complex operations
 - Apply SOLID principles more strictly
 
-## 6. ⚠️ **ONGOING ISSUE** - Hardcoded Magic Values
+## 6. ✅ **RESOLVED** - Hardcoded Magic Values
 
-**Pattern**: Hardcoded limits, strings, and configuration values scattered throughout the code.
+**Previous Pattern**: Hardcoded limits, strings, and configuration values scattered throughout the code.
 
-**⚠️ Status**: **ONGOING ISSUE** - Still present throughout codebase
+**✅ Status**: **RESOLVED** (2025-10-17)
 
-**Current State (2025-09-22)**:
-- ⚠️ **Magic numbers persist**: `.limit(20)`, `.limit(1)` found in 8 repository locations
-- ⚠️ **Hardcoded strings**: Currency codes, wallet types still hardcoded
-- ⚠️ **Configuration scattered**: No central constants management
+**Solution Implemented**:
+- ✅ **Centralized constants created** in `AppConstants.kt` with comprehensive test coverage
+- ✅ **All magic numbers replaced** with named constants (8+ repository locations)
+- ✅ **Currency defaults standardized** - 6 occurrences of hardcoded "USD" replaced
+- ✅ **Type-safe wallet types** - Enum-based type checking implemented
+- ✅ **Backward compatible** - Firebase serialization maintained
+- ✅ **TDD approach** - 18 comprehensive tests ensure correctness
 
-**Current Examples**:
+**Current Implementation**:
 ```kotlin
-// TransactionRepository.kt
-.limit(20) // ⚠️ Magic number for transaction pagination
+// app/src/main/java/com/axeven/profiteerapp/data/constants/AppConstants.kt
 
-// UserPreferencesRepository.kt
-.limit(1)  // ⚠️ Magic number appears 6 times
-
-// Various files
-"USD" // ⚠️ Hardcoded default currency
-"Physical", "Logical" // ⚠️ Magic strings for wallet types
-```
-
-**Recommended Solution**:
-```kotlin
-// Proposed Constants object
-object AppConstants {
+/**
+ * Central repository for application-wide constants.
+ * Use these constants instead of magic values for better maintainability.
+ */
+object RepositoryConstants {
+    /** Default page size for transaction queries */
     const val TRANSACTION_PAGE_SIZE = 20
+
+    /** Limit for single-result queries */
     const val SINGLE_RESULT_LIMIT = 1
+
+    /** Default currency code */
     const val DEFAULT_CURRENCY = "USD"
+
+    /** Maximum number of tag suggestions to show */
+    const val MAX_TAG_SUGGESTIONS = 10
 }
 
-enum class WalletType {
-    PHYSICAL, LOGICAL
+/**
+ * Enum representing wallet types in the system.
+ * Provides type-safe access while maintaining backward compatibility with string storage.
+ */
+enum class WalletType(val displayName: String) {
+    PHYSICAL("Physical"),
+    LOGICAL("Logical");
+
+    companion object {
+        fun fromString(value: String): WalletType? {
+            val trimmedValue = value.trim()
+            if (trimmedValue.isBlank()) return null
+            return values().find { it.displayName.equals(trimmedValue, ignoreCase = true) }
+        }
+    }
 }
 ```
 
-**Priority**: **MEDIUM** - Affects maintainability and configuration management
+**Files Modified**:
+- ✅ **Repository Layer** (4 files): TransactionRepository, UserPreferencesRepository, CurrencyRateRepository, UserPreferences
+- ✅ **Model Layer** (1 file): Wallet.kt with backward-compatible enum integration
+- ✅ **Utility Layer** (2 files): BalanceDiscrepancyDetector, DiscrepancyAnalyzer
+- ✅ **ViewModel Layer** (3 files): HomeViewModel, ReportViewModel, WalletListViewModel
+
+**Backward Compatibility**:
+```kotlin
+// Wallet model maintains string field for Firebase
+data class Wallet(
+    val walletType: String = WalletType.PHYSICAL.displayName,
+    // ... other fields
+) {
+    // Type-safe convenience properties
+    @get:Exclude
+    val type: WalletType
+        get() = WalletType.fromString(walletType) ?: WalletType.PHYSICAL
+
+    @get:Exclude
+    val isPhysical: Boolean
+        get() = type == WalletType.PHYSICAL
+
+    @get:Exclude
+    val isLogical: Boolean
+        get() = type == WalletType.LOGICAL
+}
+```
+
+**Usage Examples**:
+```kotlin
+// Before: Magic numbers
+transactionsCollection
+    .whereEqualTo("userId", userId)
+    .limit(20) // ⚠️ Magic number
+
+// After: Named constants
+transactionsCollection
+    .whereEqualTo("userId", userId)
+    .limit(RepositoryConstants.TRANSACTION_PAGE_SIZE.toLong()) // ✅ Clear intent
+
+// Before: String comparisons
+if (wallet.walletType == "Physical") { ... } // ⚠️ Magic string
+
+// After: Type-safe properties
+if (wallet.isPhysical) { ... } // ✅ Type-safe, clear
+```
+
+**Test Coverage**:
+- ✅ 6 tests for `RepositoryConstants` (values, types, defaults)
+- ✅ 12 tests for `WalletType` enum (string conversion, case insensitivity, validation)
+- ✅ All 18 new tests passing, no existing tests broken
+
+**Impact**:
+- ✅ **Maintainability**: Single source of truth for all configuration values
+- ✅ **Type Safety**: Compile-time checking for wallet types vs runtime string comparisons
+- ✅ **Readability**: Clear intent through named constants
+- ✅ **Flexibility**: Easy to change configuration values in one place
+- ✅ **Documentation**: Self-documenting code through constant names
+
+**Implementation Details**: See [docs/plans/2025-10-17-remove-hardcode-magic-values.md](plans/2025-10-17-remove-hardcode-magic-values.md) for complete implementation plan and progress tracking.
 
 ## 7. ✅ **LARGELY RESOLVED** - Tight Coupling to Android Framework
 
@@ -275,31 +350,31 @@ _uiState.update { it.copy(isLoading = true, error = null) }
 3. **Break Down God Objects**: Split large ViewModels and repositories into focused components
 
 ### ⚠️ **Medium Priority** (Code Quality & Maintenance)
-4. **Centralize Configuration**: Create `Constants` object for magic values and hardcoded strings
-5. **Continue Architecture Improvement**: Further separate concerns between layers
-6. **Optimize State Updates**: Review frequent `.copy()` usage for performance impact
+4. **Continue Architecture Improvement**: Further separate concerns between layers
+5. **Optimize State Updates**: Review frequent `.copy()` usage for performance impact
 
 ### ✅ **Low Priority** (Monitoring & Continuous Improvement)
 7. **Monitor Resolved Issues**: Ensure logging framework continues to meet requirements
 8. **Code Review Process**: Maintain strict guidelines to prevent regression of resolved anti-patterns
 9. **Performance Monitoring**: Track impact of state management patterns on app performance
 
-## Current Impact Assessment (Updated 2025-09-22)
+## Current Impact Assessment (Updated 2025-10-17)
 
 ### ✅ **RESOLVED ISSUES**
 - ✅ **Excessive Debug Logging**: Completely eliminated with custom logging framework
+- ✅ **Hardcoded Magic Values**: Completely resolved with centralized constants and type-safe enums
 - ✅ **Inconsistent Error Handling**: Largely resolved with standardized `Result<T>` pattern
 - ✅ **Tight Android Coupling**: Mostly resolved through abstractions and dependency injection
 
 ### ⚠️ **ACTIVE ISSUES** (Require Attention)
 - 🔥 **High Priority**: Repository UI coupling (SharedErrorViewModel injection)
-- ⚠️ **Medium Priority**: Complex Compose state management, magic values
+- ⚠️ **Medium Priority**: Complex Compose state management
 - ⚠️ **Medium Priority**: Large classes and scattered concerns
 
 ### 📊 **Progress Summary**
-- **3 out of 8 anti-patterns** completely resolved (37.5% improvement)
+- **4 out of 8 anti-patterns** completely resolved (50% improvement)
 - **2 out of 8 anti-patterns** largely resolved (additional 25% improvement)
-- **3 out of 8 anti-patterns** require ongoing attention
-- **Overall improvement**: ~62% of identified anti-patterns addressed
+- **2 out of 8 anti-patterns** require ongoing attention
+- **Overall improvement**: ~75% of identified anti-patterns addressed
 
-The codebase has shown significant improvement, particularly in logging architecture and error handling consistency. Focus should now shift to architectural concerns and state management patterns.
+The codebase has shown significant improvement, particularly in logging architecture, error handling consistency, and configuration management. Focus should now shift to architectural concerns and state management patterns.
