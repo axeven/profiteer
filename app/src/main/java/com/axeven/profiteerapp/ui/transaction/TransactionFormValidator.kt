@@ -1,5 +1,6 @@
 package com.axeven.profiteerapp.ui.transaction
 
+import com.axeven.profiteerapp.data.constants.ValidationConstants
 import com.axeven.profiteerapp.data.model.TransactionType
 import com.axeven.profiteerapp.data.ui.*
 import java.util.*
@@ -67,7 +68,8 @@ fun validateTransactionForm(state: CreateTransactionUiState): ValidationResult {
 fun validateTitle(title: String): String? {
     return when {
         title.isBlank() -> "Title is required"
-        title.length > 100 -> "Title must be less than 100 characters"
+        title.length > ValidationConstants.TRANSACTION_TITLE_MAX_LENGTH ->
+            "Title must be less than ${ValidationConstants.TRANSACTION_TITLE_MAX_LENGTH} characters"
         else -> null
     }
 }
@@ -183,7 +185,8 @@ fun validateTags(tags: String): String? {
         .filter { it.isNotEmpty() }
 
     return when {
-        tagList.size > 15 -> "Consider using fewer tags for better organization"
+        tagList.size > ValidationConstants.MAX_TAGS_PER_TRANSACTION ->
+            "Consider using fewer tags for better organization"
         tagList.size != tagList.distinct().size -> {
             val duplicates = tagList.groupBy { it }
                 .filter { it.value.size > 1 }
@@ -252,7 +255,7 @@ fun validateWalletCombination(wallets: SelectedWallets): String? {
         physical != null && logical != null -> {
             val balanceDifference = kotlin.math.abs(physical.balance - logical.balance)
             val averageBalance = (physical.balance + logical.balance) / 2
-            if (averageBalance > 0 && balanceDifference / averageBalance > 10) {
+            if (averageBalance > 0 && balanceDifference / averageBalance > ValidationConstants.BALANCE_DIFFERENCE_THRESHOLD) {
                 "Selected wallets have very different balances - please verify selection"
             } else null
         }
@@ -305,7 +308,7 @@ fun validateTransactionFormComprehensive(state: CreateTransactionUiState): Valid
  * @return ValidationResult with only critical errors
  */
 fun validateTransactionFormRealTime(state: CreateTransactionUiState): ValidationResult {
-    val titleError = if (state.title.isNotBlank() && state.title.length > 100) {
+    val titleError = if (state.title.isNotBlank() && state.title.length > ValidationConstants.TRANSACTION_TITLE_MAX_LENGTH) {
         validateTitle(state.title)
     } else null
 

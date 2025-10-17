@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.axeven.profiteerapp.data.constants.UIConstants
 import com.axeven.profiteerapp.data.model.TransactionType
 import com.axeven.profiteerapp.data.model.Wallet
 import com.axeven.profiteerapp.data.ui.*
@@ -898,8 +899,8 @@ fun TagInputField(
     
     // Get current input being typed (last tag after comma)
     val currentInput = value.split(",").lastOrNull()?.trim() ?: ""
-    val suggestions = if (currentInput.length >= 3) {
-        availableTags.filter { it.contains(currentInput, ignoreCase = true) }.take(5)
+    val suggestions = if (currentInput.length >= UIConstants.TAG_AUTOCOMPLETE_MIN_CHARS) {
+        availableTags.filter { it.contains(currentInput, ignoreCase = true) }.take(UIConstants.TAG_SUGGESTION_LIMIT)
     } else {
         emptyList()
     }

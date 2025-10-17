@@ -1,5 +1,6 @@
 package com.axeven.profiteerapp.data.ui
 
+import com.axeven.profiteerapp.data.constants.ValidationConstants
 import com.axeven.profiteerapp.data.model.TransactionType
 import java.util.*
 
@@ -184,7 +185,8 @@ data class CreateTransactionUiState(
 private fun validateState(state: CreateTransactionUiState): ValidationErrors {
     val titleError = when {
         state.title.isBlank() -> "Title is required"
-        state.title.length > 100 -> "Title must be less than 100 characters"
+        state.title.length > ValidationConstants.TRANSACTION_TITLE_MAX_LENGTH ->
+            "Title must be less than ${ValidationConstants.TRANSACTION_TITLE_MAX_LENGTH} characters"
         else -> null
     }
 

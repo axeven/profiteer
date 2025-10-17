@@ -2,6 +2,7 @@ package com.axeven.profiteerapp.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.axeven.profiteerapp.data.constants.UIConstants
 import com.axeven.profiteerapp.data.model.Transaction
 import com.axeven.profiteerapp.data.model.TransactionType
 import com.axeven.profiteerapp.data.model.Wallet
@@ -509,10 +510,10 @@ class TransactionViewModel @Inject constructor(
     }
     
     fun getTagSuggestions(input: String): List<String> {
-        if (input.length < 3) return emptyList()
-        
-        return uiState.value.availableTags.filter { 
-            it.contains(input, ignoreCase = true) 
-        }.take(5) // Limit to 5 suggestions
+        if (input.length < UIConstants.TAG_AUTOCOMPLETE_MIN_CHARS) return emptyList()
+
+        return uiState.value.availableTags.filter {
+            it.contains(input, ignoreCase = true)
+        }.take(UIConstants.TAG_SUGGESTION_LIMIT)
     }
 }

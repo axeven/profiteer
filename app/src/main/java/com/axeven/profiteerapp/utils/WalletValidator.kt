@@ -1,5 +1,6 @@
 package com.axeven.profiteerapp.utils
 
+import com.axeven.profiteerapp.data.constants.ValidationConstants
 import com.axeven.profiteerapp.data.model.PhysicalForm
 
 /**
@@ -31,8 +32,10 @@ object WalletValidator {
     fun validateWalletName(name: String): ValidationResult {
         return when {
             name.isBlank() -> ValidationResult.error("Wallet name cannot be empty")
-            name.length < 2 -> ValidationResult.error("Wallet name must be at least 2 characters long")
-            name.length > 50 -> ValidationResult.error("Wallet name cannot exceed 50 characters")
+            name.length < ValidationConstants.WALLET_NAME_MIN_LENGTH ->
+                ValidationResult.error("Wallet name must be at least ${ValidationConstants.WALLET_NAME_MIN_LENGTH} characters long")
+            name.length > ValidationConstants.WALLET_NAME_MAX_LENGTH ->
+                ValidationResult.error("Wallet name cannot exceed ${ValidationConstants.WALLET_NAME_MAX_LENGTH} characters")
             else -> ValidationResult.success()
         }
     }
