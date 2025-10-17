@@ -1,11 +1,12 @@
 package com.axeven.profiteerapp.data.repository
 
-import com.axeven.profiteerapp.data.model.Wallet
 import com.axeven.profiteerapp.data.model.PhysicalForm
+import com.axeven.profiteerapp.data.model.RepositoryError
+import com.axeven.profiteerapp.data.model.Wallet
+import com.axeven.profiteerapp.data.model.toRepositoryError
 import com.axeven.profiteerapp.service.AuthTokenManager
 import com.axeven.profiteerapp.utils.FirestoreErrorHandler
 import com.axeven.profiteerapp.utils.logging.Logger
-import com.axeven.profiteerapp.viewmodel.SharedErrorViewModel
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
@@ -22,7 +23,6 @@ import javax.inject.Singleton
 @Singleton
 class WalletRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
-    private val sharedErrorViewModel: SharedErrorViewModel,
     private val authTokenManager: AuthTokenManager,
     private val logger: Logger
 ) {
@@ -43,13 +43,14 @@ class WalletRepository @Inject constructor(
                         handleAuthenticationError("getUserWallets", error)
                     }
 
-                    sharedErrorViewModel.showError(
-                        message = errorInfo.userMessage,
-                        shouldRetry = errorInfo.shouldRetry,
-                        requiresReauth = errorInfo.requiresReauth,
-                        isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    // Close Flow with RepositoryError instead of calling UI layer
+                    val isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    val repositoryError = errorInfo.toRepositoryError(
+                        operation = "getUserWallets",
+                        isOffline = isOffline,
+                        cause = error
                     )
-                    close(error)
+                    close(repositoryError)
                     return@addSnapshotListener
                 }
                 
@@ -148,14 +149,22 @@ class WalletRepository @Inject constructor(
             .whereEqualTo("physicalForm", physicalForm.name)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
+                    logger.e("WalletRepo", "Wallet listener error (by physical form)", error)
                     val errorInfo = FirestoreErrorHandler.handleError(error, logger)
-                    sharedErrorViewModel.showError(
-                        message = errorInfo.userMessage,
-                        shouldRetry = errorInfo.shouldRetry,
-                        requiresReauth = errorInfo.requiresReauth,
-                        isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+
+                    // Handle authentication errors gracefully
+                    if (errorInfo.requiresReauth) {
+                        handleAuthenticationError("getUserWalletsByPhysicalForm", error)
+                    }
+
+                    // Close Flow with RepositoryError instead of calling UI layer
+                    val isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    val repositoryError = errorInfo.toRepositoryError(
+                        operation = "getUserWalletsByPhysicalForm",
+                        isOffline = isOffline,
+                        cause = error
                     )
-                    close(error)
+                    close(repositoryError)
                     return@addSnapshotListener
                 }
                 

@@ -1,11 +1,12 @@
 package com.axeven.profiteerapp.data.repository
 
 import com.axeven.profiteerapp.data.constants.RepositoryConstants
+import com.axeven.profiteerapp.data.model.RepositoryError
 import com.axeven.profiteerapp.data.model.UserPreferences
+import com.axeven.profiteerapp.data.model.toRepositoryError
 import com.axeven.profiteerapp.service.AuthTokenManager
 import com.axeven.profiteerapp.utils.FirestoreErrorHandler
 import com.axeven.profiteerapp.utils.logging.Logger
-import com.axeven.profiteerapp.viewmodel.SharedErrorViewModel
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -20,7 +21,6 @@ import javax.inject.Singleton
 @Singleton
 class UserPreferencesRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
-    private val sharedErrorViewModel: SharedErrorViewModel,
     private val authTokenManager: AuthTokenManager,
     private val logger: Logger
 ) {
@@ -40,13 +40,14 @@ class UserPreferencesRepository @Inject constructor(
                         handleAuthenticationError("getUserPreferences", error)
                     }
 
-                    sharedErrorViewModel.showError(
-                        message = errorInfo.userMessage,
-                        shouldRetry = errorInfo.shouldRetry,
-                        requiresReauth = errorInfo.requiresReauth,
-                        isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    // Close Flow with RepositoryError instead of calling UI layer
+                    val isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    val repositoryError = errorInfo.toRepositoryError(
+                        operation = "getUserPreferences",
+                        isOffline = isOffline,
+                        cause = error
                     )
-                    close(error)
+                    close(repositoryError)
                     return@addSnapshotListener
                 }
                 

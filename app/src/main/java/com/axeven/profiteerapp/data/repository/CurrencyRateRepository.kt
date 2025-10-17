@@ -2,10 +2,11 @@ package com.axeven.profiteerapp.data.repository
 
 import com.axeven.profiteerapp.data.constants.RepositoryConstants
 import com.axeven.profiteerapp.data.model.CurrencyRate
+import com.axeven.profiteerapp.data.model.RepositoryError
+import com.axeven.profiteerapp.data.model.toRepositoryError
 import com.axeven.profiteerapp.service.AuthTokenManager
 import com.axeven.profiteerapp.utils.FirestoreErrorHandler
 import com.axeven.profiteerapp.utils.logging.Logger
-import com.axeven.profiteerapp.viewmodel.SharedErrorViewModel
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
@@ -21,7 +22,6 @@ import javax.inject.Singleton
 @Singleton
 class CurrencyRateRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
-    private val sharedErrorViewModel: SharedErrorViewModel,
     private val authTokenManager: AuthTokenManager,
     private val logger: Logger
 ) {
@@ -40,13 +40,14 @@ class CurrencyRateRepository @Inject constructor(
                         handleAuthenticationError("getUserCurrencyRates", error)
                     }
 
-                    sharedErrorViewModel.showError(
-                        message = errorInfo.userMessage,
-                        shouldRetry = errorInfo.shouldRetry,
-                        requiresReauth = errorInfo.requiresReauth,
-                        isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    // Close Flow with RepositoryError instead of calling UI layer
+                    val isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    val repositoryError = errorInfo.toRepositoryError(
+                        operation = "getUserCurrencyRates",
+                        isOffline = isOffline,
+                        cause = error
                     )
-                    close(error)
+                    close(repositoryError)
                     return@addSnapshotListener
                 }
                 

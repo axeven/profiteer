@@ -2,13 +2,14 @@ package com.axeven.profiteerapp.data.repository
 
 import android.content.Context
 import com.axeven.profiteerapp.data.constants.RepositoryConstants
+import com.axeven.profiteerapp.data.model.RepositoryError
 import com.axeven.profiteerapp.data.model.Transaction
 import com.axeven.profiteerapp.data.model.TransactionType
+import com.axeven.profiteerapp.data.model.toRepositoryError
 import com.axeven.profiteerapp.service.AuthTokenManager
-import com.axeven.profiteerapp.utils.FirestoreErrorHandler
 import com.axeven.profiteerapp.utils.CredentialDiagnostics
+import com.axeven.profiteerapp.utils.FirestoreErrorHandler
 import com.axeven.profiteerapp.utils.logging.Logger
-import com.axeven.profiteerapp.viewmodel.SharedErrorViewModel
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -26,7 +27,6 @@ import javax.inject.Singleton
 @Singleton
 class TransactionRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
-    private val sharedErrorViewModel: SharedErrorViewModel,
     private val authTokenManager: AuthTokenManager,
     private val logger: Logger,
     @ApplicationContext private val context: Context
@@ -47,13 +47,14 @@ class TransactionRepository @Inject constructor(
                         handleAuthenticationError("getUserTransactions", error)
                     }
 
-                    sharedErrorViewModel.showError(
-                        message = errorInfo.userMessage,
-                        shouldRetry = errorInfo.shouldRetry,
-                        requiresReauth = errorInfo.requiresReauth,
-                        isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    // Close Flow with RepositoryError instead of calling UI layer
+                    val isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    val repositoryError = errorInfo.toRepositoryError(
+                        operation = "getUserTransactions",
+                        isOffline = isOffline,
+                        cause = error
                     )
-                    close(error)
+                    close(repositoryError)
                     return@addSnapshotListener
                 }
                 
@@ -103,13 +104,14 @@ class TransactionRepository @Inject constructor(
                     handleAuthenticationError("getUserTransactionsForCalculations", error)
                 }
 
-                sharedErrorViewModel.showError(
-                    message = errorInfo.userMessage,
-                    shouldRetry = errorInfo.shouldRetry,
-                    requiresReauth = errorInfo.requiresReauth,
-                    isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                // Close Flow with RepositoryError instead of calling UI layer
+                val isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                val repositoryError = errorInfo.toRepositoryError(
+                    operation = "getUserTransactionsForCalculations",
+                    isOffline = isOffline,
+                    cause = error
                 )
-                close(error)
+                close(repositoryError)
                 return@addSnapshotListener
             }
             
@@ -164,12 +166,14 @@ class TransactionRepository @Inject constructor(
                 if (error != null) {
                     logger.e("TransactionRepo", "Error in primary wallet query", error)
                     val errorInfo = FirestoreErrorHandler.handleError(error, logger)
-                    sharedErrorViewModel.showError(
-                        message = errorInfo.userMessage,
-                        shouldRetry = errorInfo.shouldRetry,
-                        requiresReauth = errorInfo.requiresReauth,
-                        isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
-                    )
+
+                    // Handle authentication errors gracefully
+                    if (errorInfo.requiresReauth) {
+                        handleAuthenticationError("getWalletTransactions:primaryWallet", error)
+                    }
+
+                    // Log error but continue - partial results from other queries may still be useful
+                    logger.w("TransactionRepo", "Primary wallet query failed: ${errorInfo.userMessage}")
                     return@addSnapshotListener
                 }
                 
@@ -193,12 +197,14 @@ class TransactionRepository @Inject constructor(
                 if (error != null) {
                     logger.e("TransactionRepo", "Error in affected wallets query", error)
                     val errorInfo = FirestoreErrorHandler.handleError(error, logger)
-                    sharedErrorViewModel.showError(
-                        message = errorInfo.userMessage,
-                        shouldRetry = errorInfo.shouldRetry,
-                        requiresReauth = errorInfo.requiresReauth,
-                        isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
-                    )
+
+                    // Handle authentication errors gracefully
+                    if (errorInfo.requiresReauth) {
+                        handleAuthenticationError("getWalletTransactions:affectedWallets", error)
+                    }
+
+                    // Log error but continue - partial results from other queries may still be useful
+                    logger.w("TransactionRepo", "Affected wallets query failed: ${errorInfo.userMessage}")
                     return@addSnapshotListener
                 }
                 
@@ -222,12 +228,14 @@ class TransactionRepository @Inject constructor(
                 if (error != null) {
                     logger.e("TransactionRepo", "Error in source wallet query", error)
                     val errorInfo = FirestoreErrorHandler.handleError(error, logger)
-                    sharedErrorViewModel.showError(
-                        message = errorInfo.userMessage,
-                        shouldRetry = errorInfo.shouldRetry,
-                        requiresReauth = errorInfo.requiresReauth,
-                        isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
-                    )
+
+                    // Handle authentication errors gracefully
+                    if (errorInfo.requiresReauth) {
+                        handleAuthenticationError("getWalletTransactions:sourceWallet", error)
+                    }
+
+                    // Log error but continue - partial results from other queries may still be useful
+                    logger.w("TransactionRepo", "Source wallet query failed: ${errorInfo.userMessage}")
                     return@addSnapshotListener
                 }
                 
@@ -252,12 +260,14 @@ class TransactionRepository @Inject constructor(
                 if (error != null) {
                     logger.e("TransactionRepo", "Error in destination wallet query", error)
                     val errorInfo = FirestoreErrorHandler.handleError(error, logger)
-                    sharedErrorViewModel.showError(
-                        message = errorInfo.userMessage,
-                        shouldRetry = errorInfo.shouldRetry,
-                        requiresReauth = errorInfo.requiresReauth,
-                        isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
-                    )
+
+                    // Handle authentication errors gracefully
+                    if (errorInfo.requiresReauth) {
+                        handleAuthenticationError("getWalletTransactions:destinationWallet", error)
+                    }
+
+                    // Log error but continue - partial results from other queries may still be useful
+                    logger.w("TransactionRepo", "Destination wallet query failed: ${errorInfo.userMessage}")
                     return@addSnapshotListener
                 }
                 
@@ -405,13 +415,14 @@ class TransactionRepository @Inject constructor(
                         handleAuthenticationError("getAllTransactionsChronological", error)
                     }
 
-                    sharedErrorViewModel.showError(
-                        message = errorInfo.userMessage,
-                        shouldRetry = errorInfo.shouldRetry,
-                        requiresReauth = errorInfo.requiresReauth,
-                        isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    // Close Flow with RepositoryError instead of calling UI layer
+                    val isOffline = FirestoreErrorHandler.shouldShowOfflineMessage(error)
+                    val repositoryError = errorInfo.toRepositoryError(
+                        operation = "getAllTransactionsChronological",
+                        isOffline = isOffline,
+                        cause = error
                     )
-                    close(error)
+                    close(repositoryError)
                     return@addSnapshotListener
                 }
 
