@@ -10,6 +10,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.common.api.Scope
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
 import com.google.api.services.sheets.v4.Sheets
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Ignore
@@ -119,7 +120,7 @@ class GoogleSheetsServiceTest {
 
     @Ignore("Requires Android instrumentation - GoogleAccountCredential creation needs real Android context. Will be covered in Phase 8 integration tests.")
     @Test
-    fun `createSheetsService returns Sheets instance with valid credentials`() {
+    fun `createSheetsService returns Sheets instance with valid credentials`() = runTest {
         // Given: User has sheets scope and valid account
         val userEmail = "test@example.com"
         whenever(authRepository.hasSheetsScope()).thenReturn(true)
@@ -134,7 +135,7 @@ class GoogleSheetsServiceTest {
     }
 
     @Test
-    fun `createSheetsService returns failure when not authorized`() {
+    fun `createSheetsService returns failure when not authorized`() = runTest {
         // Given: User lacks sheets scope
         whenever(authRepository.hasSheetsScope()).thenReturn(false)
 
@@ -150,7 +151,7 @@ class GoogleSheetsServiceTest {
 
     @Ignore("Requires Android instrumentation - GoogleAccountCredential creation needs real Android context. Will be covered in Phase 8 integration tests.")
     @Test
-    fun `createSheetsService logs successful service creation`() {
+    fun `createSheetsService logs successful service creation`() = runTest {
         // Given: User has valid authorization
         val userEmail = "test@example.com"
         whenever(authRepository.hasSheetsScope()).thenReturn(true)
@@ -165,7 +166,7 @@ class GoogleSheetsServiceTest {
     }
 
     @Test
-    fun `createSheetsService logs failure when not authorized`() {
+    fun `createSheetsService logs failure when not authorized`() = runTest {
         // Given: User is not authorized
         whenever(authRepository.hasSheetsScope()).thenReturn(false)
 

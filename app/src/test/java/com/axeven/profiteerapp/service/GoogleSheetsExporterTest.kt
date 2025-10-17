@@ -7,6 +7,7 @@ import com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetResponse
 import com.google.api.services.sheets.v4.model.Request
 import com.google.api.services.sheets.v4.model.Spreadsheet
 import com.google.api.services.sheets.v4.model.SpreadsheetProperties
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -63,7 +64,7 @@ class GoogleSheetsExporterTest {
     // ========== Tests for createSpreadsheet() ==========
 
     @Test
-    fun `createSpreadsheet should successfully create spreadsheet with default name`() {
+    fun `createSpreadsheet should successfully create spreadsheet with default name`() = runTest {
         // Arrange
         val expectedSpreadsheetId = "test-spreadsheet-id-123"
         val mockSpreadsheet = Spreadsheet().apply {
@@ -84,7 +85,7 @@ class GoogleSheetsExporterTest {
     }
 
     @Test
-    fun `createSpreadsheet should create spreadsheet with custom sheet name`() {
+    fun `createSpreadsheet should create spreadsheet with custom sheet name`() = runTest {
         // Arrange
         val customSheetName = "My Custom Export Sheet"
         val expectedSpreadsheetId = "test-spreadsheet-id-456"
@@ -103,7 +104,7 @@ class GoogleSheetsExporterTest {
     }
 
     @Test
-    fun `createSpreadsheet should include timestamp in sheet name`() {
+    fun `createSpreadsheet should include timestamp in sheet name`() = runTest {
         // Arrange
         val mockSpreadsheet = Spreadsheet().apply {
             spreadsheetId = "test-id"
@@ -122,7 +123,7 @@ class GoogleSheetsExporterTest {
     }
 
     @Test
-    fun `createSpreadsheet should handle creation failure gracefully`() {
+    fun `createSpreadsheet should handle creation failure gracefully`() = runTest {
         // Arrange
         val exception = IOException("Network error")
         whenever(mockCreateOperation.execute()).thenThrow(exception)
@@ -136,7 +137,7 @@ class GoogleSheetsExporterTest {
     }
 
     @Test
-    fun `createSpreadsheet should handle network error`() {
+    fun `createSpreadsheet should handle network error`() = runTest {
         // Arrange
         val networkError = IOException("Failed to connect to Google Sheets API")
         whenever(mockCreateOperation.execute()).thenThrow(networkError)
@@ -154,7 +155,7 @@ class GoogleSheetsExporterTest {
     // ========== Tests for writeData() ==========
 
     @Test
-    fun `writeData should write empty data (header only)`() {
+    fun `writeData should write empty data (header only)`() = runTest {
         // Arrange
         val spreadsheetId = "test-spreadsheet-id"
         val emptyData = listOf(listOf("Header1", "Header2", "Header3"))
@@ -170,7 +171,7 @@ class GoogleSheetsExporterTest {
     }
 
     @Test
-    fun `writeData should write single row of data`() {
+    fun `writeData should write single row of data`() = runTest {
         // Arrange
         val spreadsheetId = "test-spreadsheet-id"
         val singleRowData = listOf(
@@ -189,7 +190,7 @@ class GoogleSheetsExporterTest {
     }
 
     @Test
-    fun `writeData should write multiple rows in batch operation`() {
+    fun `writeData should write multiple rows in batch operation`() = runTest {
         // Arrange
         val spreadsheetId = "test-spreadsheet-id"
         val multipleRowsData = listOf(
@@ -210,7 +211,7 @@ class GoogleSheetsExporterTest {
     }
 
     @Test
-    fun `writeData should handle large datasets (over 1000 rows)`() {
+    fun `writeData should handle large datasets (over 1000 rows)`() = runTest {
         // Arrange
         val spreadsheetId = "test-spreadsheet-id"
         val largeData = mutableListOf(listOf("Header1", "Header2"))
@@ -231,7 +232,7 @@ class GoogleSheetsExporterTest {
     }
 
     @Test
-    fun `writeData should handle write failure gracefully`() {
+    fun `writeData should handle write failure gracefully`() = runTest {
         // Arrange
         val spreadsheetId = "test-spreadsheet-id"
         val data = listOf(listOf("Header1", "Header2"))
@@ -248,7 +249,7 @@ class GoogleSheetsExporterTest {
     }
 
     @Test
-    fun `writeData should retry transient errors`() {
+    fun `writeData should retry transient errors`() = runTest {
         // Arrange
         val spreadsheetId = "test-spreadsheet-id"
         val data = listOf(listOf("Header1"))
@@ -269,7 +270,7 @@ class GoogleSheetsExporterTest {
     // ========== Tests for formatCells() ==========
 
     @Test
-    fun `formatCells should format header row with bold and background color`() {
+    fun `formatCells should format header row with bold and background color`() = runTest {
         // Arrange
         val spreadsheetId = "test-spreadsheet-id"
         val sheetId = 0
@@ -285,7 +286,7 @@ class GoogleSheetsExporterTest {
     }
 
     @Test
-    fun `formatCells should apply currency column formatting`() {
+    fun `formatCells should apply currency column formatting`() = runTest {
         // Arrange
         val spreadsheetId = "test-spreadsheet-id"
         val sheetId = 0
@@ -300,7 +301,7 @@ class GoogleSheetsExporterTest {
     }
 
     @Test
-    fun `formatCells should apply date column formatting`() {
+    fun `formatCells should apply date column formatting`() = runTest {
         // Arrange
         val spreadsheetId = "test-spreadsheet-id"
         val sheetId = 0
@@ -315,7 +316,7 @@ class GoogleSheetsExporterTest {
     }
 
     @Test
-    fun `formatCells should auto-size column widths`() {
+    fun `formatCells should auto-size column widths`() = runTest {
         // Arrange
         val spreadsheetId = "test-spreadsheet-id"
         val sheetId = 0
@@ -334,7 +335,7 @@ class GoogleSheetsExporterTest {
     // ========== Tests for exportTransactions() ==========
 
     @Test
-    fun `exportTransactions should complete end-to-end export flow`() {
+    fun `exportTransactions should complete end-to-end export flow`() = runTest {
         // Arrange
         val transactionData = listOf(
             listOf("Date", "Title", "Amount"),
@@ -368,7 +369,7 @@ class GoogleSheetsExporterTest {
     }
 
     @Test
-    fun `exportTransactions should handle empty transaction list`() {
+    fun `exportTransactions should handle empty transaction list`() = runTest {
         // Arrange
         val emptyData = listOf(listOf("Header1", "Header2"))
 
@@ -396,7 +397,7 @@ class GoogleSheetsExporterTest {
     }
 
     @Test
-    fun `exportTransactions should handle large dataset (100+ transactions)`() {
+    fun `exportTransactions should handle large dataset (100+ transactions)`() = runTest {
         // Arrange
         val largeData = mutableListOf(listOf("Header1", "Header2"))
         for (i in 1..150) {
@@ -427,7 +428,7 @@ class GoogleSheetsExporterTest {
     }
 
     @Test
-    fun `exportTransactions should return shareable spreadsheet URL`() {
+    fun `exportTransactions should return shareable spreadsheet URL`() = runTest {
         // Arrange
         val transactionData = listOf(
             listOf("Header1", "Header2"),
@@ -460,7 +461,7 @@ class GoogleSheetsExporterTest {
     }
 
     @Test
-    fun `exportTransactions should handle error and rollback gracefully`() {
+    fun `exportTransactions should handle error and rollback gracefully`() = runTest {
         // Arrange
         val transactionData = listOf(listOf("Header1"))
 
@@ -487,7 +488,7 @@ class GoogleSheetsExporterTest {
     }
 
     @Test
-    fun `exportTransactions should prevent concurrent export attempts`() {
+    fun `exportTransactions should prevent concurrent export attempts`() = runTest {
         // Arrange
         val transactionData = listOf(listOf("Header1"))
 
