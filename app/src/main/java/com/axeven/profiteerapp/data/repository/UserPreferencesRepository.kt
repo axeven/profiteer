@@ -1,5 +1,6 @@
 package com.axeven.profiteerapp.data.repository
 
+import com.axeven.profiteerapp.data.constants.RepositoryConstants
 import com.axeven.profiteerapp.data.model.UserPreferences
 import com.axeven.profiteerapp.service.AuthTokenManager
 import com.axeven.profiteerapp.utils.FirestoreErrorHandler
@@ -28,7 +29,7 @@ class UserPreferencesRepository @Inject constructor(
     fun getUserPreferences(userId: String): Flow<UserPreferences?> = callbackFlow {
         val listener = preferencesCollection
             .whereEqualTo("userId", userId)
-            .limit(1)
+            .limit(RepositoryConstants.SINGLE_RESULT_LIMIT.toLong())
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     logger.e("UserPreferencesRepo", "User preferences listener error", error)
@@ -61,7 +62,7 @@ class UserPreferencesRepository @Inject constructor(
             // Check if preferences already exist
             val existingSnapshot = preferencesCollection
                 .whereEqualTo("userId", preferences.userId)
-                .limit(1)
+                .limit(RepositoryConstants.SINGLE_RESULT_LIMIT.toLong())
                 .get()
                 .await()
 
@@ -84,16 +85,16 @@ class UserPreferencesRepository @Inject constructor(
         return try {
             val snapshot = preferencesCollection
                 .whereEqualTo("userId", userId)
-                .limit(1)
+                .limit(RepositoryConstants.SINGLE_RESULT_LIMIT.toLong())
                 .get()
                 .await()
 
             if (snapshot.documents.isNotEmpty()) {
                 val docId = snapshot.documents.first().id
                 val existingPrefs = snapshot.documents.first().toObject(UserPreferences::class.java)
-                
+
                 // If displayCurrency is still the default "USD", update it to match the new defaultCurrency
-                val updates = if (existingPrefs?.displayCurrency == "USD") {
+                val updates = if (existingPrefs?.displayCurrency == RepositoryConstants.DEFAULT_CURRENCY) {
                     mapOf(
                         "defaultCurrency" to currency,
                         "displayCurrency" to currency  // Auto-update displayCurrency to match
@@ -124,7 +125,7 @@ class UserPreferencesRepository @Inject constructor(
         return try {
             val snapshot = preferencesCollection
                 .whereEqualTo("userId", userId)
-                .limit(1)
+                .limit(RepositoryConstants.SINGLE_RESULT_LIMIT.toLong())
                 .get()
                 .await()
 
@@ -151,7 +152,7 @@ class UserPreferencesRepository @Inject constructor(
         return try {
             val snapshot = preferencesCollection
                 .whereEqualTo("userId", userId)
-                .limit(1)
+                .limit(RepositoryConstants.SINGLE_RESULT_LIMIT.toLong())
                 .get()
                 .await()
 
@@ -187,17 +188,17 @@ class UserPreferencesRepository @Inject constructor(
         return try {
             val snapshot = preferencesCollection
                 .whereEqualTo("userId", userId)
-                .limit(1)
+                .limit(RepositoryConstants.SINGLE_RESULT_LIMIT.toLong())
                 .get()
                 .await()
 
             if (snapshot.documents.isNotEmpty()) {
                 val docId = snapshot.documents.first().id
                 val existingPrefs = snapshot.documents.first().toObject(UserPreferences::class.java)
-                
+
                 // If displayCurrency is USD but defaultCurrency is something else, sync them
-                if (existingPrefs?.displayCurrency == "USD" && 
-                    existingPrefs.defaultCurrency != "USD") {
+                if (existingPrefs?.displayCurrency == RepositoryConstants.DEFAULT_CURRENCY &&
+                    existingPrefs.defaultCurrency != RepositoryConstants.DEFAULT_CURRENCY) {
                     preferencesCollection.document(docId)
                         .update("displayCurrency", existingPrefs.defaultCurrency)
                         .await()

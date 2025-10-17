@@ -1,5 +1,6 @@
 package com.axeven.profiteerapp.data.repository
 
+import com.axeven.profiteerapp.data.constants.RepositoryConstants
 import com.axeven.profiteerapp.data.model.CurrencyRate
 import com.axeven.profiteerapp.service.AuthTokenManager
 import com.axeven.profiteerapp.utils.FirestoreErrorHandler
@@ -120,7 +121,7 @@ class CurrencyRateRepository @Inject constructor(
                 query.whereEqualTo("month", null)
             }
 
-            val snapshot = query.limit(1).get().await()
+            val snapshot = query.limit(RepositoryConstants.SINGLE_RESULT_LIMIT.toLong()).get().await()
             val rate = snapshot.documents.firstOrNull()?.toObject(CurrencyRate::class.java)
             Result.success(rate)
         } catch (e: Exception) {

@@ -1,6 +1,7 @@
 package com.axeven.profiteerapp.data.repository
 
 import android.content.Context
+import com.axeven.profiteerapp.data.constants.RepositoryConstants
 import com.axeven.profiteerapp.data.model.Transaction
 import com.axeven.profiteerapp.data.model.TransactionType
 import com.axeven.profiteerapp.service.AuthTokenManager
@@ -36,7 +37,7 @@ class TransactionRepository @Inject constructor(
         val listener = transactionsCollection
             .whereEqualTo("userId", userId)
             .orderBy("transactionDate", Query.Direction.DESCENDING)
-            .limit(20)
+            .limit(RepositoryConstants.TRANSACTION_PAGE_SIZE.toLong())
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     val errorInfo = FirestoreErrorHandler.handleError(error, logger)
