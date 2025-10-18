@@ -181,6 +181,156 @@ If you see these Firebase errors, check for missing userId filters:
 
 **Remember**: Security rules are enforced on every query. One missing userId filter will break the entire query.
 
+## Repository Error Handling
+
+**CRITICAL**: Repositories must NEVER depend on UI layer (ViewModels). Use domain error types instead.
+
+### Required Pattern
+
+All repository snapshot listeners must handle errors using `RepositoryError` domain types:
+
+```kotlin
+@Singleton
+class MyRepository @Inject constructor(
+    private val firestore: FirebaseFirestore,
+    private val logger: Logger  // ✅ Logger is allowed
+    // ❌ NEVER inject SharedErrorViewModel or any ViewModel
+) {
+    fun getUserData(userId: String): Flow<List<Data>> = callbackFlow {
+        val listener = collection
+            .whereEqualTo("userId", userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    // Convert Firebase error to domain error
+                    val errorInfo = FirestoreErrorHandler.handleSnapshotError(
+                        error,
+                        "getUserData"
+                    )
+
+                    // Create RepositoryError from errorInfo
+                    val repositoryError = RepositoryError.FirestoreListener(
+                        operation = errorInfo.operation,
+                        userMessage = errorInfo.userMessage,
+                        shouldRetry = errorInfo.shouldRetry,
+                        requiresReauth = errorInfo.requiresReauth,
+                        isOffline = errorInfo.isOffline,
+                        cause = error
+                    )
+
+                    // Close Flow with typed exception
+                    close(repositoryError)
+                    return@addSnapshotListener
+                }
+
+                // Handle successful snapshot
+                trySend(parseData(snapshot))
+            }
+
+        awaitClose { listener.remove() }
+    }
+}
+```
+
+### Error Type Hierarchy
+
+Use these domain error types from `data/model/RepositoryError.kt`:
+
+- `RepositoryError.FirestoreListener` - Real-time listener errors (most common)
+- `RepositoryError.FirestoreCrud` - CRUD operation errors
+- `RepositoryError.NetworkError` - Connectivity issues
+- `RepositoryError.AuthenticationError` - Auth/permission errors
+- `RepositoryError.DataValidationError` - Parsing failures
+- `RepositoryError.ResourceNotFound` - Missing resources
+- `RepositoryError.CompositeError` - Multi-query aggregation
+- `RepositoryError.UnknownError` - Catch-all
+
+### ViewModel Integration
+
+ViewModels catch and handle RepositoryError exceptions using utility functions:
+
+```kotlin
+@HiltViewModel
+class MyViewModel @Inject constructor(
+    private val repository: MyRepository,
+    private val logger: Logger
+) : ViewModel() {
+
+    fun loadData() {
+        viewModelScope.launch {
+            try {
+                repository.getUserData(userId).collect { data ->
+                    _uiState.update { it.copy(data = data, isLoading = false) }
+                }
+            } catch (e: Exception) {
+                // Use error handling utilities
+                val errorInfo = e.toErrorInfo()
+                logger.w("MyViewModel", "Error loading data: ${errorInfo.message}")
+
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = errorInfo.message
+                    )
+                }
+            }
+        }
+    }
+}
+```
+
+### Error Handling Utilities
+
+Use extension functions from `viewmodel/ErrorHandlingUtils.kt`:
+
+- `Throwable.toUserMessage()` - Extract user-friendly message
+- `Throwable.isCriticalError()` - Check if requires auth/critical handling
+- `Throwable.isRetryable()` - Check if operation can be retried
+- `Throwable.isOfflineError()` - Check if network-related
+- `Throwable.toErrorInfo()` - Get structured error information
+
+### Anti-Patterns
+
+```kotlin
+// ❌ FORBIDDEN: Repository calling UI layer
+class MyRepository @Inject constructor(
+    private val sharedErrorViewModel: SharedErrorViewModel  // NEVER DO THIS
+) {
+    fun getData() = callbackFlow {
+        addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                sharedErrorViewModel.showError(error.message)  // WRONG!
+                return@addSnapshotListener
+            }
+        }
+    }
+}
+
+// ✅ CORRECT: Repository using domain errors
+class MyRepository @Inject constructor(
+    private val logger: Logger
+) {
+    fun getData() = callbackFlow {
+        addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                close(RepositoryError.FirestoreListener(...))  // RIGHT!
+                return@addSnapshotListener
+            }
+        }
+    }
+}
+```
+
+### Testing Requirements
+
+- Repositories must have NO UI dependencies in constructor
+- Use `verifyNoUIDependencies()` from test helpers to enforce
+- Test error scenarios return correct `RepositoryError` types
+- ViewModels must test error handling with RepositoryError exceptions
+
+For detailed error handling patterns, see:
+- [Repository Error Mapping](docs/repository-error-mapping.md)
+- [Repository Refactoring Plan](docs/plans/2025-10-17-repository-layer-mixing-concerns.md)
+
 # Code Organization
 
 ## Package Structure
@@ -281,6 +431,7 @@ com.axeven.profiteerapp/
 9. **Use proper logging practices** following the established logging framework
 10. **Follow consolidated state management patterns** for all Jetpack Compose screens
 11. **🚨 CRITICAL: Follow Firebase security patterns** - All Firestore queries MUST include userId filters (see Firebase Security section above)
+12. **🚨 CRITICAL: Follow repository error handling patterns** - Repositories must NEVER inject ViewModels, use RepositoryError domain types (see Repository Error Handling section above)
 
 # State Management Guidelines
 
