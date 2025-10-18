@@ -136,10 +136,13 @@ class WalletListViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
+                val errorInfo = e.toErrorInfo()
+                logger.w("WalletListViewModel", "Error loading wallets: ${errorInfo.message}")
+
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = e.message
+                        error = errorInfo.message
                     )
                 }
             }
@@ -180,8 +183,11 @@ class WalletListViewModel @Inject constructor(
                     loadWallets() // Refresh the list
                 }
                 .onFailure { error ->
+                    val errorMessage = error.toUserMessage()
+                    logger.w("WalletListViewModel", "Error creating wallet: $errorMessage")
+
                     _uiState.update {
-                        it.copy(isLoading = false, error = error.message)
+                        it.copy(isLoading = false, error = errorMessage)
                     }
                 }
         }
@@ -197,8 +203,11 @@ class WalletListViewModel @Inject constructor(
                     loadWallets() // Refresh the list
                 }
                 .onFailure { error ->
+                    val errorMessage = error.toUserMessage()
+                    logger.w("WalletListViewModel", "Error updating wallet: $errorMessage")
+
                     _uiState.update {
-                        it.copy(isLoading = false, error = error.message)
+                        it.copy(isLoading = false, error = errorMessage)
                     }
                 }
         }
@@ -214,8 +223,11 @@ class WalletListViewModel @Inject constructor(
                     loadWallets() // Refresh the list
                 }
                 .onFailure { error ->
+                    val errorMessage = error.toUserMessage()
+                    logger.w("WalletListViewModel", "Error deleting wallet: $errorMessage")
+
                     _uiState.update {
-                        it.copy(isLoading = false, error = error.message)
+                        it.copy(isLoading = false, error = errorMessage)
                     }
                 }
         }
