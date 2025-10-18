@@ -3,6 +3,7 @@ package com.axeven.profiteerapp.ui.transaction
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -10,6 +11,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.axeven.profiteerapp.data.model.Transaction
@@ -204,6 +207,10 @@ fun EditTransactionScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                     prefix = { Text(currencySymbol) },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done
+                    ),
                     isError = editState.validationErrors.amountError != null,
                     supportingText = editState.validationErrors.amountError?.let {
                         { Text(it, color = MaterialTheme.colorScheme.error) }

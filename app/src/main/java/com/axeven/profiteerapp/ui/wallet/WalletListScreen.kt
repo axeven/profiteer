@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AccountBox
@@ -53,6 +54,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.axeven.profiteerapp.data.model.PhysicalForm
@@ -597,6 +600,10 @@ fun CreateWalletDialog(
                     label = { Text(balanceLabel) },
                     placeholder = { Text(balancePlaceholder) },
                     modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done
+                    ),
                     isError = NumberFormatter.parseDouble(initialBalanceText) == null && initialBalanceText.isNotBlank(),
                     supportingText = if (NumberFormatter.parseDouble(initialBalanceText) == null && initialBalanceText.isNotBlank()) {
                         { Text("Please enter a valid amount", color = MaterialTheme.colorScheme.error) }
@@ -735,6 +742,10 @@ fun EditWalletDialog(
                     label = { Text(balanceLabel) },
                     placeholder = { Text(balancePlaceholder) },
                     modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done
+                    ),
                     isError = NumberFormatter.parseDouble(initialBalanceText) == null && initialBalanceText.isNotBlank(),
                     supportingText = if (NumberFormatter.parseDouble(initialBalanceText) == null && initialBalanceText.isNotBlank()) {
                         { Text("Please enter a valid amount", color = MaterialTheme.colorScheme.error) }
@@ -869,6 +880,10 @@ fun CreateWalletDialogWithState(
                     label = { Text(balanceLabel) },
                     placeholder = { Text(balancePlaceholder) },
                     modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done
+                    ),
                     isError = NumberFormatter.parseDouble(walletListState.formData.initialBalanceText) == null && walletListState.formData.initialBalanceText.isNotBlank(),
                     supportingText = if (NumberFormatter.parseDouble(walletListState.formData.initialBalanceText) == null && walletListState.formData.initialBalanceText.isNotBlank()) {
                         { Text("Please enter a valid amount", color = MaterialTheme.colorScheme.error) }
@@ -1002,6 +1017,10 @@ fun EditWalletDialogWithState(
                     label = { Text(balanceLabel) },
                     placeholder = { Text(balancePlaceholder) },
                     modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done
+                    ),
                     isError = NumberFormatter.parseDouble(walletListState.formData.initialBalanceText) == null && walletListState.formData.initialBalanceText.isNotBlank(),
                     supportingText = if (NumberFormatter.parseDouble(walletListState.formData.initialBalanceText) == null && walletListState.formData.initialBalanceText.isNotBlank()) {
                         { Text("Please enter a valid amount", color = MaterialTheme.colorScheme.error) }

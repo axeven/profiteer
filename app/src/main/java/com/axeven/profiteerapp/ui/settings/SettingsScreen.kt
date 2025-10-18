@@ -3,6 +3,7 @@ package com.axeven.profiteerapp.ui.settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -11,6 +12,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.collectAsState
@@ -521,6 +524,10 @@ fun ConversionRateDialog(
                     onValueChange = { rateText = it },
                     label = { Text(rateLabel) },
                     modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done
+                    ),
                     placeholder = { Text(when {
                         fromCurrency == "GOLD" || toCurrency == "GOLD" -> "e.g., 65.50"
                         fromCurrency == "BTC" || toCurrency == "BTC" -> "e.g., 45000.00"
@@ -786,6 +793,10 @@ fun EditConversionRateDialog(
                     onValueChange = { rateText = it },
                     label = { Text(rateLabel) },
                     modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done
+                    ),
                     placeholder = { Text(when {
                         fromCurrency == "GOLD" || toCurrency == "GOLD" -> "e.g., 65.50"
                         fromCurrency == "BTC" || toCurrency == "BTC" -> "e.g., 45000.00"
