@@ -480,4 +480,132 @@ class CreateTransactionStateManagerTest {
         // Objects should be different instances
         assertNotSame(originalState, updatedState)
     }
+
+    // ========================================
+    // Tag Normalization Tests (Phase 2)
+    // ========================================
+
+    @Test
+    fun `updateTags should normalize tags - trim whitespace`() {
+        val initialState = CreateTransactionUiState()
+
+        val updatedState = updateTags(initialState, " food , travel ")
+
+        assertEquals("food, travel", updatedState.tags)
+    }
+
+    @Test
+    fun `updateTags should normalize tags - convert to lowercase`() {
+        val initialState = CreateTransactionUiState()
+
+        val updatedState = updateTags(initialState, "Food, TRAVEL, Shopping")
+
+        assertEquals("food, travel, shopping", updatedState.tags)
+    }
+
+    @Test
+    fun `updateTags should normalize tags - remove case-insensitive duplicates`() {
+        val initialState = CreateTransactionUiState()
+
+        val updatedState = updateTags(initialState, "food, Food, FOOD, travel")
+
+        assertEquals("food, travel", updatedState.tags)
+    }
+
+    @Test
+    fun `updateTags should normalize tags - handle whitespace around commas`() {
+        val initialState = CreateTransactionUiState()
+
+        val updatedState = updateTags(initialState, "food , travel , shopping")
+
+        assertEquals("food, travel, shopping", updatedState.tags)
+    }
+
+    @Test
+    fun `updateTags should normalize tags - filter out empty tags`() {
+        val initialState = CreateTransactionUiState()
+
+        val updatedState = updateTags(initialState, "food, , travel, , shopping")
+
+        assertEquals("food, travel, shopping", updatedState.tags)
+    }
+
+    @Test
+    fun `updateTags should normalize tags - remove Untagged keyword`() {
+        val initialState = CreateTransactionUiState()
+
+        val updatedState = updateTags(initialState, "food, Untagged, travel, untagged")
+
+        assertEquals("food, travel", updatedState.tags)
+    }
+
+    @Test
+    fun `updateTags should handle empty string`() {
+        val initialState = CreateTransactionUiState(tags = "food, travel")
+
+        val updatedState = updateTags(initialState, "")
+
+        assertEquals("", updatedState.tags)
+    }
+
+    @Test
+    fun `updateTags should handle single tag`() {
+        val initialState = CreateTransactionUiState()
+
+        val updatedState = updateTags(initialState, "food")
+
+        assertEquals("food", updatedState.tags)
+    }
+
+    @Test
+    fun `updateTags complex real-world example`() {
+        val initialState = CreateTransactionUiState()
+
+        val updatedState = updateTags(initialState, " Food, food, FOOD , travel , Shopping, shopping , ")
+
+        assertEquals("food, travel, shopping", updatedState.tags)
+    }
+
+    @Test
+    fun `getTransactionSummary should return normalized tags`() {
+        val state = CreateTransactionUiState(
+            title = "Test",
+            amount = "100",
+            tags = "food, Food, FOOD, travel"
+        ).updateAndValidate()
+
+        // First update tags to normalize them
+        val normalizedState = updateTags(state, "food, Food, FOOD, travel")
+        val summary = getTransactionSummary(normalizedState)
+
+        assertEquals(listOf("food", "travel"), summary.tags)
+    }
+
+    @Test
+    fun `fromExistingTransaction should normalize loaded tags`() {
+        // Simulate loading tags from an existing transaction with mixed case
+        val state = CreateTransactionUiState.fromExistingTransaction(
+            title = "Existing Transaction",
+            amount = 50.0,
+            type = TransactionType.EXPENSE,
+            tags = listOf("Food", "TRAVEL", "shopping"),
+            date = Date()
+        )
+
+        // Tags should be normalized and joined
+        assertEquals("food, travel, shopping", state.tags)
+    }
+
+    @Test
+    fun `fromExistingTransaction should handle duplicate tags`() {
+        val state = CreateTransactionUiState.fromExistingTransaction(
+            title = "Existing Transaction",
+            amount = 50.0,
+            type = TransactionType.EXPENSE,
+            tags = listOf("food", "Food", "FOOD", "travel"),
+            date = Date()
+        )
+
+        assertEquals("food, travel", state.tags)
+    }
 }

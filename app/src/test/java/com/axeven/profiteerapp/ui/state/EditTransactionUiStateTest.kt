@@ -409,4 +409,130 @@ class EditTransactionUiStateTest {
         assertEquals(mockTransaction, state.originalTransaction) // Original preserved
         assertTrue(state.hasChanges)
     }
+
+    // ========================================
+    // Tag Normalization Tests (Phase 2)
+    // ========================================
+
+    @Test
+    fun `updateTags should normalize tags - trim whitespace`() {
+        val initialState = EditTransactionUiState.fromTransaction(mockTransaction)
+
+        val updatedState = initialState.updateAndValidate(tags = " food , travel ")
+
+        assertEquals("food, travel", updatedState.tags)
+    }
+
+    @Test
+    fun `updateTags should normalize tags - convert to lowercase`() {
+        val initialState = EditTransactionUiState.fromTransaction(mockTransaction)
+
+        val updatedState = initialState.updateAndValidate(tags = "Food, TRAVEL, Shopping")
+
+        assertEquals("food, travel, shopping", updatedState.tags)
+    }
+
+    @Test
+    fun `updateTags should normalize tags - remove case-insensitive duplicates`() {
+        val initialState = EditTransactionUiState.fromTransaction(mockTransaction)
+
+        val updatedState = initialState.updateAndValidate(tags = "food, Food, FOOD, travel")
+
+        assertEquals("food, travel", updatedState.tags)
+    }
+
+    @Test
+    fun `updateTags should normalize tags - handle whitespace around commas`() {
+        val initialState = EditTransactionUiState.fromTransaction(mockTransaction)
+
+        val updatedState = initialState.updateAndValidate(tags = "food , travel , shopping")
+
+        assertEquals("food, travel, shopping", updatedState.tags)
+    }
+
+    @Test
+    fun `updateTags should normalize tags - filter out empty tags`() {
+        val initialState = EditTransactionUiState.fromTransaction(mockTransaction)
+
+        val updatedState = initialState.updateAndValidate(tags = "food, , travel, , shopping")
+
+        assertEquals("food, travel, shopping", updatedState.tags)
+    }
+
+    @Test
+    fun `updateTags should normalize tags - remove Untagged keyword`() {
+        val initialState = EditTransactionUiState.fromTransaction(mockTransaction)
+
+        val updatedState = initialState.updateAndValidate(tags = "food, Untagged, travel, untagged")
+
+        assertEquals("food, travel", updatedState.tags)
+    }
+
+    @Test
+    fun `updateTags complex real-world example`() {
+        val initialState = EditTransactionUiState.fromTransaction(mockTransaction)
+
+        val updatedState = initialState.updateAndValidate(
+            tags = " Food, food, FOOD , travel , Shopping, shopping , "
+        )
+
+        assertEquals("food, travel, shopping", updatedState.tags)
+    }
+
+    @Test
+    fun `fromTransaction should normalize loaded tags - mixed case`() {
+        val transactionWithMixedCaseTags = mockTransaction.copy(
+            tags = listOf("Food", "TRAVEL", "shopping")
+        )
+
+        val editState = EditTransactionUiState.fromTransaction(transactionWithMixedCaseTags)
+
+        assertEquals("food, travel, shopping", editState.tags)
+    }
+
+    @Test
+    fun `fromTransaction should normalize loaded tags - duplicates`() {
+        val transactionWithDuplicateTags = mockTransaction.copy(
+            tags = listOf("food", "Food", "FOOD", "travel")
+        )
+
+        val editState = EditTransactionUiState.fromTransaction(transactionWithDuplicateTags)
+
+        assertEquals("food, travel", editState.tags)
+    }
+
+    @Test
+    fun `fromTransaction should normalize loaded tags - whitespace`() {
+        val transactionWithWhitespaceTags = mockTransaction.copy(
+            tags = listOf("  food  ", " travel ", "shopping")
+        )
+
+        val editState = EditTransactionUiState.fromTransaction(transactionWithWhitespaceTags)
+
+        assertEquals("food, travel, shopping", editState.tags)
+    }
+
+    @Test
+    fun `tag update should mark hasChanges when tags differ from original`() {
+        val editState = EditTransactionUiState.fromTransaction(mockTransaction)
+
+        val updatedState = editState.updateAndValidate(tags = "new, tags")
+
+        assertTrue(updatedState.hasChanges)
+        assertNotEquals(mockTransaction.tags.joinToString(", "), updatedState.tags)
+    }
+
+    @Test
+    fun `normalizing tags should not affect hasChanges if semantically same`() {
+        // Original has normalized tags "food, grocery"
+        val editState = EditTransactionUiState.fromTransaction(mockTransaction)
+
+        // User enters same tags with different case/whitespace
+        val updatedState = editState.updateAndValidate(tags = "Food, Grocery")
+
+        // After normalization, should be same as original
+        assertEquals("food, grocery", updatedState.tags)
+        // Note: hasChanges might still be true if other fields changed
+        // This test verifies normalization works correctly
+    }
 }

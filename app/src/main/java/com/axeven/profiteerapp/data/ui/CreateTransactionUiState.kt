@@ -2,6 +2,7 @@ package com.axeven.profiteerapp.data.ui
 
 import com.axeven.profiteerapp.data.constants.ValidationConstants
 import com.axeven.profiteerapp.data.model.TransactionType
+import com.axeven.profiteerapp.utils.TagNormalizer
 import java.util.*
 
 /**
@@ -154,6 +155,11 @@ data class CreateTransactionUiState(
 
         /**
          * Creates initial state for editing an existing transaction.
+         *
+         * Tags are normalized during loading to ensure consistency:
+         * - Converted to lowercase
+         * - Trimmed of whitespace
+         * - Deduplicated (case-insensitive)
          */
         fun fromExistingTransaction(
             title: String,
@@ -162,11 +168,14 @@ data class CreateTransactionUiState(
             tags: List<String>,
             date: Date
         ): CreateTransactionUiState {
+            // Normalize tags when loading from existing transaction
+            val normalizedTags = TagNormalizer.normalizeTags(tags).joinToString(", ")
+
             return CreateTransactionUiState(
                 title = title,
                 amount = Math.abs(amount).toString(),
                 selectedType = type,
-                tags = tags.joinToString(", "),
+                tags = normalizedTags,
                 selectedDate = date
             ).let { state ->
                 state.copy(

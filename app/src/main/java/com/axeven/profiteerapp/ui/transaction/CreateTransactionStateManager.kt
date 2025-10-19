@@ -3,6 +3,7 @@ package com.axeven.profiteerapp.ui.transaction
 import com.axeven.profiteerapp.data.model.TransactionType
 import com.axeven.profiteerapp.data.model.Wallet
 import com.axeven.profiteerapp.data.ui.*
+import com.axeven.profiteerapp.utils.TagNormalizer
 import java.util.*
 
 /**
@@ -159,12 +160,23 @@ fun updateSelectedDate(
 /**
  * Updates the transaction tags and triggers form validation.
  *
+ * Tags are automatically normalized:
+ * - Trimmed of leading/trailing whitespace
+ * - Converted to lowercase
+ * - Deduplicated (case-insensitive)
+ * - "Untagged" keyword removed
+ *
  * @param state Current UI state
  * @param tags New tags string (comma-separated)
- * @return Updated state with new tags and refreshed validation
+ * @return Updated state with normalized tags and refreshed validation
  */
 fun updateTags(state: CreateTransactionUiState, tags: String): CreateTransactionUiState {
-    return state.updateAndValidate(tags = tags)
+    val normalizedTags = if (tags.isBlank()) {
+        ""
+    } else {
+        TagNormalizer.parseTagInput(tags).joinToString(", ")
+    }
+    return state.updateAndValidate(tags = normalizedTags)
 }
 
 /**
@@ -303,7 +315,7 @@ fun getTransactionSummary(state: CreateTransactionUiState): TransactionSummary {
             else -> state.selectedWallets.allSelected
         },
         tags = if (state.tags.isBlank()) emptyList() else
-               state.tags.split(",").map { it.trim() }.filter { it.isNotEmpty() },
+               TagNormalizer.parseTagInput(state.tags),
         date = state.selectedDate,
         isValid = state.isFormValid
     )

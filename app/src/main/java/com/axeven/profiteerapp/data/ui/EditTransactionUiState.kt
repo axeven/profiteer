@@ -4,6 +4,7 @@ import com.axeven.profiteerapp.data.model.Transaction
 import com.axeven.profiteerapp.data.model.TransactionType
 import com.axeven.profiteerapp.data.model.Wallet
 import com.axeven.profiteerapp.ui.transaction.*
+import com.axeven.profiteerapp.utils.TagNormalizer
 import java.util.*
 
 /**
@@ -41,12 +42,17 @@ data class EditTransactionUiState(
 
     /**
      * Computed property to check if the current state has changes from the original transaction.
+     *
+     * Note: Tag comparison uses normalized tags to avoid false positives from
+     * case/whitespace differences.
      */
     val hasChanges: Boolean
         get() = originalTransaction?.let { original ->
+            val normalizedOriginalTags = TagNormalizer.normalizeTags(original.tags).joinToString(", ")
+
             title != original.title ||
             amount != String.format("%.2f", Math.abs(original.amount)) ||
-            tags != original.tags.joinToString(", ") ||
+            tags != normalizedOriginalTags ||
             selectedDate != (original.transactionDate ?: Date()) ||
             // Note: Wallet changes are detected in actual wallet state comparison
             hasWalletChanges(original)
@@ -105,13 +111,20 @@ data class EditTransactionUiState(
                 }
             }
 
+            // Normalize tags when loading from existing transaction
+            val normalizedTags = if (transaction.type == TransactionType.TRANSFER) {
+                ""
+            } else {
+                TagNormalizer.normalizeTags(transaction.tags).joinToString(", ")
+            }
+
             return EditTransactionUiState(
                 title = transaction.title,
                 amount = String.format("%.2f", Math.abs(transaction.amount)), // Always positive for display with 2 decimal places
                 selectedType = transaction.type,
                 selectedWallets = initialWallets,
                 selectedDate = transaction.transactionDate ?: Date(),
-                tags = if (transaction.type == TransactionType.TRANSFER) "" else transaction.tags.joinToString(", "),
+                tags = normalizedTags,
                 originalTransaction = transaction
             ).updateAndValidate()
         }
@@ -119,6 +132,12 @@ data class EditTransactionUiState(
 
     /**
      * Update and validate the current state, similar to CreateTransactionUiState.
+     *
+     * Tags are automatically normalized:
+     * - Trimmed of leading/trailing whitespace
+     * - Converted to lowercase
+     * - Deduplicated (case-insensitive)
+     * - "Untagged" keyword removed
      */
     fun updateAndValidate(
         title: String = this.title,
@@ -129,6 +148,13 @@ data class EditTransactionUiState(
         tags: String = this.tags,
         dialogStates: DialogStates = this.dialogStates
     ): EditTransactionUiState {
+        // Normalize tags before validation
+        val normalizedTags = if (tags.isBlank()) {
+            ""
+        } else {
+            TagNormalizer.parseTagInput(tags).joinToString(", ")
+        }
+
         val validation = validateTransactionForm(
             CreateTransactionUiState(
                 title = title,
@@ -136,7 +162,7 @@ data class EditTransactionUiState(
                 selectedType = selectedType,
                 selectedWallets = selectedWallets,
                 selectedDate = selectedDate,
-                tags = tags
+                tags = normalizedTags
             )
         )
 
@@ -146,7 +172,7 @@ data class EditTransactionUiState(
             selectedType = selectedType,
             selectedWallets = selectedWallets,
             selectedDate = selectedDate,
-            tags = tags,
+            tags = normalizedTags,
             dialogStates = dialogStates,
             validationErrors = validation.errors,
             isFormValid = validation.isValid
