@@ -10,6 +10,7 @@ import com.axeven.profiteerapp.data.repository.AuthRepository
 import com.axeven.profiteerapp.data.repository.TransactionRepository
 import com.axeven.profiteerapp.data.repository.UserPreferencesRepository
 import com.axeven.profiteerapp.data.repository.WalletRepository
+import com.axeven.profiteerapp.utils.TagNormalizer
 import com.axeven.profiteerapp.utils.logging.Logger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -61,11 +62,11 @@ class TransactionViewModel @Inject constructor(
                 ) { transactions, wallets, preferences ->
                     Triple(transactions, wallets, preferences)
                 }.collect { (transactions, wallets, preferences) ->
-                    val uniqueTags = transactions.flatMap { it.tags }
-                        .filter { it.isNotBlank() && it != "Untagged" }
-                        .distinct()
-                        .sorted()
-                    
+                    // Normalize tags: trim, lowercase, deduplicate, filter out "Untagged" and blanks
+                    // Using normalizeTags() which handles all normalization including filtering "untagged"
+                    val allTags = transactions.flatMap { it.tags }
+                    val uniqueTags = TagNormalizer.normalizeTags(allTags).sorted()
+
                     val defaultCurrency = preferences?.defaultCurrency ?: "USD"
                     val displayCurrency = preferences?.displayCurrency ?: defaultCurrency
                     

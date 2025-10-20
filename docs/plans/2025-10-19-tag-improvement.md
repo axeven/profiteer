@@ -1,7 +1,7 @@
 # Tag Improvement Plan: Case-Insensitive Tags & Whitespace Trimming
 
 **Date**: 2025-10-19
-**Status**: 🚧 In Progress (Phase 1-2 ✅ Complete)
+**Status**: 🚧 In Progress (Phase 1-3 ✅ Complete)
 **Priority**: Medium
 **Effort Estimate**: 2-3 hours
 
@@ -141,33 +141,38 @@ fun List<String>.normalizeTags(): List<String> {
     - `hasChanges` - compare normalized tags ✅
   - Tests: 33 tests passing (0 failures) ✅
 
-### Phase 3: Update ViewModel Tag Collection ✅
+### Phase 3: Update ViewModel Tag Collection ✅ COMPLETED
 **Test-First Development**
 
-- [ ] **3.1 Write tests for TransactionViewModel tag deduplication**
-  - File: `app/src/test/java/com/axeven/profiteerapp/viewmodel/TransactionViewModelTest.kt`
-  - Test cases:
+- [x] **3.1 Write tests for TransactionViewModel tag deduplication**
+  - File: `app/src/test/java/com/axeven/profiteerapp/viewmodel/TransactionViewModelTagTest.kt` ✅
+  - Created 12 comprehensive test cases:
     - ✅ `availableTags - deduplicates case-insensitively`
     - ✅ `availableTags - trims whitespace`
+    - ✅ `availableTags - filters out "Untagged" keyword`
+    - ✅ `availableTags - filters out blank tags`
+    - ✅ `availableTags - sorted alphabetically`
+    - ✅ `availableTags - complex real-world scenario`
     - ✅ `getTagSuggestions - case-insensitive matching`
     - ✅ `getTagSuggestions - suggests normalized tags`
+    - ✅ `getTagSuggestions - does not suggest "Untagged"`
+    - ✅ `getTagSuggestions - respects minimum character limit`
+    - ✅ `getTagSuggestions - limits number of suggestions`
+    - ✅ `getTagSuggestions - handles partial matches`
 
-- [ ] **3.2 Update TransactionViewModel.loadData()**
-  - File: `app/src/main/java/com/axeven/profiteerapp/viewmodel/TransactionViewModel.kt:64-67`
-  - Change tag collection logic:
+- [x] **3.2 Update TransactionViewModel.loadData()**
+  - File: `app/src/main/java/com/axeven/profiteerapp/viewmodel/TransactionViewModel.kt` ✅
+  - Updated tag collection logic to use `TagNormalizer.normalizeTags()`:
     ```kotlin
-    val uniqueTags = transactions
-        .flatMap { it.tags }
-        .map { it.normalizeTag() }  // Add normalization
-        .filter { it.isNotBlank() && it != "untagged" }
-        .distinct()
-        .sorted()
+    val allTags = transactions.flatMap { it.tags }
+    val uniqueTags = TagNormalizer.normalizeTags(allTags).sorted()
     ```
-  - Run tests: `./gradlew testDebugUnitTest --tests "*TransactionViewModelTest"`
+  - Tests: 12/12 tests passing ✅
 
-- [ ] **3.3 Update tag autocomplete to use normalized comparison**
-  - Already case-insensitive, verify it works with normalized tags
-  - Add tests if missing
+- [x] **3.3 Update tag autocomplete to use normalized comparison**
+  - Verified existing `getTagSuggestions()` works correctly with normalized tags ✅
+  - Already case-insensitive, now works with normalized availableTags ✅
+  - Comprehensive tests added and passing ✅
 
 ### Phase 4: Data Migration Strategy ✅
 **Handle Existing Firestore Data**
@@ -334,12 +339,12 @@ If critical issues arise:
 
 **Phase 1**: ✅ **COMPLETED** (TagNormalizer utility + 40 passing tests)
 **Phase 2**: ✅ **COMPLETED** (Transaction UI states + 25 new passing tests)
-**Phase 3**: ⬜ Not Started
-**Phase 4**: ⬜ Not Started
-**Phase 5**: ⬜ Not Started
-**Phase 6**: ⬜ Not Started
+**Phase 3**: ✅ **COMPLETED** (ViewModel tag collection + 12 new passing tests)
+**Phase 4**: ⬜ Not Started (Data migration - optional for now)
+**Phase 5**: ⬜ Not Started (UI integration testing - manual)
+**Phase 6**: ⬜ Not Started (Documentation)
 
-**Overall Progress**: 2/6 phases completed (33%)
+**Overall Progress**: 3/6 phases completed (50%)
 
 ## Notes
 
