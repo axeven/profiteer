@@ -2,6 +2,7 @@ package com.axeven.profiteerapp.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.axeven.profiteerapp.data.migration.TagMigration
 import com.axeven.profiteerapp.data.model.CurrencyRate
 import com.axeven.profiteerapp.data.model.Wallet
 import com.axeven.profiteerapp.data.repository.AuthRepository
@@ -19,8 +20,16 @@ data class SettingsUiState(
     val currencyRates: List<CurrencyRate> = emptyList(),
     val defaultCurrency: String = "USD",
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val migrationStatus: MigrationStatus = MigrationStatus.NotStarted
 )
+
+sealed class MigrationStatus {
+    object NotStarted : MigrationStatus()
+    object InProgress : MigrationStatus()
+    data class Success(val transactionsUpdated: Int) : MigrationStatus()
+    data class Failed(val errorMessage: String) : MigrationStatus()
+}
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -28,6 +37,7 @@ class SettingsViewModel @Inject constructor(
     private val walletRepository: WalletRepository,
     private val currencyRateRepository: CurrencyRateRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
+    private val tagMigration: TagMigration,
     private val logger: Logger
 ) : ViewModel() {
 
@@ -285,5 +295,69 @@ class SettingsViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    /**
+     * Manually trigger tag migration for the current user.
+     *
+     * This will normalize all existing transaction tags:
+     * - Convert to lowercase
+     * - Trim whitespace
+     * - Remove duplicates
+     * - Filter out "Untagged" keyword
+     *
+     * Safe to run multiple times (idempotent).
+     */
+    fun migrateTagsManually() {
+        if (userId.isEmpty()) {
+            logger.e("SettingsViewModel", "Cannot migrate tags - userId is empty")
+            _uiState.update {
+                it.copy(migrationStatus = MigrationStatus.Failed("User not authenticated"))
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            logger.i("SettingsViewModel", "Manual tag migration requested for user: $userId")
+            _uiState.update { it.copy(migrationStatus = MigrationStatus.InProgress) }
+
+            try {
+                val result = tagMigration.migrateTransactionTags(userId)
+
+                result.onSuccess { count ->
+                    logger.i("SettingsViewModel", "Tag migration successful: $count transactions updated")
+
+                    // Update migration completed flag in user preferences
+                    userPreferencesRepository.updateTagsMigrationFlag(userId, true)
+                        .onSuccess {
+                            logger.i("SettingsViewModel", "Migration flag updated successfully")
+                        }
+                        .onFailure { error ->
+                            logger.w("SettingsViewModel", "Failed to update migration flag: ${error.message}")
+                        }
+
+                    _uiState.update {
+                        it.copy(migrationStatus = MigrationStatus.Success(count))
+                    }
+                }.onFailure { error ->
+                    logger.e("SettingsViewModel", "Tag migration failed: ${error.message}", error)
+                    _uiState.update {
+                        it.copy(migrationStatus = MigrationStatus.Failed(error.message ?: "Unknown error"))
+                    }
+                }
+            } catch (e: Exception) {
+                logger.e("SettingsViewModel", "Unexpected error during tag migration", e)
+                _uiState.update {
+                    it.copy(migrationStatus = MigrationStatus.Failed(e.message ?: "Unknown error"))
+                }
+            }
+        }
+    }
+
+    /**
+     * Reset migration status to allow another migration attempt or clear the success/error message.
+     */
+    fun resetMigrationStatus() {
+        _uiState.update { it.copy(migrationStatus = MigrationStatus.NotStarted) }
     }
 }

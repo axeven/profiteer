@@ -528,4 +528,303 @@ class EditTransactionScreenIntegrationTest {
         assertFalse(editState.dialogStates.showLogicalWalletPicker) // Dialog closed
         assertTrue(editState.hasChanges)
     }
+
+    // ========================================
+    // Tag Normalization Integration Tests (Phase 5)
+    // ========================================
+
+    @Test
+    fun `fromTransaction should normalize loaded tags`() {
+        // Create transaction with non-normalized tags
+        val transactionWithMixedTags = mockExpenseTransaction.copy(
+            tags = listOf("Food", "TRAVEL", "shopping")
+        )
+        val availableWallets = listOf(mockPhysicalWallet, mockLogicalWallet)
+
+        val editState = EditTransactionUiState.fromTransaction(
+            transaction = transactionWithMixedTags,
+            availableWallets = availableWallets
+        )
+
+        // Verify that loaded tags are normalized
+        assertEquals("food, travel, shopping", editState.tags)
+    }
+
+    @Test
+    fun `fromTransaction should filter out Untagged from loaded tags`() {
+        // Create transaction with "Untagged" keyword
+        val transactionWithUntagged = mockExpenseTransaction.copy(
+            tags = listOf("food", "Untagged", "travel")
+        )
+        val availableWallets = listOf(mockPhysicalWallet, mockLogicalWallet)
+
+        val editState = EditTransactionUiState.fromTransaction(
+            transaction = transactionWithUntagged,
+            availableWallets = availableWallets
+        )
+
+        // Verify that "Untagged" is filtered out
+        assertEquals("food, travel", editState.tags)
+        assertFalse(editState.tags.contains("untagged"))
+    }
+
+    @Test
+    fun `fromTransaction should handle duplicate tags`() {
+        // Create transaction with duplicate tags
+        val transactionWithDuplicates = mockExpenseTransaction.copy(
+            tags = listOf("food", "Food", "FOOD", "travel")
+        )
+        val availableWallets = listOf(mockPhysicalWallet, mockLogicalWallet)
+
+        val editState = EditTransactionUiState.fromTransaction(
+            transaction = transactionWithDuplicates,
+            availableWallets = availableWallets
+        )
+
+        // Verify that duplicates are removed
+        assertEquals("food, travel", editState.tags)
+    }
+
+    @Test
+    fun `updateTags should normalize tags with mixed case and whitespace`() {
+        val availableWallets = listOf(mockPhysicalWallet, mockLogicalWallet)
+        val editState = EditTransactionUiState.fromTransaction(
+            transaction = mockExpenseTransaction,
+            availableWallets = availableWallets
+        )
+
+        // Update tags with mixed case and whitespace
+        val updatedState = editState.updateTags(" Food , TRAVEL, Shopping ")
+
+        // Verify that tags are normalized
+        assertEquals("food, travel, shopping", updatedState.tags)
+        assertTrue(updatedState.hasChanges)
+    }
+
+    @Test
+    fun `updateTags should filter out Untagged keyword`() {
+        val availableWallets = listOf(mockPhysicalWallet, mockLogicalWallet)
+        val editState = EditTransactionUiState.fromTransaction(
+            transaction = mockExpenseTransaction,
+            availableWallets = availableWallets
+        )
+
+        // Update tags with "Untagged" keyword
+        val updatedState = editState.updateTags("food, Untagged, travel")
+
+        // Verify that "Untagged" is filtered out
+        assertEquals("food, travel", updatedState.tags)
+        assertFalse(updatedState.tags.contains("untagged"))
+        assertTrue(updatedState.hasChanges)
+    }
+
+    @Test
+    fun `updateTags should remove duplicate tags`() {
+        val availableWallets = listOf(mockPhysicalWallet, mockLogicalWallet)
+        val editState = EditTransactionUiState.fromTransaction(
+            transaction = mockExpenseTransaction,
+            availableWallets = availableWallets
+        )
+
+        // Update tags with duplicates
+        val updatedState = editState.updateTags("Food, food, FOOD")
+
+        // Verify that duplicates are removed and normalized
+        assertEquals("food", updatedState.tags)
+        assertTrue(updatedState.hasChanges)
+    }
+
+    @Test
+    fun `updateTags should filter out blank tags`() {
+        val availableWallets = listOf(mockPhysicalWallet, mockLogicalWallet)
+        val editState = EditTransactionUiState.fromTransaction(
+            transaction = mockExpenseTransaction,
+            availableWallets = availableWallets
+        )
+
+        // Update tags with blank entries
+        val updatedState = editState.updateTags("food,  , travel, , shopping")
+
+        // Verify that blank tags are filtered out
+        assertEquals("food, travel, shopping", updatedState.tags)
+    }
+
+    @Test
+    fun `updateTags with only blank tags should result in empty string`() {
+        val availableWallets = listOf(mockPhysicalWallet, mockLogicalWallet)
+        val editState = EditTransactionUiState.fromTransaction(
+            transaction = mockExpenseTransaction,
+            availableWallets = availableWallets
+        )
+
+        // Update tags with only blanks
+        val updatedState = editState.updateTags("  ,  , ")
+
+        // Verify that result is empty
+        assertEquals("", updatedState.tags)
+        assertTrue(updatedState.hasChanges)
+    }
+
+    @Test
+    fun `getTransactionSummary should return normalized tags`() {
+        val availableWallets = listOf(mockPhysicalWallet, mockLogicalWallet)
+        val editState = EditTransactionUiState.fromTransaction(
+            transaction = mockExpenseTransaction,
+            availableWallets = availableWallets
+        )
+
+        // Update with non-normalized tags
+        val stateWithMixedTags = editState.updateTags("Food, TRAVEL, shopping")
+
+        // Get transaction summary
+        val summary = stateWithMixedTags.getTransactionSummary()
+
+        // Verify that tags are normalized in the summary
+        assertEquals(listOf("food", "travel", "shopping"), summary.tags)
+    }
+
+    @Test
+    fun `getTransactionSummary should filter out Untagged keyword`() {
+        val availableWallets = listOf(mockPhysicalWallet, mockLogicalWallet)
+        val editState = EditTransactionUiState.fromTransaction(
+            transaction = mockExpenseTransaction,
+            availableWallets = availableWallets
+        )
+
+        // Update with "Untagged" in tags
+        val stateWithUntagged = editState.updateTags("food, Untagged, travel")
+
+        // Get transaction summary
+        val summary = stateWithUntagged.getTransactionSummary()
+
+        // Verify that "Untagged" is not in the summary
+        assertEquals(listOf("food", "travel"), summary.tags)
+        assertFalse(summary.tags.contains("untagged"))
+    }
+
+    @Test
+    fun `hasChanges should detect tag normalization changes correctly`() {
+        // Create transaction with non-normalized tags
+        val transactionWithMixedTags = mockExpenseTransaction.copy(
+            tags = listOf("Food", "Travel")
+        )
+        val availableWallets = listOf(mockPhysicalWallet, mockLogicalWallet)
+
+        val editState = EditTransactionUiState.fromTransaction(
+            transaction = transactionWithMixedTags,
+            availableWallets = availableWallets
+        )
+
+        // Initially no changes (tags are normalized on load)
+        assertFalse(editState.hasChanges)
+        assertEquals("food, travel", editState.tags)
+
+        // Update to different tags
+        val changedState = editState.updateTags("shopping, groceries")
+        assertTrue(changedState.hasChanges)
+
+        // Update back to original (normalized form)
+        val revertedState = changedState.updateTags("food, travel")
+        assertFalse(revertedState.hasChanges)
+    }
+
+    @Test
+    fun `complex tag editing flow - multiple updates with normalization`() {
+        val availableWallets = listOf(mockPhysicalWallet, mockLogicalWallet)
+        var editState = EditTransactionUiState.fromTransaction(
+            transaction = mockExpenseTransaction,
+            availableWallets = availableWallets
+        )
+
+        // Step 1: Initial tags are "food, grocery"
+        assertEquals("food, grocery", editState.tags)
+        assertFalse(editState.hasChanges)
+
+        // Step 2: Update with mixed case
+        editState = editState.updateTags(" Food , GROCERY, Shopping ")
+        assertEquals("food, grocery, shopping", editState.tags)
+        assertTrue(editState.hasChanges)
+
+        // Step 3: Add duplicate with different case
+        editState = editState.updateTags("food, grocery, shopping, FOOD")
+        assertEquals("food, grocery, shopping", editState.tags)
+        assertTrue(editState.hasChanges)
+
+        // Step 4: Add new tag with whitespace
+        editState = editState.updateTags("food, grocery, shopping,  groceries ")
+        assertEquals("food, grocery, shopping, groceries", editState.tags)
+        assertTrue(editState.hasChanges)
+
+        // Step 5: Verify final summary
+        val summary = editState.getTransactionSummary()
+        assertEquals(listOf("food", "grocery", "shopping", "groceries"), summary.tags)
+    }
+
+    @Test
+    fun `editing tags multiple times with Untagged - all filtered out`() {
+        val availableWallets = listOf(mockPhysicalWallet, mockLogicalWallet)
+        var editState = EditTransactionUiState.fromTransaction(
+            transaction = mockExpenseTransaction,
+            availableWallets = availableWallets
+        )
+
+        // Update with multiple variations of "Untagged"
+        editState = editState.updateTags("food, Untagged, travel, UNTAGGED, untagged")
+
+        // Verify that all variations of "Untagged" are filtered out
+        assertEquals("food, travel", editState.tags)
+    }
+
+    @Test
+    fun `clearing all tags should result in empty string and detect changes`() {
+        val availableWallets = listOf(mockPhysicalWallet, mockLogicalWallet)
+        var editState = EditTransactionUiState.fromTransaction(
+            transaction = mockExpenseTransaction,
+            availableWallets = availableWallets
+        )
+
+        // Start with tags "food, grocery"
+        assertEquals("food, grocery", editState.tags)
+
+        // Clear all tags
+        editState = editState.updateTags("")
+
+        // Verify that tags are empty and change is detected
+        assertEquals("", editState.tags)
+        assertTrue(editState.hasChanges)
+    }
+
+    @Test
+    fun `unicode and special characters in tags - normalized correctly`() {
+        val availableWallets = listOf(mockPhysicalWallet, mockLogicalWallet)
+        var editState = EditTransactionUiState.fromTransaction(
+            transaction = mockExpenseTransaction,
+            availableWallets = availableWallets
+        )
+
+        // Update with unicode characters
+        editState = editState.updateTags(" Café , CAFÉ, café ")
+
+        // Verify that unicode characters are normalized (lowercase) and duplicates removed
+        assertEquals("café", editState.tags)
+    }
+
+    @Test
+    fun `transfer transactions load with empty tags but can be edited`() {
+        val availableWallets = listOf(mockPhysicalWallet, mockPhysicalWallet2)
+        var editState = EditTransactionUiState.fromTransaction(
+            transaction = mockTransferTransaction,
+            availableWallets = availableWallets
+        )
+
+        // Transfer transactions should load with empty tags (per business rules)
+        assertEquals("", editState.tags)
+
+        // Tags can be added to transfers (normalization still applies)
+        editState = editState.updateTags("food, TRAVEL")
+
+        // Verify tags are normalized and changes detected
+        assertEquals("food, travel", editState.tags)
+        assertTrue(editState.hasChanges)
+    }
 }

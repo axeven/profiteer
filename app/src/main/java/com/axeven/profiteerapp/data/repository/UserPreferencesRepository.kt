@@ -211,6 +211,43 @@ class UserPreferencesRepository @Inject constructor(
         }
     }
 
+    /**
+     * Update the tag migration completion flag for a user.
+     *
+     * This flag tracks whether tag normalization migration has been run for the user.
+     *
+     * @param userId User ID
+     * @param completed True if migration is complete, false otherwise
+     * @return Result indicating success or failure
+     */
+    suspend fun updateTagsMigrationFlag(userId: String, completed: Boolean): Result<Unit> {
+        return try {
+            val snapshot = preferencesCollection
+                .whereEqualTo("userId", userId)
+                .limit(RepositoryConstants.SINGLE_RESULT_LIMIT.toLong())
+                .get()
+                .await()
+
+            if (snapshot.documents.isNotEmpty()) {
+                val docId = snapshot.documents.first().id
+                preferencesCollection.document(docId)
+                    .update("tagsMigrationCompleted", completed)
+                    .await()
+            } else {
+                // Create new preferences if none exist
+                val newPreferences = UserPreferences(
+                    userId = userId,
+                    tagsMigrationCompleted = completed
+                )
+                preferencesCollection.add(newPreferences).await()
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            logger.e("UserPreferencesRepo", "Failed to update tags migration flag", e)
+            Result.failure(e)
+        }
+    }
+
     private fun handleAuthenticationError(operation: String, error: Throwable) {
         CoroutineScope(Dispatchers.IO).launch {
             try {

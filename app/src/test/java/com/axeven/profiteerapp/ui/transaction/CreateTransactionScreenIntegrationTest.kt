@@ -243,10 +243,9 @@ class CreateTransactionScreenIntegrationTest {
         state = updateTags(state, "food, grocery, household")
         assertEquals("food, grocery, household", state.tags)
 
-        // Validation should handle tag warnings but not prevent submission
+        // Tags are normalized: duplicates are automatically removed
         state = updateTags(state, "tag1, tag2, tag1") // Duplicate tag
-        assertEquals("tag1, tag2, tag1", state.tags)
-        // Note: Tag validation warnings don't prevent form submission
+        assertEquals("tag1, tag2", state.tags) // Duplicates removed by normalization
     }
 
     @Test
@@ -428,5 +427,250 @@ class CreateTransactionScreenIntegrationTest {
         assertEquals("100.00", state.amount)
         assertEquals(mockPhysicalWallet, state.selectedWallets.physical)
         assertFalse(state.dialogStates.showPhysicalWalletPicker) // Dialog closed
+    }
+
+    // ========================================
+    // Tag Normalization Integration Tests (Phase 5)
+    // ========================================
+
+    @Test
+    fun `user enters duplicate tags with different cases - saves as single normalized tag`() {
+        // Simulate user entering "Food, food, FOOD" in the tags field
+        val initialState = CreateTransactionUiState()
+
+        val stateWithTags = updateTags(initialState, "Food, food, FOOD")
+
+        // Verify that all duplicates are removed and normalized to lowercase
+        assertEquals("food", stateWithTags.tags)
+    }
+
+    @Test
+    fun `user enters tags with whitespace - saves with trimmed tags`() {
+        // Simulate user entering " travel " in the tags field
+        val initialState = CreateTransactionUiState()
+
+        val stateWithTags = updateTags(initialState, " travel ")
+
+        // Verify that whitespace is trimmed
+        assertEquals("travel", stateWithTags.tags)
+    }
+
+    @Test
+    fun `user enters multiple tags with mixed case and whitespace - normalizes correctly`() {
+        // Simulate user entering " Food , TRAVEL, Shopping "
+        val initialState = CreateTransactionUiState()
+
+        val stateWithTags = updateTags(initialState, " Food , TRAVEL, Shopping ")
+
+        // Verify that tags are normalized and properly formatted
+        assertEquals("food, travel, shopping", stateWithTags.tags)
+    }
+
+    @Test
+    fun `user enters Untagged keyword - filters it out`() {
+        // Simulate user entering "food, Untagged, travel"
+        val initialState = CreateTransactionUiState()
+
+        val stateWithTags = updateTags(initialState, "food, Untagged, travel")
+
+        // Verify that "Untagged" is filtered out
+        assertEquals("food, travel", stateWithTags.tags)
+    }
+
+    @Test
+    fun `user enters empty and blank tags - filters them out`() {
+        // Simulate user entering "food,  , travel, , shopping"
+        val initialState = CreateTransactionUiState()
+
+        val stateWithTags = updateTags(initialState, "food,  , travel, , shopping")
+
+        // Verify that blank tags are filtered out
+        assertEquals("food, travel, shopping", stateWithTags.tags)
+    }
+
+    @Test
+    fun `user enters only blank tags - results in empty tag string`() {
+        // Simulate user entering "  ,  , "
+        val initialState = CreateTransactionUiState()
+
+        val stateWithTags = updateTags(initialState, "  ,  , ")
+
+        // Verify that result is empty
+        assertEquals("", stateWithTags.tags)
+    }
+
+    @Test
+    fun `getTransactionSummary returns normalized tags`() {
+        // Create state with non-normalized tags
+        val state = CreateTransactionUiState(
+            title = "Test Transaction",
+            amount = "100.00",
+            selectedType = TransactionType.EXPENSE,
+            tags = "Food, TRAVEL, shopping",
+            selectedWallets = SelectedWallets(physical = mockPhysicalWallet)
+        )
+
+        // Get transaction summary
+        val summary = getTransactionSummary(state)
+
+        // Verify that tags are normalized in the summary
+        assertEquals(listOf("food", "travel", "shopping"), summary.tags)
+    }
+
+    @Test
+    fun `getTransactionSummary filters out Untagged keyword`() {
+        // Create state with "Untagged" in tags
+        val state = CreateTransactionUiState(
+            title = "Test Transaction",
+            amount = "100.00",
+            selectedType = TransactionType.EXPENSE,
+            tags = "food, Untagged, travel",
+            selectedWallets = SelectedWallets(physical = mockPhysicalWallet)
+        )
+
+        // Get transaction summary
+        val summary = getTransactionSummary(state)
+
+        // Verify that "Untagged" is not in the summary
+        assertEquals(listOf("food", "travel"), summary.tags)
+        assertFalse(summary.tags.contains("untagged"))
+    }
+
+    @Test
+    fun `getTransactionSummary handles empty tags`() {
+        // Create state with empty tags
+        val state = CreateTransactionUiState(
+            title = "Test Transaction",
+            amount = "100.00",
+            selectedType = TransactionType.EXPENSE,
+            tags = "",
+            selectedWallets = SelectedWallets(physical = mockPhysicalWallet)
+        )
+
+        // Get transaction summary
+        val summary = getTransactionSummary(state)
+
+        // Verify that tags list is empty
+        assertEquals(emptyList<String>(), summary.tags)
+    }
+
+    @Test
+    fun `fromExistingTransaction normalizes loaded tags`() {
+        // Simulate loading a transaction with non-normalized tags
+        val state = CreateTransactionUiState.fromExistingTransaction(
+            title = "Existing Transaction",
+            amount = 150.0,
+            type = TransactionType.EXPENSE,
+            tags = listOf("Food", "TRAVEL", "shopping"),
+            date = Date()
+        )
+
+        // Verify that loaded tags are normalized
+        assertEquals("food, travel, shopping", state.tags)
+    }
+
+    @Test
+    fun `fromExistingTransaction filters out Untagged from loaded tags`() {
+        // Simulate loading a transaction with "Untagged" in tags
+        val state = CreateTransactionUiState.fromExistingTransaction(
+            title = "Existing Transaction",
+            amount = 150.0,
+            type = TransactionType.EXPENSE,
+            tags = listOf("food", "Untagged", "travel"),
+            date = Date()
+        )
+
+        // Verify that "Untagged" is filtered out
+        assertEquals("food, travel", state.tags)
+        assertFalse(state.tags.contains("untagged"))
+    }
+
+    @Test
+    fun `fromExistingTransaction handles duplicate tags`() {
+        // Simulate loading a transaction with duplicate tags
+        val state = CreateTransactionUiState.fromExistingTransaction(
+            title = "Existing Transaction",
+            amount = 150.0,
+            type = TransactionType.EXPENSE,
+            tags = listOf("food", "Food", "FOOD", "travel"),
+            date = Date()
+        )
+
+        // Verify that duplicates are removed
+        assertEquals("food, travel", state.tags)
+    }
+
+    @Test
+    fun `complex user flow - enter mixed tags, edit, and save`() {
+        // Step 1: User enters initial tags
+        val initialState = CreateTransactionUiState()
+        val step1 = updateTags(initialState, " Food , TRAVEL, Shopping ")
+        assertEquals("food, travel, shopping", step1.tags)
+
+        // Step 2: User edits to add duplicate with different case
+        val step2 = updateTags(step1, "food, travel, shopping, FOOD")
+        assertEquals("food, travel, shopping", step2.tags)
+
+        // Step 3: User adds new tag with whitespace
+        val step3 = updateTags(step2, "food, travel, shopping,  groceries ")
+        assertEquals("food, travel, shopping, groceries", step3.tags)
+
+        // Step 4: Get final transaction summary
+        val summary = getTransactionSummary(
+            step3.copy(
+                title = "Test",
+                amount = "100.00",
+                selectedType = TransactionType.EXPENSE,
+                selectedWallets = SelectedWallets(physical = mockPhysicalWallet)
+            )
+        )
+        assertEquals(listOf("food", "travel", "shopping", "groceries"), summary.tags)
+    }
+
+    @Test
+    fun `user accidentally enters Untagged multiple times - all filtered out`() {
+        val initialState = CreateTransactionUiState()
+
+        val stateWithTags = updateTags(initialState, "food, Untagged, travel, UNTAGGED, untagged")
+
+        // Verify that all variations of "Untagged" are filtered out
+        assertEquals("food, travel", stateWithTags.tags)
+    }
+
+    @Test
+    fun `user enters extremely long tag list with duplicates - normalizes efficiently`() {
+        val initialState = CreateTransactionUiState()
+
+        // Simulate user entering many tags with duplicates
+        val tagInput = "food, Food, FOOD, travel, TRAVEL, shopping, Shopping, " +
+                       "groceries, GROCERIES, transport, Transport, entertainment, ENTERTAINMENT"
+
+        val stateWithTags = updateTags(initialState, tagInput)
+
+        // Verify that duplicates are removed
+        val expectedTags = "food, travel, shopping, groceries, transport, entertainment"
+        assertEquals(expectedTags, stateWithTags.tags)
+    }
+
+    @Test
+    fun `user clears all tags - results in empty string`() {
+        // Start with tags
+        val initialState = CreateTransactionUiState(tags = "food, travel, shopping")
+
+        // User clears all tags
+        val clearedState = updateTags(initialState, "")
+
+        // Verify that tags are empty
+        assertEquals("", clearedState.tags)
+    }
+
+    @Test
+    fun `unicode and special characters in tags - normalized correctly`() {
+        val initialState = CreateTransactionUiState()
+
+        val stateWithTags = updateTags(initialState, " Café , CAFÉ, café ")
+
+        // Verify that unicode characters are normalized (lowercase) and duplicates removed
+        assertEquals("café", stateWithTags.tags)
     }
 }

@@ -29,10 +29,15 @@ Profiteer follows the **MVVM (Model-View-ViewModel)** architecture pattern with 
 ### 💰 Sophisticated Transaction Management
 - **Three Transaction Types**: Income, Expense, and Transfer with comprehensive validation
 - **Tag-Based Categorization**: Unified tag system with multiple tags per transaction
-- **Smart Auto-completion**: Tag suggestions based on historical data (triggers after 3+ characters)
+  - **Automatic Tag Normalization**: All tags are automatically normalized (lowercase, trimmed, deduplicated)
+  - **Case-Insensitive**: "Food", "food", and "FOOD" treated as the same tag
+  - **Smart Deduplication**: Prevents duplicate tags from appearing in suggestions
+  - **Reserved Keyword Filtering**: "Untagged" keyword automatically filtered out
+- **Smart Auto-completion**: Case-insensitive tag suggestions based on historical data (triggers after 3+ characters)
 - **Transfer Validation**: Enhanced validation requiring same wallet type AND currency
 - **Real-time Balance Updates**: Automatic wallet balance synchronization
 - **Single Wallet Selection**: Each transaction affects exactly one Physical and one Logical wallet
+- **Data Migration**: Automatic migration utility for normalizing existing transaction tags
 
 ### 🌍 Multi-Currency System
 - **Smart Currency Conversion**: 

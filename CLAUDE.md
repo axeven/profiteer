@@ -355,10 +355,46 @@ com.axeven.profiteerapp/
 - **Tag System**: Multiple tags per transaction, auto-completion after 3+ characters
 - **Currency Conversion**: Default rates → Monthly rates → Warning system
 
+## Tag Normalization (Implemented 2025-10-19)
+
+**All tags are automatically normalized to ensure consistency:**
+
+### Normalization Rules
+1. **Case-Insensitive**: All tags converted to lowercase ("Food" → "food", "TRAVEL" → "travel")
+2. **Whitespace Trimming**: Leading/trailing whitespace removed (" food " → "food")
+3. **Duplicate Removal**: Case-insensitive duplicates removed ("food, Food, FOOD" → "food")
+4. **Reserved Keyword Filtering**: "Untagged" keyword filtered out (case-insensitive)
+5. **Blank Tag Filtering**: Empty and whitespace-only tags removed
+
+### Implementation Details
+- **Utility Class**: `TagNormalizer` in `app/src/main/java/com/axeven/profiteerapp/utils/TagNormalizer.kt`
+- **Applied At**:
+  - Transaction creation (CreateTransactionUiState)
+  - Transaction editing (EditTransactionUiState)
+  - Tag loading from Firestore (fromExistingTransaction)
+  - Tag autocomplete suggestions (TransactionViewModel)
+  - Data migration (TagMigration)
+
+### User Experience
+- Tags are normalized automatically on input
+- Autocomplete is case-insensitive (typing "foo" suggests "food")
+- No duplicate tags in suggestion lists
+- Consistent tag display across all screens
+
+### Data Migration
+- **Migration Utility**: `TagMigration` in `app/src/main/java/com/axeven/profiteerapp/data/migration/TagMigration.kt`
+- **Trigger**: Can be run via `TagMigration.migrateTransactionTags(userId)`
+- **Status Flag**: `UserPreferences.tagsMigrationCompleted` tracks migration state
+- **Idempotent**: Safe to run multiple times, skips already-normalized tags
+
+### Testing
+- 176 comprehensive tests covering all normalization scenarios
+- See: `docs/plans/2025-10-19-tag-improvement.md` for implementation details
+
 ## Data Model Evolution
 - **Transactions**: Use `affectedWalletIds` (modern) alongside `walletId` (legacy) for backward compatibility
 - **Tags**: Use `tags` array field, maintain `category` field for backward compatibility
-- **Default Values**: "Untagged" for transactions without tags/categories
+- **Default Values**: "Untagged" for transactions without tags/categories (filtered during normalization)
 
 # Known Issues & Solutions
 

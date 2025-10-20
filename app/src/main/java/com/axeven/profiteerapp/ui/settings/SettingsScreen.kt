@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.collectAsState
 import com.axeven.profiteerapp.viewmodel.SettingsViewModel
+import com.axeven.profiteerapp.viewmodel.MigrationStatus
 
 import com.axeven.profiteerapp.data.model.Wallet
 import com.axeven.profiteerapp.data.model.CurrencyRate
@@ -116,6 +117,20 @@ fun SettingsScreen(
                         settingsState = settingsState.openEditRateDialog(rate).initializeEditForm(rate)
                     },
                     onDelete = { viewModel.deleteCurrencyRate(rate.id) }
+                )
+            }
+
+            // Developer Tools Section
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                SettingSectionHeader("Developer Tools")
+            }
+
+            item {
+                TagMigrationCard(
+                    migrationStatus = uiState.migrationStatus,
+                    onMigrate = { viewModel.migrateTagsManually() },
+                    onReset = { viewModel.resetMigrationStatus() }
                 )
             }
         }
@@ -913,4 +928,175 @@ fun EditConversionRateDialog(
             }
         }
     )
+}
+
+@Composable
+fun TagMigrationCard(
+    migrationStatus: MigrationStatus,
+    onMigrate: () -> Unit,
+    onReset: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Build,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Tag Migration",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Normalize existing transaction tags",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+            }
+
+            // Migration status display
+            when (migrationStatus) {
+                is MigrationStatus.NotStarted -> {
+                    Button(
+                        onClick = onMigrate,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Run Migration")
+                    }
+                }
+
+                is MigrationStatus.InProgress -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Migration in progress...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                is MigrationStatus.Success -> {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "Migration completed successfully!",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        Text(
+                            text = "${migrationStatus.transactionsUpdated} transactions updated",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+
+                        OutlinedButton(
+                            onClick = onReset,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Reset")
+                        }
+                    }
+                }
+
+                is MigrationStatus.Failed -> {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "Migration failed",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        Text(
+                            text = migrationStatus.errorMessage,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = onReset,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Reset")
+                            }
+
+                            Button(
+                                onClick = onMigrate,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Retry")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
