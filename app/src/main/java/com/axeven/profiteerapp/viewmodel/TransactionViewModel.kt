@@ -27,6 +27,20 @@ data class TransactionUiState(
     val displayRate: Double = 1.0,
     val isLoading: Boolean = false,
     val error: String? = null,
+
+    /**
+     * All unique tags from user's transactions, normalized and sorted.
+     *
+     * Tags are stored in lowercase for consistent filtering and matching.
+     * UI layer should apply TagFormatter.formatTags() for display.
+     *
+     * Example:
+     * - Stored: ["food", "grocery shopping", "travel"]
+     * - Displayed: ["Food", "Grocery Shopping", "Travel"]
+     *
+     * @see TagNormalizer for storage normalization
+     * @see com.axeven.profiteerapp.utils.TagFormatter for display formatting
+     */
     val availableTags: List<String> = emptyList()
 )
 
