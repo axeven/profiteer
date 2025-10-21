@@ -30,7 +30,23 @@ data class CreateTransactionUiState(
     val selectedType: TransactionType = TransactionType.EXPENSE,
     val selectedWallets: SelectedWallets = SelectedWallets(),
     val selectedDate: Date = Date(),
+
+    /**
+     * Comma-separated tag string in normalized (lowercase) format.
+     *
+     * Tags are automatically normalized to lowercase for consistent storage and filtering.
+     * The UI layer should apply TagFormatter.formatTags() for display purposes only.
+     *
+     * Example:
+     * - Input: "Food, TRAVEL, Grocery Shopping"
+     * - Stored: "food, travel, grocery shopping"
+     * - Displayed: "Food, Travel, Grocery Shopping"
+     *
+     * @see com.axeven.profiteerapp.utils.TagNormalizer for normalization
+     * @see com.axeven.profiteerapp.utils.TagFormatter for display formatting
+     */
     val tags: String = "",
+
     val dialogStates: DialogStates = DialogStates(),
     val validationErrors: ValidationErrors = ValidationErrors(),
     val isFormValid: Boolean = false
