@@ -410,8 +410,8 @@ class TagFormatterTest {
 
     @Test
     fun `robustness - handles tag with mixed special chars and words`() {
-        val result = TagFormatter.formatTag("@food #travel $shopping")
-        assertEquals("@food #travel $shopping", result)
+        val result = TagFormatter.formatTag("@food #travel \$shopping")
+        assertEquals("@food #travel \$shopping", result)
     }
 
     @Test
