@@ -391,6 +391,58 @@ com.axeven.profiteerapp/
 - 176 comprehensive tests covering all normalization scenarios
 - See: `docs/plans/2025-10-19-tag-improvement.md` for implementation details
 
+## Tag Display Formatting (Implemented 2025-10-20)
+
+**All tags are displayed in camel case for improved readability:**
+
+### Format Specification
+- **Storage Format**: Lowercase (e.g., "food", "travel", "grocery shopping")
+- **Display Format**: Camel case (e.g., "Food", "Travel", "Grocery Shopping")
+- **Formatting Utility**: `TagFormatter.formatTags()` in UI layer only
+- **No Data Migration**: Storage unchanged, formatting applied on-the-fly
+
+### Implementation Details
+- **Utility Class**: `TagFormatter` in `app/src/main/java/com/axeven/profiteerapp/utils/TagFormatter.kt`
+- **Applied At**: All UI composables that display tags
+  - HomeScreen transaction items (`HomeScreen.kt`)
+  - CreateTransactionScreen autocomplete suggestions (`CreateTransactionScreen.kt`)
+  - EditTransactionScreen autocomplete (shares `TagInputField` component)
+  - TransactionListScreen filter dropdown (`TransactionListScreen.kt`)
+- **Not Applied At**: Storage layer, normalization, filtering (remains case-insensitive)
+
+### Formatting Rules
+1. **Single Words**: First letter capitalized ("food" → "Food")
+2. **Multi-Word Tags**: Each word capitalized ("grocery shopping" → "Grocery Shopping")
+3. **Hyphenated Words**: Each segment capitalized ("food-related" → "Food-Related")
+4. **Special Characters**: Preserved in position ("food&drink" → "Food&drink")
+5. **Numbers**: Preserved in position ("groceries2024" → "Groceries2024")
+6. **Empty Tags**: Display "Untagged" label
+
+### User Experience
+- **Visual Improvement**: Tags more readable and professional-looking
+- **Consistent Display**: All screens show identical camel case formatting
+- **Case-Insensitive Operations**: Filtering and matching still work regardless of case
+- **Separation of Concerns**: Display formatting separate from storage normalization
+
+### Architecture Pattern
+```
+Storage (Firestore)          UI State (ViewModel)         Display (Composable)
+["food", "travel"]    →      ["food", "travel"]    →      ["Food", "Travel"]
+     ↑                             ↑                             ↑
+  Normalized                   Normalized                   Formatted
+  (TagNormalizer)              (unchanged)               (TagFormatter)
+```
+
+### Testing
+- 160+ comprehensive tests covering all formatting scenarios
+- Test files:
+  - `TagFormatterTest.kt` - 68 unit tests for core formatting logic
+  - `HomeScreenTest.kt` - 17 tests for transaction item display
+  - `CreateTransactionScreenTagFormattingTest.kt` - 24 tests for autocomplete
+  - `EditTransactionScreenTagFormattingTest.kt` - 24 tests for edit mode
+  - `TransactionListScreenTagFormattingTest.kt` - 27 tests for filter dropdown
+- See: `docs/plans/2025-10-20-camel-case-tags.md` for implementation details
+
 ## Data Model Evolution
 - **Transactions**: Use `affectedWalletIds` (modern) alongside `walletId` (legacy) for backward compatibility
 - **Tags**: Use `tags` array field, maintain `category` field for backward compatibility
