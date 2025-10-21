@@ -23,6 +23,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.axeven.profiteerapp.data.model.Transaction
 import com.axeven.profiteerapp.data.model.Wallet
 import com.axeven.profiteerapp.ui.home.TransactionItem
+import com.axeven.profiteerapp.utils.TagFormatter
 import com.axeven.profiteerapp.viewmodel.TransactionListViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -606,14 +607,17 @@ private fun TagFilter(
 ) {
     if (availableTags.isNotEmpty()) {
         var expanded by remember { mutableStateOf(false) }
-        
+
+        // Format tags for display while keeping original tags for filtering
+        val formattedTags = TagFormatter.formatTags(availableTags)
+
         Column {
             Text(
                 text = "Tags",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Medium
             )
-            
+
             ExposedDropdownMenuBox(
                 expanded = expanded,
                 onExpandedChange = { expanded = !expanded }
@@ -621,21 +625,21 @@ private fun TagFilter(
                 OutlinedTextField(
                     value = when (selectedTags.size) {
                         0 -> "All Tags"
-                        1 -> selectedTags.first()
+                        1 -> TagFormatter.formatTag(selectedTags.first())
                         else -> "${selectedTags.size} tags selected"
                     },
                     onValueChange = { },
                     readOnly = true,
                     placeholder = { Text("Select tags") },
-                    trailingIcon = { 
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) 
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                     },
                     colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                     modifier = Modifier
                         .menuAnchor()
                         .fillMaxWidth()
                 )
-                
+
                 ExposedDropdownMenu(
                     expanded = expanded,
                     onDismissRequest = { expanded = false }
@@ -643,7 +647,7 @@ private fun TagFilter(
                     // Clear All option
                     if (selectedTags.isNotEmpty()) {
                         DropdownMenuItem(
-                            text = { 
+                            text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
                                         Icons.Default.Clear,
@@ -667,10 +671,11 @@ private fun TagFilter(
                         )
                         HorizontalDivider()
                     }
-                    
-                    // Tag options
-                    availableTags.forEach { tag ->
-                        val isSelected = selectedTags.contains(tag)
+
+                    // Tag options - display formatted, toggle with original
+                    availableTags.forEachIndexed { index, originalTag ->
+                        val formattedTag = formattedTags[index]
+                        val isSelected = selectedTags.contains(originalTag)
                         DropdownMenuItem(
                             text = {
                                 Row(
@@ -679,17 +684,17 @@ private fun TagFilter(
                                 ) {
                                     Checkbox(
                                         checked = isSelected,
-                                        onCheckedChange = { onTagToggle(tag) },
+                                        onCheckedChange = { onTagToggle(originalTag) },
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = tag,
+                                        text = formattedTag,
                                         fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
                                     )
                                 }
                             },
-                            onClick = { onTagToggle(tag) }
+                            onClick = { onTagToggle(originalTag) }
                         )
                     }
                 }
