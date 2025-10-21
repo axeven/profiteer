@@ -29,6 +29,7 @@ import com.axeven.profiteerapp.data.model.Transaction
 import com.axeven.profiteerapp.data.model.TransactionType
 import com.axeven.profiteerapp.data.model.Wallet
 import com.axeven.profiteerapp.utils.NumberFormatter
+import com.axeven.profiteerapp.utils.TagFormatter
 import com.axeven.profiteerapp.ui.components.ErrorMessage
 import java.text.SimpleDateFormat
 import java.util.*
@@ -452,8 +453,9 @@ fun TransactionItem(
                     )
                     
                     val subtitleText = buildString {
-                        if (transaction.tags.isNotEmpty()) {
-                            append(transaction.tags.joinToString(", "))
+                        val formattedTags = TagFormatter.formatTags(transaction.tags)
+                        if (formattedTags.isNotEmpty()) {
+                            append(formattedTags.joinToString(", "))
                         } else {
                             append("Untagged")
                         }
