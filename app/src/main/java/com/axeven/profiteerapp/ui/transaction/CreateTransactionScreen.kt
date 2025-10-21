@@ -27,6 +27,7 @@ import com.axeven.profiteerapp.data.constants.UIConstants
 import com.axeven.profiteerapp.data.model.TransactionType
 import com.axeven.profiteerapp.data.model.Wallet
 import com.axeven.profiteerapp.data.ui.*
+import com.axeven.profiteerapp.utils.TagFormatter
 import com.axeven.profiteerapp.viewmodel.TransactionViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -911,7 +912,10 @@ fun TagInputField(
     } else {
         emptyList()
     }
-    
+
+    // Format suggestions for display while keeping original tags for selection
+    val formattedSuggestions = TagFormatter.formatTags(suggestions)
+
     Column(modifier = modifier) {
         OutlinedTextField(
             value = value,
@@ -931,7 +935,7 @@ fun TagInputField(
                 }
             },
             trailingIcon = {
-                if (suggestions.isNotEmpty()) {
+                if (formattedSuggestions.isNotEmpty()) {
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,
                         contentDescription = "Show suggestions"
@@ -939,9 +943,9 @@ fun TagInputField(
                 }
             }
         )
-        
+
         // Show suggestions dropdown
-        if (showSuggestions && suggestions.isNotEmpty()) {
+        if (showSuggestions && formattedSuggestions.isNotEmpty()) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -959,13 +963,16 @@ fun TagInputField(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         modifier = Modifier.padding(bottom = 4.dp)
                     )
-                    
-                    suggestions.forEach { suggestion ->
+
+                    formattedSuggestions.forEachIndexed { index, formattedTag ->
                         TextButton(
                             onClick = {
-                                // Replace the current input with the suggestion
+                                // Get the original (lowercase) tag from suggestions array
+                                val originalTag = suggestions[index]
+
+                                // Replace the current input with the original tag
                                 val existingTags = value.split(",").dropLast(1).map { it.trim() }
-                                val newValue = (existingTags + suggestion).joinToString(", ")
+                                val newValue = (existingTags + originalTag).joinToString(", ")
                                 onValueChange(newValue + ", ")
                                 showSuggestions = false
                             },
@@ -976,7 +983,7 @@ fun TagInputField(
                                 horizontalArrangement = Arrangement.Start
                             ) {
                                 Text(
-                                    text = suggestion,
+                                    text = formattedTag,
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             }
