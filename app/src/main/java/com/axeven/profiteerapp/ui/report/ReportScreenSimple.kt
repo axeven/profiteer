@@ -26,6 +26,7 @@ import com.axeven.profiteerapp.viewmodel.ReportViewModel
 import com.axeven.profiteerapp.viewmodel.ChartDataType
 import com.axeven.profiteerapp.data.model.PhysicalForm
 import com.axeven.profiteerapp.utils.NumberFormatter
+import com.axeven.profiteerapp.utils.TagFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1248,10 +1249,10 @@ fun SimpleExpenseTransactionsByTagLegend(
     defaultCurrency: String
 ) {
     Column {
-        
+
         expenseTransactionsByTagData.entries.sortedByDescending { it.value }.forEachIndexed { index, entry ->
             val percentage = (entry.value / totalBalance * 100)
-            
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1270,11 +1271,11 @@ fun SimpleExpenseTransactionsByTagLegend(
                                 shape = RoundedCornerShape(2.dp)
                             )
                     )
-                    
+
                     Spacer(modifier = Modifier.width(4.dp))
-                    
+
                     Text(
-                        text = entry.key,
+                        text = TagFormatter.formatTag(entry.key),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium
                     )
@@ -1306,10 +1307,10 @@ fun SimpleIncomeTransactionsByTagLegend(
     defaultCurrency: String
 ) {
     Column {
-        
+
         incomeTransactionsByTagData.entries.sortedByDescending { it.value }.forEachIndexed { index, entry ->
             val percentage = (entry.value / totalBalance * 100)
-            
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1328,11 +1329,11 @@ fun SimpleIncomeTransactionsByTagLegend(
                                 shape = RoundedCornerShape(2.dp)
                             )
                     )
-                    
+
                     Spacer(modifier = Modifier.width(4.dp))
-                    
+
                     Text(
-                        text = entry.key,
+                        text = TagFormatter.formatTag(entry.key),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium
                     )
@@ -1365,7 +1366,7 @@ fun ComposeChartsPieChartExpenseTransactionsByTag(
     // Convert expense transaction by tag data to ComposeCharts Pie format
     val pieData = expenseTransactionsByTagData.entries.sortedByDescending { it.value }.mapIndexed { index, entry ->
         Pie(
-            label = entry.key,
+            label = TagFormatter.formatTag(entry.key),
             data = entry.value,
             color = getWalletColorSimple(index)
         )
@@ -1398,7 +1399,7 @@ fun ComposeChartsPieChartIncomeTransactionsByTag(
     // Convert income transaction by tag data to ComposeCharts Pie format
     val pieData = incomeTransactionsByTagData.entries.sortedByDescending { it.value }.mapIndexed { index, entry ->
         Pie(
-            label = entry.key,
+            label = TagFormatter.formatTag(entry.key),
             data = entry.value,
             color = getWalletColorSimple(index)
         )
