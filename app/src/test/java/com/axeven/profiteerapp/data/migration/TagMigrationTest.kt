@@ -48,10 +48,10 @@ class TagMigrationTest {
                 userId = "user1"
             )
         )
-        whenever(transactionRepository.getUserTransactions(any())).thenReturn(flowOf(transactions))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
 
         // Mock successful update
-        whenever(transactionRepository.updateTransaction(any())).thenReturn(Result.success(Unit))
+        whenever(transactionRepository.updateTransaction(any<Transaction>())).thenReturn(Result.success(Unit))
 
         // Act
         val result = tagMigration.migrateTransactionTags("user1")
@@ -77,8 +77,8 @@ class TagMigrationTest {
                 userId = "user1"
             )
         )
-        whenever(transactionRepository.getUserTransactions(any())).thenReturn(flowOf(transactions))
-        whenever(transactionRepository.updateTransaction(any())).thenReturn(Result.success(Unit))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
+        whenever(transactionRepository.updateTransaction(any<Transaction>())).thenReturn(Result.success(Unit))
 
         // Act
         val result = tagMigration.migrateTransactionTags("user1")
@@ -101,8 +101,8 @@ class TagMigrationTest {
                 userId = "user1"
             )
         )
-        whenever(transactionRepository.getUserTransactions(any())).thenReturn(flowOf(transactions))
-        whenever(transactionRepository.updateTransaction(any())).thenReturn(Result.success(Unit))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
+        whenever(transactionRepository.updateTransaction(any<Transaction>())).thenReturn(Result.success(Unit))
 
         // Act
         val result = tagMigration.migrateTransactionTags("user1")
@@ -125,8 +125,8 @@ class TagMigrationTest {
                 userId = "user1"
             )
         )
-        whenever(transactionRepository.getUserTransactions(any())).thenReturn(flowOf(transactions))
-        whenever(transactionRepository.updateTransaction(any())).thenReturn(Result.success(Unit))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
+        whenever(transactionRepository.updateTransaction(any<Transaction>())).thenReturn(Result.success(Unit))
 
         // Act
         val result = tagMigration.migrateTransactionTags("user1")
@@ -149,7 +149,7 @@ class TagMigrationTest {
                 userId = "user1"
             )
         )
-        whenever(transactionRepository.getUserTransactions(any())).thenReturn(flowOf(transactions))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
 
         // Act
         val result = tagMigration.migrateTransactionTags("user1")
@@ -157,7 +157,7 @@ class TagMigrationTest {
         // Assert: No update needed, skip transaction
         assertTrue(result.isSuccess)
         assertEquals(0, result.getOrNull()) // 0 transactions updated
-        verify(transactionRepository, never()).updateTransaction(any())
+        verify(transactionRepository, never()).updateTransaction(anyOrNull())
     }
 
     @Test
@@ -171,7 +171,7 @@ class TagMigrationTest {
                 userId = "user1"
             )
         )
-        whenever(transactionRepository.getUserTransactions(any())).thenReturn(flowOf(transactions))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
 
         // Act
         val result = tagMigration.migrateTransactionTags("user1")
@@ -179,7 +179,7 @@ class TagMigrationTest {
         // Assert: Skip transaction with empty tags
         assertTrue(result.isSuccess)
         assertEquals(0, result.getOrNull())
-        verify(transactionRepository, never()).updateTransaction(any())
+        verify(transactionRepository, never()).updateTransaction(anyOrNull())
     }
 
     @Test
@@ -193,8 +193,8 @@ class TagMigrationTest {
                 userId = "user1"
             )
         )
-        whenever(transactionRepository.getUserTransactions(any())).thenReturn(flowOf(transactions))
-        whenever(transactionRepository.updateTransaction(any())).thenReturn(Result.success(Unit))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
+        whenever(transactionRepository.updateTransaction(any<Transaction>())).thenReturn(Result.success(Unit))
 
         // Act
         val result = tagMigration.migrateTransactionTags("user1")
@@ -214,8 +214,8 @@ class TagMigrationTest {
             Transaction(id = "2", title = "T2", tags = listOf("food", "travel"), userId = "user1"), // Already normalized
             Transaction(id = "3", title = "T3", tags = listOf("Shopping", "food"), userId = "user1")
         )
-        whenever(transactionRepository.getUserTransactions(any())).thenReturn(flowOf(transactions))
-        whenever(transactionRepository.updateTransaction(any())).thenReturn(Result.success(Unit))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
+        whenever(transactionRepository.updateTransaction(any<Transaction>())).thenReturn(Result.success(Unit))
 
         // Act
         val result = tagMigration.migrateTransactionTags("user1")
@@ -237,7 +237,7 @@ class TagMigrationTest {
                 userId = "user1"
             )
         )
-        whenever(transactionRepository.getUserTransactions(any())).thenReturn(flowOf(transactions))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
         whenever(transactionRepository.updateTransaction(any())).thenReturn(
             Result.failure(Exception("Update failed"))
         )
@@ -253,7 +253,7 @@ class TagMigrationTest {
     @Test
     fun `migrateTransactionTags should handle no transactions`() = runTest {
         // Arrange: User with no transactions
-        whenever(transactionRepository.getUserTransactions(any())).thenReturn(flowOf(emptyList()))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(emptyList()))
 
         // Act
         val result = tagMigration.migrateTransactionTags("user1")
@@ -261,7 +261,7 @@ class TagMigrationTest {
         // Assert: Success with 0 count
         assertTrue(result.isSuccess)
         assertEquals(0, result.getOrNull())
-        verify(transactionRepository, never()).updateTransaction(any())
+        verify(transactionRepository, never()).updateTransaction(anyOrNull())
     }
 
     @Test
@@ -282,8 +282,8 @@ class TagMigrationTest {
                 userId = "user1"
             )
         )
-        whenever(transactionRepository.getUserTransactions(any())).thenReturn(flowOf(transactions))
-        whenever(transactionRepository.updateTransaction(any())).thenReturn(Result.success(Unit))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
+        whenever(transactionRepository.updateTransaction(any<Transaction>())).thenReturn(Result.success(Unit))
 
         // Act
         val result = tagMigration.migrateTransactionTags("user1")
@@ -315,8 +315,8 @@ class TagMigrationTest {
                 userId = "user1"
             )
         }
-        whenever(transactionRepository.getUserTransactions(any())).thenReturn(flowOf(transactions))
-        whenever(transactionRepository.updateTransaction(any())).thenReturn(Result.success(Unit))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
+        whenever(transactionRepository.updateTransaction(any<Transaction>())).thenReturn(Result.success(Unit))
 
         // Act
         val result = tagMigration.migrateTransactionTags("user1")
@@ -333,8 +333,8 @@ class TagMigrationTest {
         val transactions = listOf(
             Transaction(id = "1", title = "T1", tags = listOf("Food"), userId = "user1")
         )
-        whenever(transactionRepository.getUserTransactions(any())).thenReturn(flowOf(transactions))
-        whenever(transactionRepository.updateTransaction(any())).thenReturn(Result.success(Unit))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
+        whenever(transactionRepository.updateTransaction(any<Transaction>())).thenReturn(Result.success(Unit))
 
         // Act
         tagMigration.migrateTransactionTags("user1")

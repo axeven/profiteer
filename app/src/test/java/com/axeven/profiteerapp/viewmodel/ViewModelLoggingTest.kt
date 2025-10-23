@@ -117,28 +117,13 @@ class ViewModelLoggingTest {
         assertTrue("Should indicate issue", warnLog.message.contains("No transactions found"))
     }
 
-    @Test
-    fun `should log wallet operations with balance context`() {
-        // This test verifies wallet-related logging patterns
-
-        val expectedTag = "WalletDetailViewModel"
-
-        // Wallet operations should log context without exposing actual balances
-        mockLogger.d(expectedTag, "Calculating balance for wallet: wallet456")
-        mockLogger.i(expectedTag, "Balance recalculation completed")
-        mockLogger.w(expectedTag, "Wallet balance inconsistency detected")
-
-        // Verify
-        assertEquals("Should have captured 3 log calls", 3, capturedLogs.size)
-
-        capturedLogs.forEach { logCall ->
-            assertEquals("Should use correct tag", expectedTag, logCall.tag)
-            assertTrue("Should contain wallet context",
-                logCall.message.contains("wallet") || logCall.message.contains("balance"))
-            // Should not contain actual balance amounts
-            assertFalse("Should not contain specific amounts", logCall.message.matches(Regex(".*\\d+\\.\\d{2}.*")))
-        }
-    }
+    // NOTE: Test removed - it was testing mock behavior rather than actual ViewModel logging.
+    // This test manually called mock logger methods and verified the calls, which doesn't test real implementation.
+    // To properly test ViewModel logging patterns:
+    // 1. Create actual ViewModel instance with mock logger
+    // 2. Trigger ViewModel operations that should log
+    // 3. Verify the logger received expected calls
+    // This would test that ViewModels actually log correctly, not just that mocks can be called.
 
     @Test
     fun `should log report generation with performance context`() {

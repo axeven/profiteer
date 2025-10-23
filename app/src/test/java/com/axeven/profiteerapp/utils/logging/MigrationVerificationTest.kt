@@ -169,7 +169,7 @@ class MigrationVerificationTest {
     private fun findRepositoryFiles(projectRoot: File): List<File> {
         val sourceDir = File(projectRoot, "app/src/main/java")
         return sourceDir.walkTopDown()
-            .filter { it.isFile && it.extension == "kt" && it.name.contains("Repository") }
+            .filter { it.isFile && it.extension == "kt" && it.name.endsWith("Repository.kt") }
             .toList()
     }
 

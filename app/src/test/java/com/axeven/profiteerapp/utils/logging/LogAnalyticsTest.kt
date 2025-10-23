@@ -76,15 +76,14 @@ class LogAnalyticsTest {
     @Test
     fun `should sanitize sensitive data before analytics tracking`() {
         val sensitiveMessage = "User john.doe@example.com performed transaction of $500.00"
-        val expectedSanitized = "User [EMAIL] performed transaction of [AMOUNT]"
 
         // Test that sensitive data is sanitized before tracking
         val sanitizedMessage = LogSanitizer.sanitizeAll(sensitiveMessage)
 
         assertFalse("Should not contain email", sanitizedMessage.contains("john.doe@example.com"))
         assertFalse("Should not contain amount", sanitizedMessage.contains("$500.00"))
-        assertTrue("Should contain placeholder", sanitizedMessage.contains("[EMAIL]"))
-        assertTrue("Should contain placeholder", sanitizedMessage.contains("[AMOUNT]"))
+        assertTrue("Should contain email placeholder", sanitizedMessage.contains("[EMAIL_REDACTED]"))
+        assertTrue("Should contain amount placeholder", sanitizedMessage.contains("[AMOUNT_REDACTED]"))
     }
 
     @Test
@@ -100,19 +99,9 @@ class LogAnalyticsTest {
         verify(mockAnalyticsLogger).batchTrackEvents(events)
     }
 
-    @Test
-    fun `should respect user privacy settings for analytics`() {
-        val userAction = "add_transaction"
-        val properties = mapOf("amount" to "100.00")
-
-        // Test with analytics disabled
-        `when`(mockAnalyticsLogger.isAnalyticsEnabled()).thenReturn(false)
-
-        mockAnalyticsLogger.trackUserAction(userAction, properties)
-
-        // Should check privacy settings
-        verify(mockAnalyticsLogger).isAnalyticsEnabled()
-    }
+    // NOTE: Privacy settings test removed - it was testing mock behavior rather than actual implementation.
+    // When a real AnalyticsLogger implementation is created, add proper integration tests that verify
+    // the implementation checks isAnalyticsEnabled() before tracking events.
 
     @Test
     fun `should integrate with crashlytics for error reporting`() {
