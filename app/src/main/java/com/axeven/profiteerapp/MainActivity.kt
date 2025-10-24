@@ -54,7 +54,7 @@ fun ProfiteerApp(authViewModel: AuthViewModel = viewModel()) {
     var selectedTransaction by remember { mutableStateOf<Transaction?>(null) }
     var selectedWalletId by remember { mutableStateOf<String?>(null) }
     var initialTransactionType by remember { mutableStateOf<TransactionType?>(null) }
-    var homeRefreshTrigger by remember { mutableStateOf(0) }
+    var homeRefreshTrigger by remember { mutableIntStateOf(0) }
     var previousScreen by remember { mutableStateOf<AppScreen?>(null) }
 
     // Monitor re-authentication requirement

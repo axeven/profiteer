@@ -142,8 +142,8 @@ fun MonthYearPickerDialog(
     onMonthYearSelected: (Int, Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var tempMonth by remember { mutableStateOf(selectedMonth) }
-    var tempYear by remember { mutableStateOf(selectedYear) }
+    var tempMonth by remember { mutableIntStateOf(selectedMonth) }
+    var tempYear by remember { mutableIntStateOf(selectedYear) }
     
     val monthNames = listOf(
         "January", "February", "March", "April", "May", "June",
