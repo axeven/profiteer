@@ -14,13 +14,13 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun ErrorMessage(
     message: String,
+    modifier: Modifier = Modifier,
     shouldRetry: Boolean = false,
     requiresReauth: Boolean = false,
     isOffline: Boolean = false,
     onRetry: () -> Unit = {},
     onSignIn: () -> Unit = {},
-    onDismiss: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onDismiss: () -> Unit = {}
 ) {
     val icon: ImageVector = when {
         requiresReauth -> Icons.Default.AccountCircle

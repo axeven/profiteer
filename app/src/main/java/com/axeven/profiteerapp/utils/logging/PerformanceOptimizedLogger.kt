@@ -1,11 +1,14 @@
 package com.axeven.profiteerapp.utils.logging
 
+import android.annotation.SuppressLint
+
 /**
  * Performance-optimized logger for production use.
  * This implementation minimizes overhead for high-frequency logging scenarios.
  */
 class PerformanceOptimizedLogger(private val isDebugBuild: Boolean = false) : Logger {
 
+    @SuppressLint("LogNotTimber") // Performance-optimized logger intentionally uses android.util.Log
     override fun d(tag: String, message: String) {
         if (isDebugBuild) {
             // Only log debug in debug builds
@@ -14,6 +17,7 @@ class PerformanceOptimizedLogger(private val isDebugBuild: Boolean = false) : Lo
         // No-op in release builds for maximum performance
     }
 
+    @SuppressLint("LogNotTimber") // Performance-optimized logger intentionally uses android.util.Log
     override fun i(tag: String, message: String) {
         if (isDebugBuild) {
             android.util.Log.i(tag, message)
@@ -21,11 +25,13 @@ class PerformanceOptimizedLogger(private val isDebugBuild: Boolean = false) : Lo
         // No-op in release builds for maximum performance
     }
 
+    @SuppressLint("LogNotTimber") // Performance-optimized logger intentionally uses android.util.Log
     override fun w(tag: String, message: String) {
         // Always log warnings
         android.util.Log.w(tag, message)
     }
 
+    @SuppressLint("LogNotTimber") // Performance-optimized logger intentionally uses android.util.Log
     override fun e(tag: String, message: String, throwable: Throwable?) {
         // Always log errors
         if (throwable != null) {

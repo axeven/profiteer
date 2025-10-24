@@ -1,7 +1,7 @@
 # Lint Error Fixes - Implementation Plan
 
 **Date**: 2025-10-23
-**Status**: Not Started
+**Status**: In Progress
 **Priority**: High
 **Approach**: Test-Driven Development (TDD)
 
@@ -405,8 +405,8 @@ If issues arise during implementation:
 - Errors Fixed: 3/3
 
 ### Phase 2: High-Priority Warnings
-- Status: ⏸️ Not Started
-- Warnings Fixed: 0/36
+- Status: ✅ Completed
+- Warnings Fixed: 36/36
 
 ### Phase 3: Performance Optimizations
 - Status: ⏸️ Not Started
@@ -422,9 +422,9 @@ If issues arise during implementation:
 
 ### Overall Progress
 **Total Items**: 54 actionable items
-**Completed**: 3
-**Remaining**: 51
-**Percentage**: 6%
+**Completed**: 39
+**Remaining**: 15
+**Percentage**: 72%
 
 ---
 
@@ -459,6 +459,57 @@ If issues arise during implementation:
    - No code changes required in LogFormatter.kt - desugaring handles API compatibility
 
 **Result**: All 3 NewApi errors in `LogFormatter.kt:102` resolved by enabling core library desugaring. The Java 8 Time API (Instant.now(), DateTimeFormatter.ISO_INSTANT) now works on Android API 24+.
+
+#### Phase 2: High-Priority Warnings - Completed 2025-10-24
+
+**Fix DefaultLocale Warnings (11 instances)** ✅
+
+1. **Test Creation**:
+   - Created `NumberFormatterLocaleTest.kt` with 11 comprehensive locale tests
+   - Tests verify decimal separator is always period (.) regardless of system locale
+   - Tests cover multiple locales: US, Germany, France, Turkish
+   - Initial test run exposed 7 failures, confirming locale-dependent bugs
+
+2. **Implementation**:
+   - Fixed all 11 `String.format()` calls to use `Locale.US`:
+     - `NumberFormatter.kt`: 2 instances (lines 85, 93)
+     - `CreateTransactionStateManager.kt`: 1 instance (line 340)
+     - `EditTransactionUiState.kt`: 2 instances (lines 69, 138)
+     - `ReportScreenSimple.kt`: 6 instances (lines 392, 450, 523, 589, 1293, 1351)
+   - Added `import java.util.Locale` where needed
+
+3. **Verification**:
+   - All 11 tests passed after fixes
+   - `./gradlew lint` confirmed all DefaultLocale warnings resolved
+
+**Fix ModifierParameter Warning (1 instance)** ✅
+
+1. **Implementation**:
+   - Reordered parameters in `ErrorMessage.kt` to put `modifier` as first optional parameter
+   - Before: `fun ErrorMessage(message: String, ..., modifier: Modifier = Modifier)`
+   - After: `fun ErrorMessage(message: String, modifier: Modifier = Modifier, ...)`
+   - Call site in `HomeScreen.kt` uses named parameters, no changes needed
+
+2. **Note**: Skipped UI tests since they require instrumented tests (`androidTest` directory), not unit tests
+
+**Suppress LogNotTimber Warnings (24 instances)** ✅
+
+1. **Implementation**:
+   - Added `@SuppressLint("LogNotTimber")` annotations with explanatory comments to:
+     - `DebugLogger.kt`: 4 methods (5 log calls)
+     - `DebugTransactionHelper.kt`: 1 method (5 log calls)
+     - `FirebaseCrashlyticsLogger.kt`: 6 methods (6 log calls)
+     - `PerformanceOptimizedLogger.kt`: 4 methods (5 log calls)
+     - `ReleaseLogger.kt`: 2 methods (3 log calls)
+   - Added `import android.annotation.SuppressLint` to all files
+   - Each suppression includes comment explaining intentional use of android.util.Log
+
+2. **Rationale**: Project uses custom Logger framework (see LOGGING_GUIDELINES.md), not Timber
+
+3. **Verification**:
+   - `./gradlew lint` passed successfully
+   - Final lint report: 0 errors, 39 warnings, 3 hints (down from 3 errors, 74 warnings, 3 hints)
+   - All Phase 2 warnings resolved
 
 ### Lessons Learned
 *(To be filled in after completion)*

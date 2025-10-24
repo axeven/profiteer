@@ -1,5 +1,6 @@
 package com.axeven.profiteerapp.utils.logging
 
+import android.annotation.SuppressLint
 import timber.log.Timber
 
 /**
@@ -19,6 +20,7 @@ class DebugLogger : Logger {
         }
     }
 
+    @SuppressLint("LogNotTimber") // Intentional fallback to android.util.Log when Timber fails
     override fun d(tag: String, message: String) {
         try {
             Timber.tag(tag).d(message)
@@ -28,6 +30,7 @@ class DebugLogger : Logger {
         }
     }
 
+    @SuppressLint("LogNotTimber") // Intentional fallback to android.util.Log when Timber fails
     override fun i(tag: String, message: String) {
         try {
             Timber.tag(tag).i(message)
@@ -36,6 +39,7 @@ class DebugLogger : Logger {
         }
     }
 
+    @SuppressLint("LogNotTimber") // Intentional fallback to android.util.Log when Timber fails
     override fun w(tag: String, message: String) {
         try {
             Timber.tag(tag).w(message)
@@ -44,6 +48,7 @@ class DebugLogger : Logger {
         }
     }
 
+    @SuppressLint("LogNotTimber") // Intentional fallback to android.util.Log when Timber fails
     override fun e(tag: String, message: String, throwable: Throwable?) {
         try {
             if (throwable != null) {

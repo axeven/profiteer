@@ -1,5 +1,6 @@
 package com.axeven.profiteerapp.utils.logging
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
 import com.google.firebase.crashlytics.FirebaseCrashlytics
@@ -16,6 +17,7 @@ class FirebaseCrashlyticsLogger @Inject constructor(
         context.getSharedPreferences("logging_preferences", Context.MODE_PRIVATE)
     }
 
+    @SuppressLint("LogNotTimber") // Fallback logging when Crashlytics fails
     override fun trackError(tag: String, message: String, throwable: Throwable?) {
         if (!isAnalyticsEnabled()) return
 
@@ -39,6 +41,7 @@ class FirebaseCrashlyticsLogger @Inject constructor(
         }
     }
 
+    @SuppressLint("LogNotTimber") // Fallback logging when Crashlytics fails
     override fun trackUserAction(action: String, properties: Map<String, Any>) {
         if (!isAnalyticsEnabled()) return
 
@@ -58,6 +61,7 @@ class FirebaseCrashlyticsLogger @Inject constructor(
         }
     }
 
+    @SuppressLint("LogNotTimber") // Fallback logging when Crashlytics fails
     override fun trackPerformance(operation: String, durationMs: Long, metadata: Map<String, Any>) {
         if (!isAnalyticsEnabled()) return
 
@@ -84,6 +88,7 @@ class FirebaseCrashlyticsLogger @Inject constructor(
         }
     }
 
+    @SuppressLint("LogNotTimber") // Fallback logging when Crashlytics fails
     override fun batchTrackEvents(events: List<AnalyticsEvent>) {
         if (!isAnalyticsEnabled()) return
 
@@ -113,6 +118,7 @@ class FirebaseCrashlyticsLogger @Inject constructor(
                crashlytics.isCrashlyticsCollectionEnabled
     }
 
+    @SuppressLint("LogNotTimber") // Fallback logging when Crashlytics fails
     override fun reportCrash(tag: String, message: String, throwable: Throwable?) {
         try {
             // Always report crashes regardless of analytics settings (for app stability)
@@ -140,6 +146,7 @@ class FirebaseCrashlyticsLogger @Inject constructor(
         crashlytics.setCrashlyticsCollectionEnabled(enabled)
     }
 
+    @SuppressLint("LogNotTimber") // Fallback logging when Crashlytics fails
     fun setUserId(userId: String) {
         try {
             val sanitizedUserId = LogSanitizer.sanitizeUserId(userId)

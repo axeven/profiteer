@@ -1,5 +1,6 @@
 package com.axeven.profiteerapp.utils.logging
 
+import android.annotation.SuppressLint
 import timber.log.Timber
 
 /**
@@ -28,6 +29,7 @@ class ReleaseLogger : Logger {
         // Info logs are ignored in release builds
     }
 
+    @SuppressLint("LogNotTimber") // Intentional fallback to android.util.Log when Timber fails
     override fun w(tag: String, message: String) {
         try {
             Timber.tag(tag).w(message)
@@ -36,6 +38,7 @@ class ReleaseLogger : Logger {
         }
     }
 
+    @SuppressLint("LogNotTimber") // Intentional fallback to android.util.Log when Timber fails
     override fun e(tag: String, message: String, throwable: Throwable?) {
         try {
             if (throwable != null) {

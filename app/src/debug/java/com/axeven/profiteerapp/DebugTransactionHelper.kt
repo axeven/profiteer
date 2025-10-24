@@ -1,5 +1,6 @@
 package com.axeven.profiteerapp
 
+import android.annotation.SuppressLint
 import android.util.Log
 import com.axeven.profiteerapp.data.repository.TransactionRepository
 import kotlinx.coroutines.flow.first
@@ -14,6 +15,7 @@ class DebugTransactionHelper @Inject constructor(
     private val transactionRepository: TransactionRepository
 ) {
     
+    @SuppressLint("LogNotTimber") // Debug-only helper class intentionally uses android.util.Log
     suspend fun verifyTransactionDeletion(userId: String, deletedTransactionId: String): Boolean {
         return try {
             Log.d("DebugTransactionHelper", "Verifying deletion of transaction: $deletedTransactionId")
