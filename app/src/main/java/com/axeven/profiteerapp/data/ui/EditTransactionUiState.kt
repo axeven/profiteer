@@ -66,7 +66,7 @@ data class EditTransactionUiState(
             val normalizedOriginalTags = TagNormalizer.normalizeTags(original.tags).joinToString(", ")
 
             title != original.title ||
-            amount != String.format("%.2f", Math.abs(original.amount)) ||
+            amount != String.format(Locale.US, "%.2f", Math.abs(original.amount)) ||
             tags != normalizedOriginalTags ||
             selectedDate != (original.transactionDate ?: Date()) ||
             // Note: Wallet changes are detected in actual wallet state comparison
@@ -135,7 +135,7 @@ data class EditTransactionUiState(
 
             return EditTransactionUiState(
                 title = transaction.title,
-                amount = String.format("%.2f", Math.abs(transaction.amount)), // Always positive for display with 2 decimal places
+                amount = String.format(Locale.US, "%.2f", Math.abs(transaction.amount)), // Always positive for display with 2 decimal places
                 selectedType = transaction.type,
                 selectedWallets = initialWallets,
                 selectedDate = transaction.transactionDate ?: Date(),

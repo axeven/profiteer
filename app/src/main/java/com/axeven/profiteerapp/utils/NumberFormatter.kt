@@ -82,7 +82,7 @@ object NumberFormatter {
                 if (millions % 1.0 == 0.0) {
                     Pair("${millions.toInt()}", "M")
                 } else {
-                    Pair(String.format("%.1f", millions), "M")
+                    Pair(String.format(Locale.US, "%.1f", millions), "M")
                 }
             }
             absAmount >= 1_000 -> {
@@ -90,7 +90,7 @@ object NumberFormatter {
                 if (thousands % 1.0 == 0.0) {
                     Pair("${thousands.toInt()}", "K")
                 } else {
-                    Pair(String.format("%.1f", thousands), "K")
+                    Pair(String.format(Locale.US, "%.1f", thousands), "K")
                 }
             }
             else -> {

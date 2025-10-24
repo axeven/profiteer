@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ir.ehsannarmani.compose_charts.models.Pie
+import java.util.Locale
 import ir.ehsannarmani.compose_charts.PieChart
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.axeven.profiteerapp.viewmodel.ReportViewModel
@@ -389,7 +390,7 @@ fun SimplePortfolioLegend(
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = "${String.format("%.1f", percentage)}%",
+                        text = "${String.format(Locale.US, "%.1f", percentage)}%",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -447,7 +448,7 @@ fun SimpleWalletLegend(
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = "${String.format("%.1f", percentage)}%",
+                        text = "${String.format(Locale.US, "%.1f", percentage)}%",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -520,7 +521,7 @@ fun SimpleLogicalWalletLegend(
                             color = Color(0xFF4CAF50) // Green for positive
                         )
                         Text(
-                            text = "${String.format("%.1f", percentage)}%",
+                            text = "${String.format(Locale.US, "%.1f", percentage)}%",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -586,7 +587,7 @@ fun SimpleLogicalWalletLegend(
                             color = MaterialTheme.colorScheme.error // Red for negative
                         )
                         Text(
-                            text = "${String.format("%.1f", percentage)}%",
+                            text = "${String.format(Locale.US, "%.1f", percentage)}%",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1290,7 +1291,7 @@ fun SimpleExpenseTransactionsByTagLegend(
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = "${String.format("%.1f", percentage)}%",
+                        text = "${String.format(Locale.US, "%.1f", percentage)}%",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1348,7 +1349,7 @@ fun SimpleIncomeTransactionsByTagLegend(
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = "${String.format("%.1f", percentage)}%",
+                        text = "${String.format(Locale.US, "%.1f", percentage)}%",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

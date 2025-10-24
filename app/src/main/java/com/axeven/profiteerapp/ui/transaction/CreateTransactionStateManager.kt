@@ -337,7 +337,7 @@ data class TransactionSummary(
      * Gets a formatted amount string for display.
      */
     val formattedAmount: String
-        get() = String.format("%.2f", amount)
+        get() = String.format(Locale.US, "%.2f", amount)
 
     /**
      * Gets a formatted date string for display.
