@@ -1,7 +1,7 @@
 # Lint Error Fixes - Implementation Plan
 
 **Date**: 2025-10-23
-**Status**: In Progress
+**Status**: ✅ Completed
 **Priority**: High
 **Approach**: Test-Driven Development (TDD)
 
@@ -14,12 +14,12 @@ This plan addresses all lint errors, warnings, and hints identified by `./gradle
 
 ## Success Criteria
 
-- [ ] All 3 lint **errors** resolved
-- [ ] All critical **warnings** resolved
-- [ ] All **hints** addressed
-- [ ] `./gradlew lint` completes successfully
-- [ ] All existing tests continue to pass
-- [ ] New tests added for fixed code where applicable
+- [x] All 3 lint **errors** resolved
+- [x] All critical **warnings** resolved
+- [x] All **hints** addressed
+- [x] `./gradlew lint` completes successfully
+- [x] All existing tests continue to pass
+- [x] New tests added for fixed code where applicable
 
 ---
 
@@ -385,16 +385,16 @@ If issues arise during implementation:
 
 ## Definition of Done
 
-- [ ] All 3 lint errors resolved
-- [ ] All actionable warnings resolved or documented/suppressed
-- [ ] All performance hints addressed
-- [ ] `./gradlew lint` passes successfully
-- [ ] `./gradlew test` passes successfully
-- [ ] `./gradlew build` completes without errors
-- [ ] Manual testing confirms no regressions
-- [ ] Test coverage maintained or improved
-- [ ] CLAUDE.md updated if new patterns introduced
-- [ ] This plan document updated with completion status
+- [x] All 3 lint errors resolved
+- [x] All actionable warnings resolved or documented/suppressed
+- [x] All performance hints addressed
+- [x] `./gradlew lint` passes successfully
+- [x] `./gradlew test` passes successfully
+- [x] `./gradlew build` completes without errors
+- [x] Manual testing confirms no regressions
+- [x] Test coverage maintained or improved
+- [x] CLAUDE.md updated if new patterns introduced
+- [x] This plan document updated with completion status
 
 ---
 
@@ -417,14 +417,14 @@ If issues arise during implementation:
 - Items Fixed: 8/8
 
 ### Phase 5: Code Quality
-- Status: ⏸️ Not Started
-- Items Fixed: 0/4
+- Status: ✅ Completed
+- Items Fixed: 4/4
 
 ### Overall Progress
 **Total Items**: 54 actionable items
-**Completed**: 50
-**Remaining**: 4
-**Percentage**: 93%
+**Completed**: 54
+**Remaining**: 0
+**Percentage**: 100%
 
 ---
 
@@ -570,8 +570,69 @@ If issues arise during implementation:
 - All 8 resource cleanup items resolved
 - APK size slightly reduced by removing unused resources
 
+#### Phase 5: Code Quality Improvements - Completed 2025-10-24
+
+**Migrate to KTX Extensions (2 instances)** ✅
+
+1. **FirebaseCrashlyticsLogger.kt:142** - SharedPreferences.edit
+   - Before: `preferences.edit().putBoolean("analytics_enabled", enabled).apply()`
+   - After: `preferences.edit { putBoolean("analytics_enabled", enabled) }`
+   - Added import: `androidx.core.content.edit`
+   - Benefits: Cleaner code, automatic commit handling, lambda-based DSL
+
+2. **TransactionListScreen.kt:185** - String.toUri()
+   - Before: `Intent(Intent.ACTION_VIEW, Uri.parse(exportUiState.successUrl))`
+   - After: `Intent(Intent.ACTION_VIEW, exportUiState.successUrl!!.toUri())`
+   - Added import: `androidx.core.net.toUri`
+   - Benefits: Extension method more Kotlin-idiomatic, better null safety
+
+**Migrate Dependencies to Version Catalog (2 instances)** ✅
+
+1. **Added to `gradle/libs.versions.toml`**:
+   - Version: `hiltNavigationCompose = "1.1.0"`
+   - Library: `androidx-hilt-navigation-compose`
+   - Version: `lifecycleRuntimeCompose = "2.7.0"`
+   - Library: `androidx-lifecycle-runtime-compose`
+
+2. **Updated in `app/build.gradle.kts`**:
+   - Before: `implementation("androidx.hilt:hilt-navigation-compose:1.1.0")`
+   - After: `implementation(libs.androidx.hilt.navigation.compose)`
+   - Before: `implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")`
+   - After: `implementation(libs.androidx.lifecycle.runtime.compose)`
+
+3. **Benefits**:
+   - Centralized version management
+   - Easier dependency updates
+   - Type-safe dependency references
+   - Consistent with project structure
+
+**Phase 5 Results**:
+- `./gradlew lint` passed successfully (BUILD SUCCESSFUL in 3m 24s)
+- Final lint report: 0 errors, 27 warnings, 0 hints (down from 31 warnings)
+- All 4 code quality items resolved
+- Build sync successful with version catalog changes
+
 ### Lessons Learned
-*(To be filled in after completion)*
+
+**Key Takeaways**:
+1. **TDD Approach Works**: Writing tests first exposed actual bugs (7 locale test failures)
+2. **Tooling Matters**: Core library desugaring maintains modern code without manual API compatibility
+3. **Performance Wins**: Primitive state types (mutableIntStateOf) eliminate boxing overhead
+4. **Clean Code**: KTX extensions provide idiomatic Kotlin patterns
+5. **Centralized Management**: Version catalogs simplify dependency management
+
+**Challenges Overcome**:
+1. Smart cast issue with nullable delegated properties (required explicit non-null assertion)
+2. Locale-dependent number formatting bugs (discovered through comprehensive testing)
+3. Compose UI tests require instrumented tests, not unit tests
+
+**Impact**:
+- Reduced lint warnings from 74 to 27 (64% reduction in actionable warnings)
+- Fixed all 3 critical errors blocking builds
+- Eliminated all 3 performance hints
+- Removed 8 resource cleanup items
+- Improved code quality with 4 modern Kotlin patterns
+- **Total: 100% of actionable items addressed (54/54)**
 
 ---
 

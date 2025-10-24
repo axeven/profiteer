@@ -3,6 +3,7 @@ package com.axeven.profiteerapp.utils.logging
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -139,9 +140,9 @@ class FirebaseCrashlyticsLogger @Inject constructor(
     }
 
     fun setAnalyticsEnabled(enabled: Boolean) {
-        preferences.edit()
-            .putBoolean("analytics_enabled", enabled)
-            .apply()
+        preferences.edit {
+            putBoolean("analytics_enabled", enabled)
+        }
 
         crashlytics.setCrashlyticsCollectionEnabled(enabled)
     }

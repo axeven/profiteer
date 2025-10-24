@@ -2,6 +2,7 @@ package com.axeven.profiteerapp.ui.transaction
 
 import android.content.Intent
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -181,7 +182,7 @@ fun TransactionListScreen(
                 transactionCount = uiState.groupedTransactions.values.flatten().size,
                 onOpen = {
                     // Open the Google Sheets URL in browser
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(exportUiState.successUrl))
+                    val intent = Intent(Intent.ACTION_VIEW, exportUiState.successUrl!!.toUri())
                     context.startActivity(intent)
                 },
                 onShare = {
