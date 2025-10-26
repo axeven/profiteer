@@ -86,7 +86,7 @@ class BalanceReconstructionUtilsTest {
         val transactions = emptyList<Transaction>()
 
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null
+            wallets, transactions, null, null
         )
 
         assertEquals(2, result.size)
@@ -106,7 +106,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // Should only include t1 (100.0), not t2
@@ -125,7 +125,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // Should only include t1 (100.0), not t2 (null date)
@@ -146,7 +146,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // Should be: 0 + 100 (t2) - 30 (t3) - 50 (t1) = 20
@@ -163,7 +163,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         assertEquals(100.0, result["w1"]!!, 0.01)
@@ -181,7 +181,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // 0 + 100 - 30 = 70
@@ -205,7 +205,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // w1: 0 + 100 - 50 = 50
@@ -227,7 +227,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // Both wallets should receive +100
@@ -250,7 +250,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // Both wallets: 0 + 100 - 30 = 70
@@ -265,7 +265,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // No transactions, so wallet should not appear (zero balance)
@@ -287,7 +287,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // w1: 0 + 100 - 100 = 0 (excluded)
@@ -308,7 +308,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // Transaction is after endDate, so no wallets should have balance
@@ -329,7 +329,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // Wallet should be included because transaction exists before endDate
@@ -350,7 +350,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // Transaction is after endDate, wallet should not be included
@@ -373,7 +373,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // 0 + 100 - 30 + 50 - 20 = 100
@@ -394,7 +394,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // 0 + 100 - 100 + 50 = 50 (should be included)
@@ -416,7 +416,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // 0 + 100 + 50 - 30 = 120
@@ -433,7 +433,7 @@ class BalanceReconstructionUtilsTest {
         )
 
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         assertEquals(100.0, result["w1"]!!, 0.01)
@@ -449,7 +449,7 @@ class BalanceReconstructionUtilsTest {
         )
 
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // Transaction is after endDate
@@ -476,7 +476,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructPortfolioComposition(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // FIAT_CURRENCY: w1(100) + w3(30) = 130
@@ -500,7 +500,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructPortfolioComposition(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // Only physical wallet should be included
@@ -526,7 +526,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructPortfolioComposition(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // All STOCKS: 100 + 50 + 30 = 180
@@ -551,7 +551,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructPortfolioComposition(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // w1: 0 (excluded), w2: -50 (excluded), w3: 0 (excluded)
@@ -575,7 +575,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructPhysicalWalletBalances(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         assertEquals(1, result.size)
@@ -597,7 +597,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructPhysicalWalletBalances(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         assertEquals(100.0, result["Cash Wallet"]!!, 0.01)
@@ -619,7 +619,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructPhysicalWalletBalances(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // w1: 0 (excluded), w2: 0 (excluded)
@@ -643,7 +643,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructLogicalWalletBalances(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         assertEquals(1, result.size)
@@ -667,7 +667,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructLogicalWalletBalances(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // w1: 0 + 100 - 150 = -50 (included)
@@ -691,7 +691,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructLogicalWalletBalances(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // w1: 0 (excluded), w2: 0 (excluded)
@@ -712,7 +712,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructLogicalWalletBalances(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // 0 + 50 - 100 = -50 (overspending, should be included)
@@ -726,7 +726,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         assertTrue(result.isEmpty())
@@ -742,7 +742,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, endDate
+            wallets, transactions, null, endDate
         )
 
         // Transactions reference wallets that don't exist

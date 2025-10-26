@@ -26,7 +26,7 @@ object BalanceReconstructionUtils {
      *
      * Algorithm:
      * 1. If endDate is null (All Time), return current wallet balances
-     * 2. Filter transactions with transactionDate <= endDate (exclude null dates)
+     * 2. Filter transactions with startDate <= transactionDate <= endDate (exclude null dates)
      * 3. Sort transactions chronologically by transactionDate
      * 4. Initialize all wallet balances to 0.0
      * 5. Replay each transaction:
@@ -37,12 +37,14 @@ object BalanceReconstructionUtils {
      *
      * @param wallets List of all wallets
      * @param transactions List of all transactions
-     * @param endDate The date to reconstruct balances for, or null for current balances
+     * @param startDate The start date of the period, or null for no start restriction
+     * @param endDate The end date of the period, or null for current balances
      * @return Map of walletId to reconstructed balance (excluding zero balances)
      */
     fun reconstructWalletBalancesAtDate(
         wallets: List<Wallet>,
         transactions: List<Transaction>,
+        startDate: Date?,
         endDate: Date?
     ): Map<String, Double> {
         // If endDate is null (All Time), return current wallet balances
@@ -50,11 +52,13 @@ object BalanceReconstructionUtils {
             return wallets.associate { it.id to it.balance }
         }
 
-        // Filter transactions with transactionDate <= endDate
+        // Filter transactions within the date range
         // Exclude transactions with null transactionDate
-        val relevantTransactions = transactions
-            .filter { it.transactionDate != null && it.transactionDate <= endDate }
-            .sortedBy { it.transactionDate }
+        val relevantTransactions = transactions.filter { transaction ->
+            transaction.transactionDate != null &&
+            transaction.transactionDate <= endDate &&
+            (startDate == null || transaction.transactionDate >= startDate)
+        }.sortedBy { it.transactionDate }
 
         // Initialize all wallet balances to 0.0
         val reconstructedBalances = mutableMapOf<String, Double>()
@@ -94,23 +98,25 @@ object BalanceReconstructionUtils {
      * Reconstructs portfolio composition (balance by PhysicalForm) as of a specific date.
      *
      * This function:
-     * - Reconstructs wallet balances at the given date
+     * - Reconstructs wallet balances for the given date range
      * - Groups balances by PhysicalForm
      * - Only includes physical wallets
      * - Excludes zero and negative balances
      *
      * @param wallets List of all wallets
      * @param transactions List of all transactions
-     * @param endDate The date to reconstruct balances for, or null for current balances
+     * @param startDate The start date of the period, or null for no start restriction
+     * @param endDate The end date of the period, or null for current balances
      * @return Map of PhysicalForm to total balance (excluding zero/negative balances)
      */
     fun reconstructPortfolioComposition(
         wallets: List<Wallet>,
         transactions: List<Transaction>,
+        startDate: Date?,
         endDate: Date?
     ): Map<PhysicalForm, Double> {
         // Get reconstructed balances
-        val walletBalances = reconstructWalletBalancesAtDate(wallets, transactions, endDate)
+        val walletBalances = reconstructWalletBalancesAtDate(wallets, transactions, startDate, endDate)
 
         // Create a map of walletId to wallet for quick lookup
         val walletMap = wallets.associateBy { it.id }
@@ -134,23 +140,25 @@ object BalanceReconstructionUtils {
      * Reconstructs physical wallet balances (name to balance) as of a specific date.
      *
      * This function:
-     * - Reconstructs wallet balances at the given date
+     * - Reconstructs wallet balances for the given date range
      * - Maps wallet names to balances
      * - Only includes physical wallets
      * - Excludes zero balances
      *
      * @param wallets List of all wallets
      * @param transactions List of all transactions
-     * @param endDate The date to reconstruct balances for, or null for current balances
+     * @param startDate The start date of the period, or null for no start restriction
+     * @param endDate The end date of the period, or null for current balances
      * @return Map of wallet name to balance (excluding zero balances)
      */
     fun reconstructPhysicalWalletBalances(
         wallets: List<Wallet>,
         transactions: List<Transaction>,
+        startDate: Date?,
         endDate: Date?
     ): Map<String, Double> {
         // Get reconstructed balances
-        val walletBalances = reconstructWalletBalancesAtDate(wallets, transactions, endDate)
+        val walletBalances = reconstructWalletBalancesAtDate(wallets, transactions, startDate, endDate)
 
         // Create a map of walletId to wallet for quick lookup
         val walletMap = wallets.associateBy { it.id }
@@ -173,7 +181,7 @@ object BalanceReconstructionUtils {
      * Reconstructs logical wallet balances (name to balance) as of a specific date.
      *
      * This function:
-     * - Reconstructs wallet balances at the given date
+     * - Reconstructs wallet balances for the given date range
      * - Maps wallet names to balances
      * - Only includes logical wallets
      * - Includes negative balances (budget overspending)
@@ -181,21 +189,25 @@ object BalanceReconstructionUtils {
      *
      * @param wallets List of all wallets
      * @param transactions List of all transactions
-     * @param endDate The date to reconstruct balances for, or null for current balances
+     * @param startDate The start date of the period, or null for no start restriction
+     * @param endDate The end date of the period, or null for current balances
      * @return Map of wallet name to balance (including negative balances, excluding zero)
      */
     fun reconstructLogicalWalletBalances(
         wallets: List<Wallet>,
         transactions: List<Transaction>,
+        startDate: Date?,
         endDate: Date?
     ): Map<String, Double> {
         // Get reconstructed balances (with zero filtering for positive balances)
         val walletBalances = if (endDate == null) {
             wallets.associate { it.id to it.balance }
         } else {
-            val relevantTransactions = transactions
-                .filter { it.transactionDate != null && it.transactionDate <= endDate }
-                .sortedBy { it.transactionDate }
+            val relevantTransactions = transactions.filter { transaction ->
+                transaction.transactionDate != null &&
+                transaction.transactionDate <= endDate &&
+                (startDate == null || transaction.transactionDate >= startDate)
+            }.sortedBy { it.transactionDate }
 
             val reconstructedBalances = mutableMapOf<String, Double>()
 
