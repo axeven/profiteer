@@ -52,6 +52,100 @@ Use the following commands to run tests
 - Implement reactive programming with StateFlow and Compose State
 - Place business logic in ViewModels, not in UI components
 
+## Navigation Architecture
+
+**Pattern**: Stack-based navigation using custom `NavigationStack` class
+
+### NavigationStack Implementation
+
+The app uses a centralized navigation stack to manage screen history and back button behavior.
+
+**Location**: `app/src/main/java/com/axeven/profiteerapp/navigation/NavigationStack.kt`
+
+**Key Features**:
+- Stack-based screen history (replaces manual `previousScreen` tracking)
+- Automatic Compose recomposition via `SnapshotStateList`
+- Integration with Android `BackHandler` for physical back button
+- Minimum stack size of 1 (HOME always at bottom)
+- API 24+ compatible
+
+**Usage Example**:
+```kotlin
+// Initialize in MainActivity
+val navigationStack = remember { NavigationStack(AppScreen.HOME) }
+val currentScreen = navigationStack.current
+
+// Forward navigation
+navigationStack.push(AppScreen.SETTINGS)
+
+// Back navigation (handled by BackHandler)
+BackHandler(enabled = navigationStack.canGoBack()) {
+    navigationStack.pop()
+}
+```
+
+### Back Button Behavior
+
+**Physical Back Button**:
+- **On HOME screen** (stack size = 1): Minimizes app (default Android behavior)
+- **On other screens**: Navigates to previous screen by popping stack
+- **On REAUTH screen**: BLOCKED for security (cannot escape re-authentication)
+
+**BackHandler Integration** (MainActivity.kt):
+```kotlin
+val canNavigateBack = navigationStack.canGoBack() &&
+                      currentScreen != AppScreen.REAUTH &&
+                      authState is AuthState.Authenticated
+
+BackHandler(enabled = canNavigateBack) {
+    val previousScreen = navigationStack.pop()
+    // Handle screen-specific cleanup
+    // Trigger home refresh if returning to HOME
+}
+```
+
+**Screen State Cleanup**:
+When navigating back, the following state variables are cleared:
+- `CREATE_TRANSACTION`: Clear `initialTransactionType`, `selectedWalletId`
+- `EDIT_TRANSACTION`: Clear `selectedTransaction`
+- `WALLET_DETAIL`: Clear `selectedWalletId`
+
+### Navigation Logging
+
+All navigation events are logged with the `Navigation` tag for debugging:
+```
+Forward: HOME → SETTINGS (stack size: 2)
+Back pressed: SETTINGS → HOME (stack size: 1)
+REAUTH triggered: pushed REAUTH screen (stack size: 3)
+```
+
+Filter logcat: `adb logcat -s Navigation`
+
+### Navigation Stack Operations
+
+| Operation | Behavior | Example |
+|-----------|----------|---------|
+| `push(screen)` | Add screen to stack | `navigationStack.push(AppScreen.WALLET_LIST)` |
+| `pop()` | Remove top screen, return previous | `val prev = navigationStack.pop()` |
+| `canGoBack()` | Check if back is possible | `if (navigationStack.canGoBack()) { ... }` |
+| `peekPrevious()` | View previous without popping | `val prev = navigationStack.peekPrevious()` |
+| `clear(resetTo)` | Reset stack to specific screen | `navigationStack.clear(AppScreen.HOME)` |
+| `getStackTrace()` | Get full stack for debugging | `val trace = navigationStack.getStackTrace()` |
+
+### Testing
+
+- **Unit Tests**: `NavigationStackTest.kt` (39 tests, 100% coverage)
+- **Integration Tests**: `BackNavigationTest.kt` (11 tests)
+- **UI Tests**: `BackButtonUiTest.kt` (14 tests)
+- **Manual Tests**: See `docs/plans/2025-10-26-back-button-manual-testing-checklist.md`
+
+### Implementation Details
+
+- **Phase 1-5**: Full implementation documented in `docs/plans/2025-10-25-back-button.md`
+- **Date Implemented**: 2025-10-25 to 2025-10-26
+- **State Variables Removed**: 1 (`previousScreen` manual tracking)
+- **Conditional Logic Reduced**: 80% reduction in back navigation logic
+
 ## Key Development Notes
 - **Target SDK**: 36, **Min SDK**: 24, **Java**: 11
 - Uses Gradle Version Catalogs (`gradle/libs.versions.toml`)

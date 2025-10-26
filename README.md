@@ -82,6 +82,17 @@ Profiteer follows the **MVVM (Model-View-ViewModel)** architecture pattern with 
 - **Real-time Synchronization**: Live data updates across all devices
 - **Firestore Native Mode**: Optimized for real-time listeners and performance
 
+### 🧭 User Experience & Navigation
+- **Stack-Based Navigation**: Custom `NavigationStack` implementation for intuitive screen flow
+  - Automatic back navigation through screen history
+  - Physical back button navigates to previous screen
+  - Press back on HOME screen to minimize app
+- **Security-Aware Navigation**: REAUTH screen blocks back navigation for security compliance
+- **Smart State Management**: Automatic cleanup of screen-specific state variables on back navigation
+- **Home Screen Refresh**: Automatic data refresh when returning to HOME from other screens
+- **Navigation Logging**: Comprehensive navigation event logging for debugging
+- **Test Coverage**: 100% unit test coverage on navigation logic with 64+ total navigation tests
+
 ## 📁 Project Structure
 
 ```
@@ -91,6 +102,7 @@ app/src/main/java/com/axeven/profiteerapp/
 │   ├── model/           # Data models (Wallet, Transaction, CurrencyRate, UserPreferences)
 │   ├── repository/      # Repository pattern implementations
 │   └── ui/              # UI state models (consolidated state pattern)
+├── navigation/         # Navigation stack implementation for screen history
 ├── service/            # External service integrations (Google Sheets API)
 ├── ui/
 │   ├── home/           # Home screen with balance aggregation
