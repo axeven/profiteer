@@ -42,8 +42,6 @@ HOME
 
 ### Phase 1: Research & Design ✅ COMPLETED
 
-**Detailed Analysis**: See [Phase 1 Analysis Document](2025-10-25-back-button-phase1-analysis.md)
-
 - [x] **Task 1.1**: Analyze current navigation state management
   - [x] Review all `onNavigateBack` lambda implementations
   - [x] Document current screen transition patterns
