@@ -26,8 +26,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.axeven.profiteerapp.viewmodel.ReportViewModel
 import com.axeven.profiteerapp.viewmodel.ChartDataType
 import com.axeven.profiteerapp.data.model.PhysicalForm
+import com.axeven.profiteerapp.data.model.DateFilterPeriod
 import com.axeven.profiteerapp.utils.NumberFormatter
 import com.axeven.profiteerapp.utils.TagFormatter
+import com.axeven.profiteerapp.ui.components.MonthYearPickerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,10 +38,26 @@ fun ReportScreenSimple(
     viewModel: ReportViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    
+    var showDateFilterDialog by remember { mutableStateOf(false) }
+
     // Load portfolio data when screen loads
     LaunchedEffect(Unit) {
         viewModel.loadPortfolioData()
+    }
+
+    // Show date filter picker dialog
+    if (showDateFilterDialog) {
+        MonthYearPickerDialog(
+            currentPeriod = uiState.selectedDateFilter,
+            availableMonths = uiState.availableMonths,
+            availableYears = uiState.availableYears,
+            onPeriodSelected = { period ->
+                viewModel.selectDateFilter(period)
+            },
+            onDismiss = {
+                showDateFilterDialog = false
+            }
+        )
     }
 
     Scaffold(
@@ -77,6 +95,21 @@ fun ReportScreenSimple(
                     .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                // Date filter chip
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 4.dp),
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        ReportFilterChip(
+                            currentPeriod = uiState.selectedDateFilter,
+                            onClick = { showDateFilterDialog = true }
+                        )
+                    }
+                }
+
                 item {
                     SimplePortfolioAssetCard(
                         selectedDataType = uiState.selectedChartDataType,
