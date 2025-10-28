@@ -1100,9 +1100,13 @@ class ReportViewModelDateFilterTest {
         viewModel.selectDateFilter(DateFilterPeriod.Year(2025))
         testDispatcher.scheduler.advanceUntilIdle()
 
-        // All data should be empty
-        assertTrue(viewModel.uiState.value.portfolioComposition.isEmpty())
-        assertTrue(viewModel.uiState.value.physicalWalletBalances.isEmpty())
+        // CUMULATIVE filtering: Year(2025) shows balances as of Dec 31, 2025
+        // The 2024 transaction should be included (all transactions up to Dec 31, 2025)
+        assertEquals(1, viewModel.uiState.value.portfolioComposition.size)
+        assertEquals(100.0, viewModel.uiState.value.portfolioComposition[PhysicalForm.FIAT_CURRENCY]!!, 0.01)
+        assertEquals(1, viewModel.uiState.value.physicalWalletBalances.size)
+        assertEquals(100.0, viewModel.uiState.value.physicalWalletBalances["Cash"]!!, 0.01)
+        // Tag-based charts use simple filtering, so they should be empty (no transactions IN 2025)
         assertTrue(viewModel.uiState.value.expenseTransactionsByTag.isEmpty())
         assertTrue(viewModel.uiState.value.incomeTransactionsByTag.isEmpty())
     }

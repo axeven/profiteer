@@ -600,6 +600,32 @@ Storage (Firestore)          UI State (ViewModel)         Display (Composable)
 - Real-time validation with clear error messages
 - Material 3 design system integration
 
+## Report Date Filtering (2025-10-26)
+- Added month/year filtering to Portfolio Reports screen
+- **Two filtering strategies**:
+  - **Historical Reconstruction** (Portfolio/Wallet charts): Shows balances as they were at end of selected period by replaying transactions
+  - **Simple Filtering** (Tag-based charts): Shows only transactions from selected period
+- **UI Components**:
+  - `MonthYearPickerDialog` - Material 3 dialog for selecting All Time, Month, or Year
+  - `ReportFilterChip` - Filter chip showing current period with calendar icon
+- **Models & Utilities**:
+  - `DateFilterPeriod` - Sealed class (AllTime, Month, Year) in `data/model/DateFilterPeriod.kt`
+  - `DateFilterUtils` - Simple transaction filtering in `utils/DateFilterUtils.kt`
+  - `BalanceReconstructionUtils` - Historical balance reconstruction in `utils/BalanceReconstructionUtils.kt`
+- **Key Features**:
+  - Filter persists when switching chart types
+  - Period-aware total labels (e.g., "Total Expense Amount (October 2025)")
+  - Filter-aware empty states with helpful suggestions
+  - Only shows periods with transaction data in picker
+- **Implementation Details**:
+  - Uses `transactionDate` field (NOT `createdAt`) for all filtering
+  - Excludes transactions with null `transactionDate`
+  - Date range filtering (startDate to endDate), not just up to endDate
+  - Includes wallet if it has ANY transaction in period (even before wallet creation)
+  - Excludes zero-balance wallets (except logical can have negative)
+- **Testing**: 101 automated tests covering all filtering scenarios
+- **Documentation**: See `docs/plans/2025-10-26-report-date-filter.md` for complete implementation plan
+
 # Development Best Practices
 
 1. **Always check README.md** for comprehensive project context

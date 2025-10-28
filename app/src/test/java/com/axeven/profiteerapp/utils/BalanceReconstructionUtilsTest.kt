@@ -86,7 +86,7 @@ class BalanceReconstructionUtilsTest {
         val transactions = emptyList<Transaction>()
 
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, null
+            wallets, transactions, null
         )
 
         assertEquals(2, result.size)
@@ -98,6 +98,8 @@ class BalanceReconstructionUtilsTest {
     fun `reconstructWalletBalancesAtDate filters transactions by endDate`() {
         val wallets = listOf(createPhysicalWallet("w1", "Wallet 1", 1000.0))
         val transactions = listOf(
+            createTransaction("t0", TransactionType.INCOME, 50.0,
+                createDate(2025, 10, 11), affectedWalletIds = listOf("w1")),
             createTransaction("t1", TransactionType.INCOME, 100.0,
                 createDate(2025, 10, 15), affectedWalletIds = listOf("w1")),
             createTransaction("t2", TransactionType.INCOME, 200.0,
@@ -106,11 +108,11 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
-        // Should only include t1 (100.0), not t2
-        assertEquals(100.0, result["w1"]!!, 0.01)
+        // Should only include t0 (50) and t1 (100.0), not t2
+        assertEquals(150.0, result["w1"]!!, 0.01)
     }
 
     @Test
@@ -125,7 +127,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // Should only include t1 (100.0), not t2 (null date)
@@ -146,7 +148,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // Should be: 0 + 100 (t2) - 30 (t3) - 50 (t1) = 20
@@ -163,7 +165,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         assertEquals(100.0, result["w1"]!!, 0.01)
@@ -181,7 +183,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // 0 + 100 - 30 = 70
@@ -205,7 +207,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // w1: 0 + 100 - 50 = 50
@@ -227,7 +229,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // Both wallets should receive +100
@@ -250,7 +252,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // Both wallets: 0 + 100 - 30 = 70
@@ -265,7 +267,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // No transactions, so wallet should not appear (zero balance)
@@ -287,7 +289,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // w1: 0 + 100 - 100 = 0 (excluded)
@@ -308,7 +310,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // Transaction is after endDate, so no wallets should have balance
@@ -329,7 +331,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // Wallet should be included because transaction exists before endDate
@@ -350,7 +352,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // Transaction is after endDate, wallet should not be included
@@ -373,7 +375,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // 0 + 100 - 30 + 50 - 20 = 100
@@ -394,7 +396,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // 0 + 100 - 100 + 50 = 50 (should be included)
@@ -416,7 +418,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // 0 + 100 + 50 - 30 = 120
@@ -433,7 +435,7 @@ class BalanceReconstructionUtilsTest {
         )
 
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         assertEquals(100.0, result["w1"]!!, 0.01)
@@ -449,7 +451,7 @@ class BalanceReconstructionUtilsTest {
         )
 
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // Transaction is after endDate
@@ -476,7 +478,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructPortfolioComposition(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // FIAT_CURRENCY: w1(100) + w3(30) = 130
@@ -500,7 +502,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructPortfolioComposition(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // Only physical wallet should be included
@@ -526,7 +528,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructPortfolioComposition(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // All STOCKS: 100 + 50 + 30 = 180
@@ -551,11 +553,101 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructPortfolioComposition(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // w1: 0 (excluded), w2: -50 (excluded), w3: 0 (excluded)
         assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun `reconstructPortfolioComposition All Time equals latest month with cumulative filtering`() {
+        // Multiple wallets with different asset types
+        // Set wallet balances to match final state after all transactions (for All Time = current balances)
+        val wallets = listOf(
+            createPhysicalWallet("w1", "Cash", 50.0, PhysicalForm.FIAT_CURRENCY),
+            createPhysicalWallet("w2", "Bitcoin", 65.0, PhysicalForm.CRYPTOCURRENCY),
+            createPhysicalWallet("w3", "Gold", 60.0, PhysicalForm.PRECIOUS_METALS),
+            createPhysicalWallet("w4", "Stocks", 45.0, PhysicalForm.STOCKS),
+            createPhysicalWallet("w5", "Savings", 10.0, PhysicalForm.FIAT_CURRENCY),
+            createPhysicalWallet("w6", "Ethereum", 20.0, PhysicalForm.CRYPTOCURRENCY)
+        )
+
+        // Transactions spanning multiple months (Sep, Oct, Nov 2025)
+        // Including all transaction types: INCOME, EXPENSE, and multiple TRANSFERS across asset types
+        val transactions = listOf(
+            // September transactions
+            createTransaction("t1", TransactionType.INCOME, 100.0,
+                createDate(2025, 9, 5), affectedWalletIds = listOf("w1")),
+            createTransaction("t2", TransactionType.INCOME, 50.0,
+                createDate(2025, 9, 10), affectedWalletIds = listOf("w2")),
+
+            // October transactions
+            createTransaction("t3", TransactionType.INCOME, 75.0,
+                createDate(2025, 10, 15), affectedWalletIds = listOf("w3")),
+            createTransaction("t4", TransactionType.EXPENSE, 25.0,
+                createDate(2025, 10, 20), affectedWalletIds = listOf("w1")),
+            // Transfer within same asset type (FIAT_CURRENCY)
+            createTransaction("t5", TransactionType.TRANSFER, 10.0,
+                createDate(2025, 10, 25), sourceWalletId = "w1", destinationWalletId = "w5"),
+            // Transfer from FIAT_CURRENCY to STOCKS
+            createTransaction("t6", TransactionType.TRANSFER, 15.0,
+                createDate(2025, 10, 28), sourceWalletId = "w1", destinationWalletId = "w4"),
+
+            // November transactions (latest)
+            createTransaction("t7", TransactionType.INCOME, 30.0,
+                createDate(2025, 11, 5), affectedWalletIds = listOf("w4")),
+            createTransaction("t8", TransactionType.INCOME, 20.0,
+                createDate(2025, 11, 10), affectedWalletIds = listOf("w2")),
+            // Transfer from PRECIOUS_METALS to CRYPTOCURRENCY
+            createTransaction("t9", TransactionType.TRANSFER, 15.0,
+                createDate(2025, 11, 15), sourceWalletId = "w3", destinationWalletId = "w6"),
+            // Transfer within same asset type (CRYPTOCURRENCY)
+            createTransaction("t10", TransactionType.TRANSFER, 5.0,
+                createDate(2025, 11, 20), sourceWalletId = "w2", destinationWalletId = "w6")
+        )
+
+        // Calculate All Time composition (null endDate)
+        val allTimeComposition = BalanceReconstructionUtils.reconstructPortfolioComposition(
+            wallets, transactions, null
+        )
+
+        // Calculate composition for November 2025 (latest month with transactions)
+        val latestMonthEndDate = createDate(2025, 11, 30, 23, 59, 59)
+        val latestMonthComposition = BalanceReconstructionUtils.reconstructPortfolioComposition(
+            wallets, transactions, latestMonthEndDate
+        )
+
+        // With cumulative filtering, All Time should equal the latest month
+        // Both should show cumulative balances from all transactions
+
+        // Expected balances after all transactions:
+        // w1 (FIAT_CURRENCY): +100 (income) -25 (expense) -10 (transfer to w5) -15 (transfer to w4) = 50
+        // w5 (FIAT_CURRENCY): +10 (transfer from w1) = 10
+        // Total FIAT_CURRENCY: 50 + 10 = 60
+        //
+        // w2 (CRYPTOCURRENCY): +50 (income) +20 (income) -5 (transfer to w6) = 65
+        // w6 (CRYPTOCURRENCY): +15 (transfer from w3) +5 (transfer from w2) = 20
+        // Total CRYPTOCURRENCY: 65 + 20 = 85
+        //
+        // w3 (PRECIOUS_METALS): +75 (income) -15 (transfer to w6) = 60
+        //
+        // w4 (STOCKS): +30 (income) +15 (transfer from w1) = 45
+
+        assertEquals(allTimeComposition.size, latestMonthComposition.size)
+        assertEquals(60.0, allTimeComposition[PhysicalForm.FIAT_CURRENCY]!!, 0.01)
+        assertEquals(60.0, latestMonthComposition[PhysicalForm.FIAT_CURRENCY]!!, 0.01)
+        assertEquals(85.0, allTimeComposition[PhysicalForm.CRYPTOCURRENCY]!!, 0.01)
+        assertEquals(85.0, latestMonthComposition[PhysicalForm.CRYPTOCURRENCY]!!, 0.01)
+        assertEquals(60.0, allTimeComposition[PhysicalForm.PRECIOUS_METALS]!!, 0.01)
+        assertEquals(60.0, latestMonthComposition[PhysicalForm.PRECIOUS_METALS]!!, 0.01)
+        assertEquals(45.0, allTimeComposition[PhysicalForm.STOCKS]!!, 0.01)
+        assertEquals(45.0, latestMonthComposition[PhysicalForm.STOCKS]!!, 0.01)
+
+        // Verify all asset types match between All Time and latest month
+        allTimeComposition.forEach { (assetType, balance) ->
+            assertEquals(balance, latestMonthComposition[assetType]!!, 0.01)
+        }
     }
 
     // ========== reconstructPhysicalWalletBalances tests ==========
@@ -575,7 +667,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructPhysicalWalletBalances(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         assertEquals(1, result.size)
@@ -597,7 +689,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructPhysicalWalletBalances(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         assertEquals(100.0, result["Cash Wallet"]!!, 0.01)
@@ -619,7 +711,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructPhysicalWalletBalances(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // w1: 0 (excluded), w2: 0 (excluded)
@@ -643,7 +735,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructLogicalWalletBalances(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         assertEquals(1, result.size)
@@ -667,7 +759,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructLogicalWalletBalances(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // w1: 0 + 100 - 150 = -50 (included)
@@ -691,7 +783,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructLogicalWalletBalances(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // w1: 0 (excluded), w2: 0 (excluded)
@@ -712,7 +804,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructLogicalWalletBalances(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // 0 + 50 - 100 = -50 (overspending, should be included)
@@ -726,7 +818,7 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         assertTrue(result.isEmpty())
@@ -742,10 +834,207 @@ class BalanceReconstructionUtilsTest {
 
         val endDate = createDate(2025, 10, 31, 23, 59, 59)
         val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
-            wallets, transactions, null, endDate
+            wallets, transactions, endDate
         )
 
         // Transactions reference wallets that don't exist
         assertEquals(100.0, result["w1"]!!, 0.01)
+    }
+
+    // ========== DEBUGGING TESTS ==========
+
+    /**
+     * Helper function to print detailed comparison between two portfolio compositions.
+     * Use this to debug mismatches between All Time and filtered results.
+     */
+    private fun printDetailedComparison(
+        wallets: List<Wallet>,
+        transactions: List<Transaction>,
+        allTimeResult: Map<PhysicalForm, Double>,
+        filteredResult: Map<PhysicalForm, Double>,
+        endDate: Date?
+    ) {
+        println("\n========== DETAILED COMPARISON ==========")
+        println("End Date: $endDate")
+        println("\n--- Wallets ---")
+        wallets.filter { it.isPhysical }.forEach { wallet ->
+            println("${wallet.id}: ${wallet.name} (${wallet.physicalForm}) - Balance: ${wallet.balance}")
+        }
+
+        println("\n--- Transactions (sorted by date) ---")
+        transactions.sortedBy { it.transactionDate }.forEach { tx ->
+            println("${tx.id}: ${tx.type} ${tx.amount} on ${tx.transactionDate} - wallets: ${tx.affectedWalletIds} src:${tx.sourceWalletId} dst:${tx.destinationWalletId}")
+        }
+
+        println("\n--- All Time Result ---")
+        allTimeResult.forEach { (form, balance) ->
+            println("$form: $balance")
+        }
+
+        println("\n--- Filtered Result ---")
+        filteredResult.forEach { (form, balance) ->
+            println("$form: $balance")
+        }
+
+        println("\n--- Differences ---")
+        val allForms = (allTimeResult.keys + filteredResult.keys).toSet()
+        allForms.forEach { form ->
+            val allTime = allTimeResult[form] ?: 0.0
+            val filtered = filteredResult[form] ?: 0.0
+            val diff = allTime - filtered
+            if (Math.abs(diff) > 0.01) {
+                println("$form: All Time=$allTime, Filtered=$filtered, DIFF=$diff")
+            }
+        }
+        println("=========================================\n")
+    }
+
+    @Test
+    fun `DEBUG - reconstructPortfolioComposition with null transactionDate edge case`() {
+        // This test exposes a common edge case: transactions with null dates
+        // All Time includes current wallet balance, but reconstruction excludes null date transactions
+
+        val wallets = listOf(
+            createPhysicalWallet("w1", "Cash", 150.0, PhysicalForm.FIAT_CURRENCY),  // Current balance
+            createPhysicalWallet("w2", "Bitcoin", 50.0, PhysicalForm.CRYPTOCURRENCY)
+        )
+
+        val transactions = listOf(
+            // Valid dated transaction
+            createTransaction("t1", TransactionType.INCOME, 100.0,
+                createDate(2025, 10, 15), affectedWalletIds = listOf("w1")),
+
+            // Transaction with NULL date - excluded from reconstruction but affects current balance!
+            createTransaction("t2", TransactionType.INCOME, 50.0,
+                null, affectedWalletIds = listOf("w1")),
+
+            createTransaction("t3", TransactionType.INCOME, 50.0,
+                createDate(2025, 10, 20), affectedWalletIds = listOf("w2"))
+        )
+
+        val allTimeComposition = BalanceReconstructionUtils.reconstructPortfolioComposition(
+            wallets, transactions, null
+        )
+
+        val latestMonthEndDate = createDate(2025, 10, 31, 23, 59, 59)
+        val latestMonthComposition = BalanceReconstructionUtils.reconstructPortfolioComposition(
+            wallets, transactions, latestMonthEndDate
+        )
+
+        // Print detailed comparison
+        printDetailedComparison(wallets, transactions, allTimeComposition, latestMonthComposition, latestMonthEndDate)
+
+        // All Time uses current balances: w1=150, w2=50
+        // Filtered reconstruction: w1=100 (only t1), w2=50
+        // These SHOULD NOT match because of null date transaction!
+
+        assertEquals(150.0, allTimeComposition[PhysicalForm.FIAT_CURRENCY]!!, 0.01)  // Current balance
+        assertEquals(100.0, latestMonthComposition[PhysicalForm.FIAT_CURRENCY]!!, 0.01)  // Reconstructed (excludes null)
+
+        // This test demonstrates the mismatch case!
+        assertNotEquals(allTimeComposition[PhysicalForm.FIAT_CURRENCY],
+                       latestMonthComposition[PhysicalForm.FIAT_CURRENCY])
+    }
+
+    @Test
+    fun `DEBUG - reconstructPortfolioComposition with transactions after latest month`() {
+        // Edge case: transactions that occur AFTER the latest transaction in the filtered period
+
+        val wallets = listOf(
+            createPhysicalWallet("w1", "Cash", 130.0, PhysicalForm.FIAT_CURRENCY),  // Final balance after all
+            createPhysicalWallet("w2", "Bitcoin", 70.0, PhysicalForm.CRYPTOCURRENCY)
+        )
+
+        val transactions = listOf(
+            createTransaction("t1", TransactionType.INCOME, 100.0,
+                createDate(2025, 10, 15), affectedWalletIds = listOf("w1")),
+            createTransaction("t2", TransactionType.INCOME, 50.0,
+                createDate(2025, 10, 20), affectedWalletIds = listOf("w2")),
+
+            // Transactions in November (after October)
+            createTransaction("t3", TransactionType.INCOME, 30.0,
+                createDate(2025, 11, 5), affectedWalletIds = listOf("w1")),
+            createTransaction("t4", TransactionType.INCOME, 20.0,
+                createDate(2025, 11, 10), affectedWalletIds = listOf("w2"))
+        )
+
+        val allTimeComposition = BalanceReconstructionUtils.reconstructPortfolioComposition(
+            wallets, transactions, null
+        )
+
+        // Filter by October (should exclude November transactions)
+        val octoberEndDate = createDate(2025, 10, 31, 23, 59, 59)
+        val octoberComposition = BalanceReconstructionUtils.reconstructPortfolioComposition(
+            wallets, transactions, octoberEndDate
+        )
+
+        printDetailedComparison(wallets, transactions, allTimeComposition, octoberComposition, octoberEndDate)
+
+        // All Time: w1=130, w2=70 (includes November)
+        // October: w1=100, w2=50 (excludes November)
+        assertEquals(130.0, allTimeComposition[PhysicalForm.FIAT_CURRENCY]!!, 0.01)
+        assertEquals(100.0, octoberComposition[PhysicalForm.FIAT_CURRENCY]!!, 0.01)
+
+        // They should NOT match - this is expected behavior
+        assertNotEquals(allTimeComposition[PhysicalForm.FIAT_CURRENCY],
+                       octoberComposition[PhysicalForm.FIAT_CURRENCY])
+    }
+
+    @Test
+    fun `DEBUG - reconstructPortfolioComposition detailed wallet reconstruction`() {
+        // This test helps debug by showing individual wallet balances
+
+        val wallets = listOf(
+            createPhysicalWallet("w1", "Cash", 65.0, PhysicalForm.FIAT_CURRENCY),
+            createPhysicalWallet("w2", "Savings", 10.0, PhysicalForm.FIAT_CURRENCY),
+            createPhysicalWallet("w3", "Bitcoin", 70.0, PhysicalForm.CRYPTOCURRENCY)
+        )
+
+        val transactions = listOf(
+            createTransaction("t1", TransactionType.INCOME, 100.0,
+                createDate(2025, 10, 5), affectedWalletIds = listOf("w1")),
+            createTransaction("t2", TransactionType.EXPENSE, 25.0,
+                createDate(2025, 10, 15), affectedWalletIds = listOf("w1")),
+            createTransaction("t3", TransactionType.TRANSFER, 10.0,
+                createDate(2025, 10, 20), sourceWalletId = "w1", destinationWalletId = "w2"),
+            createTransaction("t4", TransactionType.INCOME, 70.0,
+                createDate(2025, 10, 25), affectedWalletIds = listOf("w3"))
+        )
+
+        println("\n========== WALLET RECONSTRUCTION DEBUG ==========")
+
+        // Reconstruct individual wallet balances
+        val endDate = createDate(2025, 10, 31, 23, 59, 59)
+        val walletBalances = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
+            wallets, transactions, endDate
+        )
+
+        println("Individual Wallet Balances:")
+        walletBalances.forEach { (walletId, balance) ->
+            val wallet = wallets.find { it.id == walletId }
+            println("  $walletId (${wallet?.name}, ${wallet?.physicalForm}): $balance (current: ${wallet?.balance})")
+        }
+
+        // Reconstruct portfolio composition
+        val portfolioComposition = BalanceReconstructionUtils.reconstructPortfolioComposition(
+            wallets, transactions, endDate
+        )
+
+        println("\nPortfolio Composition:")
+        portfolioComposition.forEach { (form, total) ->
+            println("  $form: $total")
+        }
+
+        // Calculate expected from wallet balances
+        val expectedFiat = (walletBalances["w1"] ?: 0.0) + (walletBalances["w2"] ?: 0.0)
+        val expectedCrypto = walletBalances["w3"] ?: 0.0
+
+        println("\nExpected from wallet balances:")
+        println("  FIAT: $expectedFiat")
+        println("  CRYPTO: $expectedCrypto")
+        println("=================================================\n")
+
+        assertEquals(75.0, portfolioComposition[PhysicalForm.FIAT_CURRENCY]!!, 0.01)
+        assertEquals(70.0, portfolioComposition[PhysicalForm.CRYPTOCURRENCY]!!, 0.01)
     }
 }

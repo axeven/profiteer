@@ -123,7 +123,8 @@ fun ReportScreenSimple(
                         totalLogicalWalletBalance = uiState.totalLogicalWalletValue,
                         totalExpensesByTag = uiState.totalExpensesByTag,
                         totalIncomeByTag = uiState.totalIncomeByTag,
-                        defaultCurrency = uiState.defaultCurrency
+                        defaultCurrency = uiState.defaultCurrency,
+                        selectedDateFilter = uiState.selectedDateFilter
                     )
                 }
                 
@@ -287,7 +288,8 @@ fun SimplePortfolioAssetCard(
     totalLogicalWalletBalance: Double,
     totalExpensesByTag: Double,
     totalIncomeByTag: Double,
-    defaultCurrency: String
+    defaultCurrency: String,
+    selectedDateFilter: DateFilterPeriod
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -315,19 +317,26 @@ fun SimplePortfolioAssetCard(
                 ChartDataType.EXPENSE_TRANSACTION_BY_TAG -> expenseTransactionsByTagData.isNotEmpty() && totalExpensesByTag > 0
                 ChartDataType.INCOME_TRANSACTION_BY_TAG -> incomeTransactionsByTagData.isNotEmpty() && totalIncomeByTag > 0
             }
-            
+
+            // Build period suffix for labels
+            val periodSuffix = if (selectedDateFilter != DateFilterPeriod.AllTime) {
+                " (${selectedDateFilter.getDisplayText()})"
+            } else {
+                ""
+            }
+
             Text(
                 text = when (selectedDataType) {
-                    ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> 
-                        "Total Portfolio Value: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
-                    ChartDataType.PHYSICAL_WALLET_BALANCE -> 
-                        "Total Physical Wallet Value: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
-                    ChartDataType.LOGICAL_WALLET_BALANCE -> 
-                        "Total Logical Wallet Value: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
-                    ChartDataType.EXPENSE_TRANSACTION_BY_TAG -> 
-                        "Total Expense Amount by Tag: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
-                    ChartDataType.INCOME_TRANSACTION_BY_TAG -> 
-                        "Total Income Amount by Tag: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
+                    ChartDataType.PORTFOLIO_ASSET_COMPOSITION ->
+                        "Total Portfolio Value$periodSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
+                    ChartDataType.PHYSICAL_WALLET_BALANCE ->
+                        "Total Physical Wallet Value$periodSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
+                    ChartDataType.LOGICAL_WALLET_BALANCE ->
+                        "Total Logical Wallet Value$periodSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
+                    ChartDataType.EXPENSE_TRANSACTION_BY_TAG ->
+                        "Total Expense Amount$periodSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
+                    ChartDataType.INCOME_TRANSACTION_BY_TAG ->
+                        "Total Income Amount$periodSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -344,27 +353,51 @@ fun SimplePortfolioAssetCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        // Build filter-aware empty state messages
+                        val (primaryMessage, secondaryMessage) = when {
+                            selectedDateFilter != DateFilterPeriod.AllTime -> {
+                                // Filtered view - show period-specific message
+                                val periodText = selectedDateFilter.getDisplayText()
+                                val primary = when (selectedDataType) {
+                                    ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> "No portfolio data in $periodText"
+                                    ChartDataType.PHYSICAL_WALLET_BALANCE -> "No physical wallet data in $periodText"
+                                    ChartDataType.LOGICAL_WALLET_BALANCE -> "No logical wallet data in $periodText"
+                                    ChartDataType.EXPENSE_TRANSACTION_BY_TAG -> "No expense transactions in $periodText"
+                                    ChartDataType.INCOME_TRANSACTION_BY_TAG -> "No income transactions in $periodText"
+                                }
+                                val secondary = "Try selecting a different period or 'All Time'"
+                                Pair(primary, secondary)
+                            }
+                            else -> {
+                                // All Time view - show generic message
+                                val primary = when (selectedDataType) {
+                                    ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> "No portfolio data available"
+                                    ChartDataType.PHYSICAL_WALLET_BALANCE -> "No physical wallet data available"
+                                    ChartDataType.LOGICAL_WALLET_BALANCE -> "No logical wallet data available"
+                                    ChartDataType.EXPENSE_TRANSACTION_BY_TAG -> "No expense transaction data available"
+                                    ChartDataType.INCOME_TRANSACTION_BY_TAG -> "No income transaction data available"
+                                }
+                                val secondary = when (selectedDataType) {
+                                    ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> "Add some wallets to see your asset composition"
+                                    ChartDataType.PHYSICAL_WALLET_BALANCE -> "Add some physical wallets to see their balance composition"
+                                    ChartDataType.LOGICAL_WALLET_BALANCE -> "Add some logical wallets to see their balance composition"
+                                    ChartDataType.EXPENSE_TRANSACTION_BY_TAG -> "Add some expense transactions with tags to see spending breakdown by tag"
+                                    ChartDataType.INCOME_TRANSACTION_BY_TAG -> "Add some income transactions with tags to see income breakdown by tag"
+                                }
+                                Pair(primary, secondary)
+                            }
+                        }
+
                         Text(
-                            text = when (selectedDataType) {
-                                ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> "No portfolio data available"
-                                ChartDataType.PHYSICAL_WALLET_BALANCE -> "No physical wallet data available"
-                                ChartDataType.LOGICAL_WALLET_BALANCE -> "No logical wallet data available"
-                                ChartDataType.EXPENSE_TRANSACTION_BY_TAG -> "No expense transaction data available"
-                                ChartDataType.INCOME_TRANSACTION_BY_TAG -> "No income transaction data available"
-                            },
+                            text = primaryMessage,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = when (selectedDataType) {
-                                ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> "Add some wallets to see your asset composition"
-                                ChartDataType.PHYSICAL_WALLET_BALANCE -> "Add some physical wallets to see their balance composition"
-                                ChartDataType.LOGICAL_WALLET_BALANCE -> "Add some logical wallets to see their balance composition"
-                                ChartDataType.EXPENSE_TRANSACTION_BY_TAG -> "Add some expense transactions with tags to see spending breakdown by tag"
-                                ChartDataType.INCOME_TRANSACTION_BY_TAG -> "Add some income transactions with tags to see income breakdown by tag"
-                            },
+                            text = secondaryMessage,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )

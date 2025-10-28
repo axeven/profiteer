@@ -18,7 +18,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import java.util.Date
 import javax.inject.Inject
+import kotlin.math.abs
 
 enum class ChartDataType {
     PORTFOLIO_ASSET_COMPOSITION,
@@ -161,9 +163,9 @@ class ReportViewModel @Inject constructor(
         transactions: List<Transaction>,
         dateFilter: DateFilterPeriod
     ): Map<PhysicalForm, Double> {
-        // Use historical reconstruction to get balances for the period
-        val (startDate, endDate) = dateFilter.getDateRange()
-        return BalanceReconstructionUtils.reconstructPortfolioComposition(wallets, transactions, startDate, endDate)
+        // Use historical reconstruction to get balances for the period (cumulative up to endDate)
+        val (_, endDate) = dateFilter.getDateRange()
+        return BalanceReconstructionUtils.reconstructPortfolioComposition(wallets, transactions, endDate)
     }
     
     private fun calculatePhysicalWalletBalances(
@@ -171,9 +173,9 @@ class ReportViewModel @Inject constructor(
         transactions: List<Transaction>,
         dateFilter: DateFilterPeriod
     ): Map<String, Double> {
-        // Use historical reconstruction to get balances for the period
-        val (startDate, endDate) = dateFilter.getDateRange()
-        return BalanceReconstructionUtils.reconstructPhysicalWalletBalances(wallets, transactions, startDate, endDate)
+        // Use historical reconstruction to get balances for the period (cumulative up to endDate)
+        val (_, endDate) = dateFilter.getDateRange()
+        return BalanceReconstructionUtils.reconstructPhysicalWalletBalances(wallets, transactions, endDate)
     }
     
     private fun calculateLogicalWalletBalances(
@@ -181,9 +183,9 @@ class ReportViewModel @Inject constructor(
         transactions: List<Transaction>,
         dateFilter: DateFilterPeriod
     ): Map<String, Double> {
-        // Use historical reconstruction to get balances for the period
-        val (startDate, endDate) = dateFilter.getDateRange()
-        return BalanceReconstructionUtils.reconstructLogicalWalletBalances(wallets, transactions, startDate, endDate)
+        // Use historical reconstruction to get balances for the period (cumulative up to endDate)
+        val (_, endDate) = dateFilter.getDateRange()
+        return BalanceReconstructionUtils.reconstructLogicalWalletBalances(wallets, transactions, endDate)
     }
     
     private fun calculateExpenseTransactionsByTag(
