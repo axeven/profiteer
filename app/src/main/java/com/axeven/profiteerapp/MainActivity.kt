@@ -75,6 +75,21 @@ fun ProfiteerApp(
     var initialTransactionType by remember { mutableStateOf<TransactionType?>(null) }
     var homeRefreshTrigger by remember { mutableIntStateOf(0) }
 
+    /**
+     * Creates a standardized back navigation callback that pops the NavigationStack.
+     * Used for top-left back button in TopAppBar across all screens.
+     *
+     * This helper function eliminates code duplication by providing a consistent
+     * implementation of the onNavigateBack callback for all screens.
+     *
+     * @return A callback function that safely pops the navigation stack if possible
+     */
+    val createBackNavigationCallback: () -> Unit = {
+        if (navigationStack.canGoBack()) {
+            navigationStack.pop()
+        }
+    }
+
     // Monitor re-authentication requirement
     LaunchedEffect(requiresReauth) {
         if (requiresReauth && authState is AuthState.Authenticated) {
@@ -191,31 +206,27 @@ fun ProfiteerApp(
                 }
                 AppScreen.SETTINGS -> {
                     SettingsScreen(
-                        // BackHandler handles back navigation automatically
-                        onNavigateBack = { }
+                        onNavigateBack = createBackNavigationCallback
                     )
                 }
                 AppScreen.CREATE_TRANSACTION -> {
                     CreateTransactionScreen(
                         initialTransactionType = initialTransactionType,
                         preSelectedWalletId = selectedWalletId,
-                        // BackHandler handles back navigation automatically
-                        onNavigateBack = { }
+                        onNavigateBack = createBackNavigationCallback
                     )
                 }
                 AppScreen.EDIT_TRANSACTION -> {
                     selectedTransaction?.let { transaction ->
                         EditTransactionScreen(
                             transaction = transaction,
-                            // BackHandler handles back navigation automatically
-                            onNavigateBack = { }
+                            onNavigateBack = createBackNavigationCallback
                         )
                     }
                 }
                 AppScreen.WALLET_LIST -> {
                     WalletListScreen(
-                        // BackHandler handles back navigation automatically
-                        onNavigateBack = { },
+                        onNavigateBack = createBackNavigationCallback,
                         onNavigateToWalletDetail = { walletId ->
                             selectedWalletId = walletId
                             navigationStack.push(AppScreen.WALLET_DETAIL)
@@ -231,8 +242,7 @@ fun ProfiteerApp(
                     selectedWalletId?.let { walletId ->
                         WalletDetailScreen(
                             walletId = walletId,
-                            // BackHandler handles back navigation automatically
-                            onNavigateBack = { },
+                            onNavigateBack = createBackNavigationCallback,
                             onNavigateToCreateTransaction = { transactionType, preSelectedWalletId ->
                                 initialTransactionType = transactionType
                                 selectedWalletId = preSelectedWalletId
@@ -249,14 +259,12 @@ fun ProfiteerApp(
                 }
                 AppScreen.REPORTS -> {
                     ReportScreenSimple(
-                        // BackHandler handles back navigation automatically
-                        onNavigateBack = { }
+                        onNavigateBack = createBackNavigationCallback
                     )
                 }
                 AppScreen.TRANSACTION_LIST -> {
                     TransactionListScreen(
-                        // BackHandler handles back navigation automatically
-                        onNavigateBack = { },
+                        onNavigateBack = createBackNavigationCallback,
                         onEditTransaction = { transaction ->
                             selectedTransaction = transaction
                             navigationStack.push(AppScreen.EDIT_TRANSACTION)
@@ -282,8 +290,7 @@ fun ProfiteerApp(
                 }
                 AppScreen.DISCREPANCY_DEBUG -> {
                     DiscrepancyDebugScreen(
-                        // BackHandler handles back navigation automatically
-                        onNavigateBack = { },
+                        onNavigateBack = createBackNavigationCallback,
                         onNavigateToEdit = { transaction ->
                             selectedTransaction = transaction
                             navigationStack.push(AppScreen.EDIT_TRANSACTION)
