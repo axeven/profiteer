@@ -110,6 +110,39 @@ When navigating back, the following state variables are cleared:
 - `EDIT_TRANSACTION`: Clear `selectedTransaction`
 - `WALLET_DETAIL`: Clear `selectedWalletId`
 
+### UI Back Button Implementation
+
+**TopAppBar Back Arrow**: All screens with TopAppBar display a back arrow icon (←) that triggers navigation. This provides an intuitive UI alternative to the physical back button.
+
+**Implementation Pattern** (MainActivity.kt:78-91):
+```kotlin
+// Helper function to create consistent back navigation callbacks
+val createBackNavigationCallback: () -> Unit = {
+    if (navigationStack.canGoBack()) {
+        navigationStack.pop()
+    }
+}
+
+// Usage in screen cases
+AppScreen.SETTINGS -> {
+    SettingsScreen(
+        onNavigateBack = createBackNavigationCallback
+    )
+}
+```
+
+**Key Points**:
+- UI back button calls the same `navigationStack.pop()` as physical back button
+- Helper function eliminates code duplication across 8 screens
+- Safety check with `canGoBack()` prevents invalid pops
+- Screens receive callback via composition parameter
+- Maintains separation of concerns (MainActivity owns navigation)
+- Both UI and physical back buttons work consistently
+
+**Affected Screens**: Settings, CreateTransaction, EditTransaction, WalletDetail, WalletList, TransactionList, Reports, DiscrepancyDebug
+
+**Testing**: See `TopLeftBackButtonTest.kt` (10 tests) and `docs/plans/2025-10-28-manual-testing-guide.md`
+
 ### Navigation Logging
 
 All navigation events are logged with the `Navigation` tag for debugging:
@@ -134,17 +167,30 @@ Filter logcat: `adb logcat -s Navigation`
 
 ### Testing
 
-- **Unit Tests**: `NavigationStackTest.kt` (39 tests, 100% coverage)
+- **Unit Tests**:
+  - `NavigationStackTest.kt` (39 tests, 100% coverage)
+  - `TopLeftBackButtonTest.kt` (10 tests, UI back button behavior)
 - **Integration Tests**: `BackNavigationTest.kt` (11 tests)
 - **UI Tests**: `BackButtonUiTest.kt` (14 tests)
-- **Manual Tests**: See `docs/plans/2025-10-26-back-button-manual-testing-checklist.md`
+- **Manual Tests**:
+  - `docs/plans/2025-10-26-back-button-manual-testing-checklist.md` (Physical back button)
+  - `docs/plans/2025-10-28-manual-testing-guide.md` (UI back button)
 
 ### Implementation Details
 
-- **Phase 1-5**: Full implementation documented in `docs/plans/2025-10-25-back-button.md`
-- **Date Implemented**: 2025-10-25 to 2025-10-26
-- **State Variables Removed**: 1 (`previousScreen` manual tracking)
-- **Conditional Logic Reduced**: 80% reduction in back navigation logic
+- **NavigationStack Implementation**:
+  - Full implementation documented in `docs/plans/2025-10-25-back-button.md`
+  - Date: 2025-10-25 to 2025-10-26
+  - State Variables Removed: 1 (`previousScreen` manual tracking)
+  - Conditional Logic Reduced: 80% reduction in back navigation logic
+
+- **UI Back Button Fix**:
+  - Full implementation documented in `docs/plans/2025-10-28-fix-back-button.md`
+  - Date: 2025-10-28
+  - Issue: Empty `onNavigateBack` callbacks caused non-functional UI back buttons
+  - Solution: Added `createBackNavigationCallback` helper function
+  - Screens Fixed: 8 (Settings, CreateTransaction, EditTransaction, WalletDetail, WalletList, TransactionList, Reports, DiscrepancyDebug)
+  - Code Duplication Reduced: 8 inline lambdas → 1 reusable function
 
 ## Key Development Notes
 - **Target SDK**: 36, **Min SDK**: 24, **Java**: 11
