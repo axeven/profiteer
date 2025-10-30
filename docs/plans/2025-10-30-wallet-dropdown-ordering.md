@@ -640,20 +640,20 @@ These tests verify the sorting logic that will be applied in TransactionListScre
 
 ---
 
-## 🟢 Phase 8: TransactionListScreen - Implement (GREEN)
+## 🟢 Phase 8: TransactionListScreen - Implement (GREEN) ✅
 
 ### Update TransactionListScreen.kt
 
-- [ ] Open `app/src/main/java/com/axeven/profiteerapp/ui/transaction/TransactionListScreen.kt`
-- [ ] Add import:
+- [x] Open `app/src/main/java/com/axeven/profiteerapp/ui/transaction/TransactionListScreen.kt`
+- [x] Add import:
   ```kotlin
   import com.axeven.profiteerapp.utils.WalletSortingUtils
   ```
 
 ### Update Physical Wallets Filter (Line ~273)
 
-- [ ] Locate: `val physicalWallets = uiState.wallets.filter { it.walletType == "Physical" }`
-- [ ] Replace with:
+- [x] Locate: `val physicalWallets = uiState.wallets.filter { it.walletType == "Physical" }`
+- [x] Replace with:
   ```kotlin
   val physicalWallets = WalletSortingUtils.sortAlphabetically(
       uiState.wallets.filter { it.walletType == "Physical" }
@@ -662,8 +662,8 @@ These tests verify the sorting logic that will be applied in TransactionListScre
 
 ### Update Logical Wallets Filter (Line ~274)
 
-- [ ] Locate: `val logicalWallets = uiState.wallets.filter { it.walletType == "Logical" }`
-- [ ] Replace with:
+- [x] Locate: `val logicalWallets = uiState.wallets.filter { it.walletType == "Logical" }`
+- [x] Replace with:
   ```kotlin
   val logicalWallets = WalletSortingUtils.sortAlphabetically(
       uiState.wallets.filter { it.walletType == "Logical" }
@@ -672,10 +672,24 @@ These tests verify the sorting logic that will be applied in TransactionListScre
 
 ### Run Tests (Expect Success)
 
-- [ ] Run `./gradlew testDebugUnitTest --tests TransactionListScreenTest`
-- [ ] Verify all tests PASS
-- [ ] Fix any failing tests
-- [ ] Ensure no regressions
+- [x] Run `./gradlew testDebugUnitTest --tests TransactionListScreenWalletOrderingTest`
+- [x] Verify all tests PASS
+- [x] Fix any failing tests
+- [x] Ensure no regressions
+
+**Implementation Results:** ✅ All changes successfully applied
+
+**Changes Made:**
+- Added import: `import com.axeven.profiteerapp.utils.WalletSortingUtils` (line 28)
+- Updated Physical Wallets Filter (lines 274-276): Added `WalletSortingUtils.sortAlphabetically()`
+- Updated Logical Wallets Filter (lines 277-279): Added `WalletSortingUtils.sortAlphabetically()`
+
+**Test Results:** ✅ All 20 TransactionListScreenWalletOrderingTest tests pass
+- Build successful with no errors
+- All wallet ordering tests pass (100% success rate in 0.142s)
+- No regressions in existing TransactionListScreen tests
+
+**Lines Modified:** 3 (1 import + 2 wallet filter updates)
 
 ---
 

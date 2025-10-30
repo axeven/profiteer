@@ -25,6 +25,7 @@ import com.axeven.profiteerapp.data.model.Transaction
 import com.axeven.profiteerapp.data.model.Wallet
 import com.axeven.profiteerapp.ui.home.TransactionItem
 import com.axeven.profiteerapp.utils.TagFormatter
+import com.axeven.profiteerapp.utils.WalletSortingUtils
 import com.axeven.profiteerapp.viewmodel.TransactionListViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -270,8 +271,12 @@ private fun FilterSection(
             
             // Wallet Filters
             WalletFilters(
-                physicalWallets = uiState.wallets.filter { it.walletType == "Physical" },
-                logicalWallets = uiState.wallets.filter { it.walletType == "Logical" },
+                physicalWallets = WalletSortingUtils.sortAlphabetically(
+                    uiState.wallets.filter { it.walletType == "Physical" }
+                ),
+                logicalWallets = WalletSortingUtils.sortAlphabetically(
+                    uiState.wallets.filter { it.walletType == "Logical" }
+                ),
                 selectedPhysicalWallets = uiState.selectedPhysicalWallets,
                 selectedLogicalWallets = uiState.selectedLogicalWallets,
                 onPhysicalWalletToggle = onPhysicalWalletToggle,
