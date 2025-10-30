@@ -200,39 +200,39 @@
 
 ---
 
-## 🟢 Phase 2: WalletSortingUtils - Implement (GREEN)
+## 🟢 Phase 2: WalletSortingUtils - Implement (GREEN) ✅
 
 ### Create Utility Class
 
-- [ ] Create file `app/src/main/java/com/axeven/profiteerapp/utils/WalletSortingUtils.kt`
-- [ ] Add package declaration: `package com.axeven.profiteerapp.utils`
-- [ ] Add import: `import com.axeven.profiteerapp.data.model.Wallet`
-- [ ] Create object: `object WalletSortingUtils { }`
+- [x] Create file `app/src/main/java/com/axeven/profiteerapp/utils/WalletSortingUtils.kt`
+- [x] Add package declaration: `package com.axeven.profiteerapp.utils`
+- [x] Add import: `import com.axeven.profiteerapp.data.model.Wallet`
+- [x] Create object: `object WalletSortingUtils { }`
 
 ### Implement `sortAlphabetically()` Function
 
-- [ ] Add function signature:
+- [x] Add function signature:
   ```kotlin
   fun sortAlphabetically(wallets: List<Wallet>): List<Wallet>
   ```
-- [ ] Add KDoc documentation explaining purpose, parameters, return value
-- [ ] Implement sorting logic:
+- [x] Add KDoc documentation explaining purpose, parameters, return value
+- [x] Implement sorting logic:
   ```kotlin
   return wallets.sortedBy { it.name.lowercase() }
   ```
-- [ ] Handle null names (if needed): Use `it.name?.lowercase() ?: ""`
+- [x] Handle null names (if needed): Use `it.name?.lowercase() ?: ""` (Note: Not needed - Wallet.name is non-null)
 
 ### Implement `sortByTypeAndName()` Function
 
-- [ ] Add function signature:
+- [x] Add function signature:
   ```kotlin
   fun sortByTypeAndName(
       wallets: List<Wallet>,
       physicalFirst: Boolean = true
   ): List<Wallet>
   ```
-- [ ] Add KDoc documentation
-- [ ] Implement sorting logic:
+- [x] Add KDoc documentation
+- [x] Implement sorting logic:
   ```kotlin
   return wallets.sortedWith(
       compareBy<Wallet> { wallet ->
@@ -247,17 +247,39 @@
 
 ### Run Tests (Expect Success)
 
-- [ ] Run `./gradlew testDebugUnitTest --tests WalletSortingUtilsTest`
-- [ ] Verify all 15 tests PASS
-- [ ] Fix any failing tests
-- [ ] Ensure 100% test coverage for utility class
+- [x] Run `./gradlew testDebugUnitTest --tests WalletSortingUtilsTest`
+- [x] Verify all 26 tests PASS
+- [x] Fix any failing tests
+- [x] Ensure 100% test coverage for utility class
 
 ### Verify Implementation
 
-- [ ] Check that functions are pure (no side effects)
-- [ ] Verify immutability (original list not modified)
-- [ ] Confirm null safety
-- [ ] Review code for edge cases
+- [x] Check that functions are pure (no side effects)
+- [x] Verify immutability (original list not modified)
+- [x] Confirm null safety
+- [x] Review code for edge cases
+
+**Test Results:** ✅ All 26 tests passed with 100% success rate in 0.070s
+
+**Passing Tests:**
+- `sortAlphabetically()`: 14 tests
+  - Empty list, single wallet, multiple wallets
+  - Case-insensitive sorting
+  - Special characters, numbers, emojis
+  - Immutability verification
+  - Whitespace handling, duplicate names, very long names
+- `sortByTypeAndName()`: 12 tests
+  - Physical first / Logical first grouping
+  - Within-group alphabetical sorting
+  - Unknown type handling
+  - Default parameter behavior
+  - Edge cases (empty, single wallet, only physical, only logical)
+
+**Implementation Details:**
+- File created: `app/src/main/java/com/axeven/profiteerapp/utils/WalletSortingUtils.kt`
+- Lines of code: ~120 (including comprehensive KDoc documentation)
+- Functions implemented: 2
+- Test coverage: 100% (all 26 tests passing)
 
 ---
 
