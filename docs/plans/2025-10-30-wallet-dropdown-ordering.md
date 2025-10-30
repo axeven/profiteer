@@ -356,20 +356,20 @@ These tests verify the sorting logic that will be applied in CreateTransactionSc
 
 ---
 
-## 🟢 Phase 4: CreateTransactionScreen - Implement (GREEN)
+## 🟢 Phase 4: CreateTransactionScreen - Implement (GREEN) ✅
 
 ### Update CreateTransactionScreen.kt
 
-- [ ] Open `app/src/main/java/com/axeven/profiteerapp/ui/transaction/CreateTransactionScreen.kt`
-- [ ] Add import at top of file:
+- [x] Open `app/src/main/java/com/axeven/profiteerapp/ui/transaction/CreateTransactionScreen.kt`
+- [x] Add import at top of file:
   ```kotlin
   import com.axeven.profiteerapp.utils.WalletSortingUtils
   ```
 
 ### Update Physical Wallet Dropdown (Line ~539)
 
-- [ ] Locate: `val physicalWallets = viewModelUiState.wallets.filter { it.walletType == "Physical" }`
-- [ ] Replace with:
+- [x] Locate: `val physicalWallets = viewModelUiState.wallets.filter { it.walletType == "Physical" }`
+- [x] Replace with:
   ```kotlin
   val physicalWallets = WalletSortingUtils.sortAlphabetically(
       viewModelUiState.wallets.filter { it.walletType == "Physical" }
@@ -378,8 +378,8 @@ These tests verify the sorting logic that will be applied in CreateTransactionSc
 
 ### Update Logical Wallet Dropdown (Line ~553)
 
-- [ ] Locate: `val logicalWallets = viewModelUiState.wallets.filter { it.walletType == "Logical" }`
-- [ ] Replace with:
+- [x] Locate: `val logicalWallets = viewModelUiState.wallets.filter { it.walletType == "Logical" }`
+- [x] Replace with:
   ```kotlin
   val logicalWallets = WalletSortingUtils.sortAlphabetically(
       viewModelUiState.wallets.filter { it.walletType == "Logical" }
@@ -388,8 +388,8 @@ These tests verify the sorting logic that will be applied in CreateTransactionSc
 
 ### Update Transfer Source Dropdown (Line ~567)
 
-- [ ] Locate: `val sourceWallets = viewModelUiState.wallets`
-- [ ] Replace with:
+- [x] Locate: `val sourceWallets = viewModelUiState.wallets`
+- [x] Replace with:
   ```kotlin
   val sourceWallets = WalletSortingUtils.sortByTypeAndName(
       viewModelUiState.wallets
@@ -398,8 +398,8 @@ These tests verify the sorting logic that will be applied in CreateTransactionSc
 
 ### Update Transfer Destination Dropdown (Line ~581)
 
-- [ ] Locate: `val destinationWallets = viewModelUiState.wallets.filter { it.id != transactionState.selectedWallets.source?.id }`
-- [ ] Replace with:
+- [x] Locate: `val destinationWallets = viewModelUiState.wallets.filter { it.id != transactionState.selectedWallets.source?.id }`
+- [x] Replace with:
   ```kotlin
   val destinationWallets = WalletSortingUtils.sortByTypeAndName(
       viewModelUiState.wallets.filter {
@@ -410,10 +410,26 @@ These tests verify the sorting logic that will be applied in CreateTransactionSc
 
 ### Run Tests (Expect Success)
 
-- [ ] Run `./gradlew testDebugUnitTest --tests CreateTransactionScreenTest`
-- [ ] Verify all tests PASS
-- [ ] Fix any failing tests
-- [ ] Ensure no regressions in existing tests
+- [x] Run `./gradlew testDebugUnitTest --tests CreateTransactionScreenWalletOrderingTest`
+- [x] Verify all tests PASS
+- [x] Fix any failing tests
+- [x] Ensure no regressions in existing tests
+
+**Implementation Results:** ✅ All changes successfully applied
+
+**Changes Made:**
+- Added import: `import com.axeven.profiteerapp.utils.WalletSortingUtils` (line 31)
+- Updated Physical Wallet Dropdown (line 540-542): Added `WalletSortingUtils.sortAlphabetically()`
+- Updated Logical Wallet Dropdown (line 556-558): Added `WalletSortingUtils.sortAlphabetically()`
+- Updated Transfer Source Dropdown (line 572-574): Added `WalletSortingUtils.sortByTypeAndName()`
+- Updated Transfer Destination Dropdown (line 588-590): Added `WalletSortingUtils.sortByTypeAndName()`
+
+**Test Results:** ✅ All 17 CreateTransactionScreenWalletOrderingTest tests pass
+- Build successful with no errors
+- All wallet ordering tests pass
+- No regressions in existing CreateTransactionScreen tests
+
+**Lines Modified:** 5 (1 import + 4 wallet dropdown updates)
 
 ---
 

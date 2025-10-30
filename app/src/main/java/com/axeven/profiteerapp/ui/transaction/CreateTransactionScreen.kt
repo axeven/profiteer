@@ -28,6 +28,7 @@ import com.axeven.profiteerapp.data.model.TransactionType
 import com.axeven.profiteerapp.data.model.Wallet
 import com.axeven.profiteerapp.data.ui.*
 import com.axeven.profiteerapp.utils.TagFormatter
+import com.axeven.profiteerapp.utils.WalletSortingUtils
 import com.axeven.profiteerapp.viewmodel.TransactionViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -536,7 +537,9 @@ fun CreateTransactionScreen(
     // Physical Wallet Picker Dialog
     if (transactionState.dialogStates.showPhysicalWalletPicker) {
         WalletPickerDialog(
-            wallets = viewModelUiState.wallets.filter { it.walletType == "Physical" },
+            wallets = WalletSortingUtils.sortAlphabetically(
+                viewModelUiState.wallets.filter { it.walletType == "Physical" }
+            ),
             title = "Select Physical Wallet",
             onDismiss = {
                 transactionState = closeAllDialogs(transactionState)
@@ -550,7 +553,9 @@ fun CreateTransactionScreen(
     // Logical Wallet Picker Dialog
     if (transactionState.dialogStates.showLogicalWalletPicker) {
         WalletPickerDialog(
-            wallets = viewModelUiState.wallets.filter { it.walletType == "Logical" },
+            wallets = WalletSortingUtils.sortAlphabetically(
+                viewModelUiState.wallets.filter { it.walletType == "Logical" }
+            ),
             title = "Select Logical Wallet",
             onDismiss = {
                 transactionState = closeAllDialogs(transactionState)
@@ -564,7 +569,9 @@ fun CreateTransactionScreen(
     // Source Wallet Picker Dialog
     if (transactionState.dialogStates.showSourceWalletPicker) {
         WalletPickerDialog(
-            wallets = viewModelUiState.wallets,
+            wallets = WalletSortingUtils.sortByTypeAndName(
+                viewModelUiState.wallets
+            ),
             title = "Select Source Wallet",
             onDismiss = {
                 transactionState = closeAllDialogs(transactionState)
@@ -578,7 +585,9 @@ fun CreateTransactionScreen(
     // Destination Wallet Picker Dialog
     if (transactionState.dialogStates.showDestinationWalletPicker) {
         WalletPickerDialog(
-            wallets = viewModelUiState.wallets.filter { it.id != transactionState.selectedWallets.source?.id },
+            wallets = WalletSortingUtils.sortByTypeAndName(
+                viewModelUiState.wallets.filter { it.id != transactionState.selectedWallets.source?.id }
+            ),
             title = "Select Destination Wallet",
             onDismiss = {
                 transactionState = closeAllDialogs(transactionState)
