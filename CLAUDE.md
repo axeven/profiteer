@@ -583,6 +583,100 @@ Storage (Firestore)          UI State (ViewModel)         Display (Composable)
   - `TransactionListScreenTagFormattingTest.kt` - 27 tests for filter dropdown
 - See: `docs/plans/2025-10-20-camel-case-tags.md` for implementation details
 
+## Wallet Dropdown Ordering (Implemented 2025-10-30)
+
+**All wallet dropdowns display in alphabetical order for improved user experience:**
+
+### Sorting Strategy
+
+- **Simple Dropdowns**: Alphabetical by wallet name (case-insensitive)
+  - Physical wallet dropdowns in Income/Expense transactions
+  - Logical wallet dropdowns in Income/Expense transactions
+  - Physical wallet filters in TransactionListScreen
+  - Logical wallet filters in TransactionListScreen
+
+- **Transfer Dropdowns**: Type grouping + alphabetical within each group
+  - Source wallet dropdown: Physical wallets first (alphabetical), then Logical wallets (alphabetical)
+  - Destination wallet dropdown: Same grouping, excludes selected source wallet
+
+### Implementation Details
+
+- **Utility Class**: `WalletSortingUtils` in `app/src/main/java/com/axeven/profiteerapp/utils/WalletSortingUtils.kt`
+- **Functions**:
+  - `sortAlphabetically(wallets)` - Simple alphabetical sorting (case-insensitive)
+  - `sortByTypeAndName(wallets, physicalFirst = true)` - Type grouping + alphabetical sorting
+- **Applied At**: UI layer only (after wallet type filtering)
+  - CreateTransactionScreen wallet pickers (4 dropdowns)
+  - EditTransactionScreen wallet pickers (4 dropdowns)
+  - TransactionListScreen wallet filters (2 dropdowns)
+- **Not Applied At**: Repository layer (wallets still stored by creation date)
+
+### Usage Guidelines
+
+**When to use `sortAlphabetically()`:**
+```kotlin
+// For single wallet type dropdowns (Physical OR Logical)
+val physicalWallets = WalletSortingUtils.sortAlphabetically(
+    viewModelUiState.wallets.filter { it.walletType == "Physical" }
+)
+
+val logicalWallets = WalletSortingUtils.sortAlphabetically(
+    viewModelUiState.wallets.filter { it.walletType == "Logical" }
+)
+```
+
+**When to use `sortByTypeAndName()`:**
+```kotlin
+// For mixed wallet type dropdowns (Physical AND Logical)
+val sourceWallets = WalletSortingUtils.sortByTypeAndName(
+    viewModelUiState.wallets
+)
+
+// Destination excludes source wallet
+val destinationWallets = WalletSortingUtils.sortByTypeAndName(
+    viewModelUiState.wallets.filter { it.id != selectedSourceWallet?.id }
+)
+```
+
+### Sorting Behavior
+
+1. **Case-Insensitive**: "apple" and "Apple" are treated identically
+2. **Unicode Ordering**: Special characters (!@#) and numbers (0-9) sort before letters
+3. **Immutability**: Original wallet list is never modified
+4. **Stable Sorting**: Wallets with identical names maintain relative order
+5. **Type Grouping**: Physical wallets appear before Logical wallets in transfer screens
+
+### Testing Requirements
+
+- **Unit Tests**: 26 tests for WalletSortingUtils (100% coverage)
+  - `WalletSortingUtilsTest.kt` - Core sorting logic tests
+- **Screen Tests**: 55 tests for screen-level sorting integration
+  - `CreateTransactionScreenWalletOrderingTest.kt` - 17 tests
+  - `EditTransactionScreenWalletOrderingTest.kt` - 18 tests
+  - `TransactionListScreenWalletOrderingTest.kt` - 20 tests
+- **Integration Tests**: 5 tests for cross-screen consistency
+  - `WalletDropdownOrderingIntegrationTest.kt` - End-to-end integration tests
+- **Manual Testing**: 40+ manual test scenarios
+  - See: `docs/plans/2025-10-30-wallet-dropdown-manual-testing-results.md`
+
+### User Experience Benefits
+
+- **Predictability**: Users can easily find wallets in consistent alphabetical order
+- **Scalability**: Alphabetical ordering works well even with 50+ wallets
+- **Consistency**: Same ordering pattern across all screens
+- **Reduced Cognitive Load**: No need to remember creation order
+
+### Architecture Pattern
+
+```
+Repository (Data Layer)     ViewModel (Business Logic)    UI (Presentation Layer)
+Wallets by createdAt  →     Wallets unchanged       →     Wallets alphabetically sorted
+     ↑                           ↑                              ↑
+  FirestoreDB              Cache/LiveData               WalletSortingUtils
+```
+
+For complete implementation details, see: `docs/plans/2025-10-30-wallet-dropdown-ordering.md`
+
 ## Data Model Evolution
 - **Transactions**: Use `affectedWalletIds` (modern) alongside `walletId` (legacy) for backward compatibility
 - **Tags**: Use `tags` array field, maintain `category` field for backward compatibility
