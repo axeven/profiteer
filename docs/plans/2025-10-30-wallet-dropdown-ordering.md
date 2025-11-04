@@ -1,6 +1,6 @@
 # Wallet Dropdown Alphabetical Ordering - TDD Implementation Plan
 
-**Status**: Phase 11 Completed - Refactoring & Cleanup
+**Status**: Phase 12 Prepared - Final Validation Ready
 **Priority**: Medium
 **Created**: 2025-10-30
 **Last Updated**: 2025-11-04
@@ -1015,49 +1015,176 @@ This manual testing guide should be executed by QA testers on a physical device 
 
 ## ✅ Phase 12: Final Validation
 
+**Validation Environment**: Android Studio Terminal
+
 ### Run Full Test Suite
 
-- [ ] Run all unit tests: `./gradlew testDebugUnitTest`
-- [ ] ✅ Verify: 100% pass rate
-- [ ] ✅ Verify: 15 WalletSortingUtils tests passing
-- [ ] ✅ Verify: 12 screen tests passing
-- [ ] Run all integration tests: `./gradlew connectedAndroidTest`
-- [ ] ✅ Verify: 5 integration tests passing
-- [ ] ✅ Verify: No test failures
-- [ ] Check test coverage report
-- [ ] ✅ Verify: WalletSortingUtils has 100% coverage
+**Instructions**: Open Android Studio → View → Tool Windows → Terminal, then run:
+
+#### Unit Tests
+```bash
+# Run all unit tests
+./gradlew testDebugUnitTest
+
+# Or run specific wallet ordering tests
+./gradlew testDebugUnitTest --tests WalletSortingUtilsTest
+./gradlew testDebugUnitTest --tests CreateTransactionScreenWalletOrderingTest
+./gradlew testDebugUnitTest --tests EditTransactionScreenWalletOrderingTest
+./gradlew testDebugUnitTest --tests TransactionListScreenWalletOrderingTest
+```
+
+**Expected Results**:
+- [ ] ✅ All unit tests pass (100% pass rate)
+- [ ] ✅ WalletSortingUtilsTest: 26/26 tests passing
+- [ ] ✅ CreateTransactionScreenWalletOrderingTest: 17/17 tests passing
+- [ ] ✅ EditTransactionScreenWalletOrderingTest: 18/18 tests passing
+- [ ] ✅ TransactionListScreenWalletOrderingTest: 20/20 tests passing
+- [ ] ✅ Total: 81+ wallet ordering tests passing
+- [ ] ✅ No test failures or errors
+
+#### Integration Tests (Requires Device/Emulator)
+```bash
+# Connect device/emulator first, then run:
+./gradlew connectedAndroidTest --tests WalletDropdownOrderingIntegrationTest
+```
+
+**Expected Results**:
+- [ ] ✅ 5/5 integration tests passing
+- [ ] ✅ No test failures
+
+#### Test Coverage Report
+```bash
+./gradlew testDebugUnitTestCoverage
+```
+
+**Expected Results**:
+- [ ] ✅ WalletSortingUtils: 100% line coverage
+- [ ] ✅ WalletSortingUtils: 100% branch coverage
+- [ ] View report at: `app/build/reports/coverage/test/debug/index.html`
 
 ### Build and Run App
 
-- [ ] Run `./gradlew build`
-- [ ] ✅ Verify: Build succeeds with zero errors
-- [ ] ✅ Verify: No lint warnings related to changes
-- [ ] Install debug build: `./gradlew installDebug`
-- [ ] ✅ Verify: App installs successfully
-- [ ] Launch app and navigate to each screen
+#### Build Project
+```bash
+# Clean and build
+./gradlew clean build
+
+# Or just build
+./gradlew build
+```
+
+**Expected Results**:
+- [ ] ✅ Build succeeds with zero errors
+- [ ] ✅ BUILD SUCCESSFUL message displayed
+- [ ] ✅ No compilation errors
+
+#### Lint Checks
+```bash
+./gradlew lintDebug
+```
+
+**Expected Results**:
+- [ ] ✅ No lint errors related to WalletSortingUtils
+- [ ] ✅ No lint errors in CreateTransactionScreen
+- [ ] ✅ No lint errors in EditTransactionScreen
+- [ ] ✅ No lint errors in TransactionListScreen
+- [ ] View report at: `app/build/reports/lint-results-debug.html`
+
+#### Install and Run
+```bash
+# Install debug build (requires device/emulator connected)
+./gradlew installDebug
+```
+
+**Manual Testing Checklist**:
+- [ ] Launch app successfully
+- [ ] Navigate to CreateTransactionScreen
+- [ ] ✅ Verify: Physical wallet dropdown shows alphabetical order
+- [ ] ✅ Verify: Logical wallet dropdown shows alphabetical order
+- [ ] ✅ Verify: Transfer source dropdown shows Physical first (alphabetical), then Logical (alphabetical)
+- [ ] Navigate to EditTransactionScreen
+- [ ] ✅ Verify: Wallet dropdowns display alphabetically
+- [ ] Navigate to TransactionListScreen
+- [ ] ✅ Verify: Wallet filters display alphabetically
 - [ ] ✅ Verify: No runtime crashes
-- [ ] ✅ Verify: Alphabetical ordering visible in all dropdowns
+- [ ] ✅ Verify: No ANR (Application Not Responding) issues
 
 ### Regression Testing
 
-- [ ] Test all existing features unrelated to wallet dropdowns
-- [ ] ✅ Verify: Transaction creation works
-- [ ] ✅ Verify: Transaction editing works
-- [ ] ✅ Verify: Transaction filtering works
-- [ ] ✅ Verify: Wallet detail screen works
-- [ ] ✅ Verify: Reports screen works
-- [ ] ✅ Verify: No unexpected behavior in other screens
+**Manual Testing - Existing Features**:
+- [ ] ✅ Transaction creation (Income/Expense/Transfer) works correctly
+- [ ] ✅ Transaction editing works correctly
+- [ ] ✅ Transaction deletion works correctly
+- [ ] ✅ Transaction filtering by wallet works correctly
+- [ ] ✅ Transaction filtering by tag works correctly
+- [ ] ✅ Wallet detail screen displays correctly
+- [ ] ✅ Wallet balance calculations correct
+- [ ] ✅ Reports screen displays correctly
+- [ ] ✅ Portfolio charts render correctly
+- [ ] ✅ Home screen displays correctly
+- [ ] ✅ Navigation works correctly across all screens
+- [ ] ✅ No unexpected behavior in unrelated features
 
-### Accessibility Check
+### Accessibility Check (Optional)
 
-- [ ] Enable TalkBack (Android screen reader)
+**TalkBack Testing** (Android screen reader):
+- [ ] Enable TalkBack: Settings → Accessibility → TalkBack → On
 - [ ] Navigate to wallet dropdowns
 - [ ] ✅ Verify: Wallets announced in alphabetical order
-- [ ] ✅ Verify: Screen reader can select wallets correctly
-- [ ] Test with high contrast mode
-- [ ] ✅ Verify: Wallet names readable
-- [ ] Test with large text size
-- [ ] ✅ Verify: Dropdowns display correctly
+- [ ] ✅ Verify: Screen reader can navigate and select wallets
+- [ ] Disable TalkBack after testing
+
+**Display Settings Testing**:
+- [ ] Test with large text size: Settings → Display → Font size → Largest
+- [ ] ✅ Verify: Wallet dropdown text remains readable
+- [ ] ✅ Verify: Dropdowns display correctly with large text
+- [ ] Test with high contrast: Settings → Accessibility → High contrast text
+- [ ] ✅ Verify: Wallet names remain readable
+- [ ] Reset display settings after testing
+
+### Performance Validation
+
+**Large Dataset Testing**:
+- [ ] Create 50+ wallets with varied names
+- [ ] Navigate to CreateTransactionScreen
+- [ ] ✅ Verify: Dropdown opens smoothly (<500ms)
+- [ ] ✅ Verify: Scrolling through wallet list is smooth
+- [ ] ✅ Verify: No UI lag or jank
+- [ ] Select a wallet from bottom of list
+- [ ] ✅ Verify: Selection is instant
+- [ ] Navigate to TransactionListScreen
+- [ ] ✅ Verify: Filter dropdown performs well with 50+ wallets
+
+### Phase 12 Preparation - Completed ✅
+
+**Validation Documentation Created:**
+- [x] Created comprehensive validation checklist in plan document
+- [x] Created quick reference guide: `phase-12-validation.md`
+- [x] Documented all test commands and expected results
+- [x] Created manual testing checklist
+- [x] Documented accessibility testing procedures
+- [x] Documented performance validation procedures
+- [x] Created troubleshooting guide
+
+**Validation Execution Environment:**
+- **Required:** Android Studio Terminal (JAVA_HOME automatically configured)
+- **Quick Reference:** See `phase-12-validation.md` for step-by-step instructions
+- **Test Commands:** All commands documented with expected outputs
+- **Manual Tests:** Comprehensive checklist for UI validation
+
+**Automated Validation Ready:**
+- Unit tests ready to run (81 tests)
+- Integration tests ready to run (5 tests)
+- Build commands documented
+- Lint checks documented
+
+**Manual Validation Ready:**
+- Manual testing checklist prepared
+- Regression testing scenarios documented
+- Accessibility testing procedures defined
+- Performance validation criteria established
+
+**Note:** Phase 12 execution requires Android Studio terminal or JAVA_HOME configuration. All validation procedures are fully documented and ready for execution.
 
 ---
 
