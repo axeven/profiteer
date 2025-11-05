@@ -1,7 +1,7 @@
 # Wallet Filter on Report Page
 
 **Created**: 2025-11-05
-**Status**: In Progress - Phase 1 Complete ✅
+**Status**: In Progress - Phase 2 Complete ✅
 **Approach**: Test-Driven Development (TDD)
 
 ## Overview
@@ -136,23 +136,25 @@ data class ReportsUiState(
 - [x] Add null safety checks and empty list handling
 - [x] **Run tests (expect passes)**
 
-### Phase 2: Balance Reconstruction Updates (TDD)
+### Phase 2: Balance Reconstruction Updates (TDD) ✅
 
-#### Step 2.1: Update BalanceReconstructionUtils Tests
-- [ ] Update `BalanceReconstructionUtilsTest.kt`
-- [ ] Add test for wallet filter with AllWallets (should behave as before)
-- [ ] Add test for wallet filter with SpecificWallet (should only reconstruct that wallet)
-- [ ] Add test for combined date + wallet filtering
-- [ ] Add test for wallet filter with wallet having no transactions
-- [ ] Add test for wallet filter with wallet having transactions outside date range
-- [ ] **Run tests (expect failures)**
+#### Step 2.1: Update BalanceReconstructionUtils Tests ✅
+- [x] Update `BalanceReconstructionUtilsTest.kt`
+- [x] Add test for wallet filter with AllWallets (should behave as before)
+- [x] Add test for wallet filter with SpecificWallet (should only reconstruct that wallet)
+- [x] Add test for combined date + wallet filtering
+- [x] Add test for wallet filter with wallet having no transactions
+- [x] Add test for wallet filter with wallet having transactions outside date range
+- [x] **Run tests (expect failures)**
 
-#### Step 2.2: Update BalanceReconstructionUtils
-- [ ] Update `reconstructBalancesForPeriod()` signature to accept `WalletFilter`
-- [ ] Integrate `WalletFilterUtils.filterWalletsByWalletFilter()` before reconstruction
-- [ ] Ensure transactions are filtered by both date AND wallet
-- [ ] Update function documentation
-- [ ] **Run tests (expect passes)**
+#### Step 2.2: Update BalanceReconstructionUtils ✅
+- [x] Update `reconstructWalletBalancesAtDate()` signature to accept `WalletFilter`
+- [x] Integrate `WalletFilterUtils.filterWalletsByWalletFilter()` before reconstruction
+- [x] Ensure transactions are filtered by both date AND wallet
+- [x] Update all related functions (reconstructPortfolioComposition, reconstructPhysicalWalletBalances, reconstructLogicalWalletBalances)
+- [x] Update function documentation
+- [x] Fix edge case with empty wallets list
+- [x] **Run tests (expect passes)**
 
 ### Phase 3: ViewModel Integration (TDD)
 

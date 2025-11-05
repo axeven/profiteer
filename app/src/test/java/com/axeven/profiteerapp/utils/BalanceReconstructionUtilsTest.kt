@@ -837,8 +837,9 @@ class BalanceReconstructionUtilsTest {
             wallets, transactions, endDate
         )
 
-        // Transactions reference wallets that don't exist
-        assertEquals(100.0, result["w1"]!!, 0.01)
+        // With wallet filtering, transactions reference wallets that don't exist
+        // should not create balance entries (wallets must exist in the system)
+        assertEquals(0, result.size)
     }
 
     // ========== DEBUGGING TESTS ==========
@@ -1036,5 +1037,206 @@ class BalanceReconstructionUtilsTest {
 
         assertEquals(75.0, portfolioComposition[PhysicalForm.FIAT_CURRENCY]!!, 0.01)
         assertEquals(70.0, portfolioComposition[PhysicalForm.CRYPTOCURRENCY]!!, 0.01)
+    }
+
+    // ========== Wallet Filter Integration Tests ==========
+
+    @Test
+    fun `reconstructWalletBalancesAtDate with AllWallets filter returns all wallets`() {
+        val wallets = listOf(
+            createPhysicalWallet("w1", "Wallet 1", 0.0).copy(initialBalance = 0.0, createdAt = createDate(2025, 1, 1)),
+            createPhysicalWallet("w2", "Wallet 2", 0.0).copy(initialBalance = 0.0, createdAt = createDate(2025, 1, 1)),
+            createPhysicalWallet("w3", "Wallet 3", 0.0).copy(initialBalance = 0.0, createdAt = createDate(2025, 1, 1))
+        )
+        val transactions = listOf(
+            createTransaction("t1", TransactionType.INCOME, 100.0,
+                createDate(2025, 10, 15), affectedWalletIds = listOf("w1")),
+            createTransaction("t2", TransactionType.INCOME, 200.0,
+                createDate(2025, 10, 20), affectedWalletIds = listOf("w2")),
+            createTransaction("t3", TransactionType.INCOME, 300.0,
+                createDate(2025, 10, 25), affectedWalletIds = listOf("w3"))
+        )
+
+        val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
+            wallets = wallets,
+            transactions = transactions,
+            endDate = createDate(2025, 10, 31),
+            walletFilter = com.axeven.profiteerapp.data.model.WalletFilter.AllWallets
+        )
+
+        assertEquals(3, result.size)
+        assertEquals(100.0, result["w1"]!!, 0.01)
+        assertEquals(200.0, result["w2"]!!, 0.01)
+        assertEquals(300.0, result["w3"]!!, 0.01)
+    }
+
+    @Test
+    fun `reconstructWalletBalancesAtDate with SpecificWallet filter returns only that wallet`() {
+        val wallets = listOf(
+            createPhysicalWallet("w1", "Wallet 1", 0.0).copy(initialBalance = 0.0, createdAt = createDate(2025, 1, 1)),
+            createPhysicalWallet("w2", "Wallet 2", 0.0).copy(initialBalance = 0.0, createdAt = createDate(2025, 1, 1)),
+            createPhysicalWallet("w3", "Wallet 3", 0.0).copy(initialBalance = 0.0, createdAt = createDate(2025, 1, 1))
+        )
+        val transactions = listOf(
+            createTransaction("t1", TransactionType.INCOME, 100.0,
+                createDate(2025, 10, 15), affectedWalletIds = listOf("w1")),
+            createTransaction("t2", TransactionType.INCOME, 200.0,
+                createDate(2025, 10, 20), affectedWalletIds = listOf("w2")),
+            createTransaction("t3", TransactionType.INCOME, 300.0,
+                createDate(2025, 10, 25), affectedWalletIds = listOf("w3"))
+        )
+
+        val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
+            wallets = wallets,
+            transactions = transactions,
+            endDate = createDate(2025, 10, 31),
+            walletFilter = com.axeven.profiteerapp.data.model.WalletFilter.SpecificWallet(
+                walletId = "w2",
+                walletName = "Wallet 2"
+            )
+        )
+
+        assertEquals(1, result.size)
+        assertEquals(200.0, result["w2"]!!, 0.01)
+        assertFalse(result.containsKey("w1"))
+        assertFalse(result.containsKey("w3"))
+    }
+
+    @Test
+    fun `reconstructWalletBalancesAtDate combines date and wallet filters`() {
+        val wallets = listOf(
+            createPhysicalWallet("w1", "Wallet 1", 0.0).copy(initialBalance = 0.0, createdAt = createDate(2025, 1, 1))
+        )
+        val transactions = listOf(
+            createTransaction("t1", TransactionType.INCOME, 100.0,
+                createDate(2025, 10, 15), affectedWalletIds = listOf("w1")),
+            createTransaction("t2", TransactionType.INCOME, 200.0,
+                createDate(2025, 10, 25), affectedWalletIds = listOf("w1")),
+            createTransaction("t3", TransactionType.INCOME, 300.0,
+                createDate(2025, 11, 5), affectedWalletIds = listOf("w1")) // After endDate
+        )
+
+        val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
+            wallets = wallets,
+            transactions = transactions,
+            endDate = createDate(2025, 10, 31), // Only includes t1 and t2
+            walletFilter = com.axeven.profiteerapp.data.model.WalletFilter.SpecificWallet(
+                walletId = "w1",
+                walletName = "Wallet 1"
+            )
+        )
+
+        assertEquals(1, result.size)
+        assertEquals(300.0, result["w1"]!!, 0.01) // 100 + 200, not including t3
+    }
+
+    @Test
+    fun `reconstructWalletBalancesAtDate with SpecificWallet having no transactions returns zero balance wallet excluded`() {
+        val wallets = listOf(
+            createPhysicalWallet("w1", "Wallet 1", 0.0).copy(initialBalance = 0.0, createdAt = createDate(2025, 1, 1)),
+            createPhysicalWallet("w2", "Wallet 2", 0.0).copy(initialBalance = 0.0, createdAt = createDate(2025, 1, 1))
+        )
+        val transactions = listOf(
+            createTransaction("t1", TransactionType.INCOME, 100.0,
+                createDate(2025, 10, 15), affectedWalletIds = listOf("w1"))
+            // No transactions for w2
+        )
+
+        val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
+            wallets = wallets,
+            transactions = transactions,
+            endDate = createDate(2025, 10, 31),
+            walletFilter = com.axeven.profiteerapp.data.model.WalletFilter.SpecificWallet(
+                walletId = "w2",
+                walletName = "Wallet 2"
+            )
+        )
+
+        // w2 has zero balance, should be excluded
+        assertEquals(0, result.size)
+    }
+
+    @Test
+    fun `reconstructWalletBalancesAtDate with SpecificWallet filters transactions correctly`() {
+        val wallets = listOf(
+            createPhysicalWallet("w1", "Cash", 0.0).copy(initialBalance = 0.0, createdAt = createDate(2025, 1, 1)),
+            createPhysicalWallet("w2", "Bank", 0.0).copy(initialBalance = 0.0, createdAt = createDate(2025, 1, 1))
+        )
+        val transactions = listOf(
+            createTransaction("t1", TransactionType.INCOME, 100.0,
+                createDate(2025, 10, 15), affectedWalletIds = listOf("w1")),
+            createTransaction("t2", TransactionType.EXPENSE, 50.0,
+                createDate(2025, 10, 20), affectedWalletIds = listOf("w1")),
+            createTransaction("t3", TransactionType.INCOME, 300.0,
+                createDate(2025, 10, 22), affectedWalletIds = listOf("w2")),
+            createTransaction("t4", TransactionType.TRANSFER, 25.0,
+                createDate(2025, 10, 25),
+                sourceWalletId = "w1", destinationWalletId = "w2")
+        )
+
+        // Filter for w1 only
+        val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
+            wallets = wallets,
+            transactions = transactions,
+            endDate = createDate(2025, 10, 31),
+            walletFilter = com.axeven.profiteerapp.data.model.WalletFilter.SpecificWallet(
+                walletId = "w1",
+                walletName = "Cash"
+            )
+        )
+
+        // w1: +100 (income) -50 (expense) -25 (transfer out) = 25
+        assertEquals(1, result.size)
+        assertEquals(25.0, result["w1"]!!, 0.01)
+        assertFalse(result.containsKey("w2"))
+    }
+
+    @Test
+    fun `reconstructWalletBalancesAtDate with SpecificWallet and AllTime uses current balance`() {
+        val wallets = listOf(
+            createPhysicalWallet("w1", "Wallet 1", 500.0),
+            createPhysicalWallet("w2", "Wallet 2", 1000.0)
+        )
+        val transactions = emptyList<Transaction>()
+
+        val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
+            wallets = wallets,
+            transactions = transactions,
+            endDate = null, // AllTime
+            walletFilter = com.axeven.profiteerapp.data.model.WalletFilter.SpecificWallet(
+                walletId = "w2",
+                walletName = "Wallet 2"
+            )
+        )
+
+        assertEquals(1, result.size)
+        assertEquals(1000.0, result["w2"]!!, 0.01)
+        assertFalse(result.containsKey("w1"))
+    }
+
+    @Test
+    fun `reconstructWalletBalancesAtDate with SpecificWallet includes wallet with initial balance`() {
+        val wallets = listOf(
+            createPhysicalWallet("w1", "Wallet 1", 0.0).copy(initialBalance = 500.0, createdAt = createDate(2025, 1, 1)),
+            createPhysicalWallet("w2", "Wallet 2", 0.0).copy(initialBalance = 1000.0, createdAt = createDate(2025, 1, 1))
+        )
+        val transactions = listOf(
+            createTransaction("t1", TransactionType.INCOME, 100.0,
+                createDate(2025, 10, 15), affectedWalletIds = listOf("w2"))
+        )
+
+        val result = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
+            wallets = wallets,
+            transactions = transactions,
+            endDate = createDate(2025, 10, 31),
+            walletFilter = com.axeven.profiteerapp.data.model.WalletFilter.SpecificWallet(
+                walletId = "w2",
+                walletName = "Wallet 2"
+            )
+        )
+
+        // w2: initialBalance 1000 + transaction 100 = 1100
+        assertEquals(1, result.size)
+        assertEquals(1100.0, result["w2"]!!, 0.01)
     }
 }
