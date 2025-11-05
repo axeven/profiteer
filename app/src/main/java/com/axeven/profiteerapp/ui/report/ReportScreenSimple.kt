@@ -30,6 +30,8 @@ import com.axeven.profiteerapp.data.model.DateFilterPeriod
 import com.axeven.profiteerapp.utils.NumberFormatter
 import com.axeven.profiteerapp.utils.TagFormatter
 import com.axeven.profiteerapp.ui.components.MonthYearPickerDialog
+import com.axeven.profiteerapp.ui.components.WalletFilterPickerDialog
+import com.axeven.profiteerapp.data.model.WalletFilter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,6 +41,7 @@ fun ReportScreenSimple(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showDateFilterDialog by remember { mutableStateOf(false) }
+    var showWalletFilterDialog by remember { mutableStateOf(false) }
 
     // Load portfolio data when screen loads
     LaunchedEffect(Unit) {
@@ -56,6 +59,22 @@ fun ReportScreenSimple(
             },
             onDismiss = {
                 showDateFilterDialog = false
+            }
+        )
+    }
+
+    // Show wallet filter picker dialog
+    if (showWalletFilterDialog) {
+        WalletFilterPickerDialog(
+            currentFilter = uiState.selectedWalletFilter,
+            wallets = uiState.wallets,
+            defaultCurrency = uiState.defaultCurrency,
+            onFilterSelected = { filter ->
+                viewModel.selectWalletFilter(filter)
+                showWalletFilterDialog = false
+            },
+            onDismiss = {
+                showWalletFilterDialog = false
             }
         )
     }
@@ -95,17 +114,21 @@ fun ReportScreenSimple(
                     .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Date filter chip
+                // Filter chips (date and wallet)
                 item {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 4.dp),
-                        horizontalArrangement = Arrangement.Start
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         ReportFilterChip(
                             currentPeriod = uiState.selectedDateFilter,
                             onClick = { showDateFilterDialog = true }
+                        )
+                        WalletFilterChip(
+                            currentFilter = uiState.selectedWalletFilter,
+                            onClick = { showWalletFilterDialog = true }
                         )
                     }
                 }
@@ -124,7 +147,8 @@ fun ReportScreenSimple(
                         totalExpensesByTag = uiState.totalExpensesByTag,
                         totalIncomeByTag = uiState.totalIncomeByTag,
                         defaultCurrency = uiState.defaultCurrency,
-                        selectedDateFilter = uiState.selectedDateFilter
+                        selectedDateFilter = uiState.selectedDateFilter,
+                        selectedWalletFilter = uiState.selectedWalletFilter
                     )
                 }
                 
@@ -289,7 +313,8 @@ fun SimplePortfolioAssetCard(
     totalExpensesByTag: Double,
     totalIncomeByTag: Double,
     defaultCurrency: String,
-    selectedDateFilter: DateFilterPeriod
+    selectedDateFilter: DateFilterPeriod,
+    selectedWalletFilter: WalletFilter
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -318,9 +343,16 @@ fun SimplePortfolioAssetCard(
                 ChartDataType.INCOME_TRANSACTION_BY_TAG -> incomeTransactionsByTagData.isNotEmpty() && totalIncomeByTag > 0
             }
 
-            // Build period suffix for labels
-            val periodSuffix = if (selectedDateFilter != DateFilterPeriod.AllTime) {
-                " (${selectedDateFilter.getDisplayText()})"
+            // Build filter suffix for labels (combining date and wallet)
+            val filterParts = mutableListOf<String>()
+            if (selectedDateFilter != DateFilterPeriod.AllTime) {
+                filterParts.add(selectedDateFilter.getDisplayText())
+            }
+            if (selectedWalletFilter is WalletFilter.SpecificWallet) {
+                filterParts.add(selectedWalletFilter.walletName)
+            }
+            val filterSuffix = if (filterParts.isNotEmpty()) {
+                " (${filterParts.joinToString(", ")})"
             } else {
                 ""
             }
@@ -328,15 +360,15 @@ fun SimplePortfolioAssetCard(
             Text(
                 text = when (selectedDataType) {
                     ChartDataType.PORTFOLIO_ASSET_COMPOSITION ->
-                        "Total Portfolio Value$periodSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
+                        "Total Portfolio Value$filterSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
                     ChartDataType.PHYSICAL_WALLET_BALANCE ->
-                        "Total Physical Wallet Value$periodSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
+                        "Total Physical Wallet Value$filterSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
                     ChartDataType.LOGICAL_WALLET_BALANCE ->
-                        "Total Logical Wallet Value$periodSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
+                        "Total Logical Wallet Value$filterSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
                     ChartDataType.EXPENSE_TRANSACTION_BY_TAG ->
-                        "Total Expense Amount$periodSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
+                        "Total Expense Amount$filterSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
                     ChartDataType.INCOME_TRANSACTION_BY_TAG ->
-                        "Total Income Amount$periodSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
+                        "Total Income Amount$filterSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -357,22 +389,39 @@ fun SimplePortfolioAssetCard(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         // Build filter-aware empty state messages
+                        val hasDateFilter = selectedDateFilter != DateFilterPeriod.AllTime
+                        val hasWalletFilter = selectedWalletFilter is WalletFilter.SpecificWallet
+                        val hasAnyFilter = hasDateFilter || hasWalletFilter
+
                         val (primaryMessage, secondaryMessage) = when {
-                            selectedDateFilter != DateFilterPeriod.AllTime -> {
-                                // Filtered view - show period-specific message
-                                val periodText = selectedDateFilter.getDisplayText()
-                                val primary = when (selectedDataType) {
-                                    ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> "No portfolio data in $periodText"
-                                    ChartDataType.PHYSICAL_WALLET_BALANCE -> "No physical wallet data in $periodText"
-                                    ChartDataType.LOGICAL_WALLET_BALANCE -> "No logical wallet data in $periodText"
-                                    ChartDataType.EXPENSE_TRANSACTION_BY_TAG -> "No expense transactions in $periodText"
-                                    ChartDataType.INCOME_TRANSACTION_BY_TAG -> "No income transactions in $periodText"
+                            hasAnyFilter -> {
+                                // Filtered view - show filter-specific message
+                                val filterParts = mutableListOf<String>()
+                                if (hasDateFilter) {
+                                    filterParts.add(selectedDateFilter.getDisplayText())
                                 }
-                                val secondary = "Try selecting a different period or 'All Time'"
+                                if (hasWalletFilter) {
+                                    filterParts.add((selectedWalletFilter as WalletFilter.SpecificWallet).walletName)
+                                }
+                                val filterText = filterParts.joinToString(", ")
+
+                                val primary = when (selectedDataType) {
+                                    ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> "No portfolio data for $filterText"
+                                    ChartDataType.PHYSICAL_WALLET_BALANCE -> "No physical wallet data for $filterText"
+                                    ChartDataType.LOGICAL_WALLET_BALANCE -> "No logical wallet data for $filterText"
+                                    ChartDataType.EXPENSE_TRANSACTION_BY_TAG -> "No expense transactions for $filterText"
+                                    ChartDataType.INCOME_TRANSACTION_BY_TAG -> "No income transactions for $filterText"
+                                }
+                                val secondary = when {
+                                    hasDateFilter && hasWalletFilter -> "Try selecting a different period, wallet, or 'All Time' with 'All Wallets'"
+                                    hasDateFilter -> "Try selecting a different period or 'All Time'"
+                                    hasWalletFilter -> "Try selecting a different wallet or 'All Wallets'"
+                                    else -> "Try adjusting your filters"
+                                }
                                 Pair(primary, secondary)
                             }
                             else -> {
-                                // All Time view - show generic message
+                                // All Time view with All Wallets - show generic message
                                 val primary = when (selectedDataType) {
                                     ChartDataType.PORTFOLIO_ASSET_COMPOSITION -> "No portfolio data available"
                                     ChartDataType.PHYSICAL_WALLET_BALANCE -> "No physical wallet data available"
