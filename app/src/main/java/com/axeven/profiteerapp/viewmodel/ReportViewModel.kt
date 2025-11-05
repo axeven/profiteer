@@ -7,12 +7,14 @@ import com.axeven.profiteerapp.data.model.PhysicalForm
 import com.axeven.profiteerapp.data.model.Transaction
 import com.axeven.profiteerapp.data.model.TransactionType
 import com.axeven.profiteerapp.data.model.Wallet
+import com.axeven.profiteerapp.data.model.WalletFilter
 import com.axeven.profiteerapp.data.repository.AuthRepository
 import com.axeven.profiteerapp.data.repository.TransactionRepository
 import com.axeven.profiteerapp.data.repository.UserPreferencesRepository
 import com.axeven.profiteerapp.data.repository.WalletRepository
 import com.axeven.profiteerapp.utils.BalanceReconstructionUtils
 import com.axeven.profiteerapp.utils.DateFilterUtils
+import com.axeven.profiteerapp.utils.WalletFilterUtils
 import com.axeven.profiteerapp.utils.logging.Logger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -45,6 +47,7 @@ data class ReportUiState(
     val defaultCurrency: String = "USD",
     val selectedChartDataType: ChartDataType = ChartDataType.PORTFOLIO_ASSET_COMPOSITION,
     val selectedDateFilter: DateFilterPeriod = DateFilterPeriod.AllTime,
+    val selectedWalletFilter: WalletFilter = WalletFilter.AllWallets,
     val availableMonths: List<Pair<Int, Int>> = emptyList(), // (year, month) pairs
     val availableYears: List<Int> = emptyList(),
     val isLoading: Boolean = false,
@@ -93,29 +96,30 @@ class ReportViewModel @Inject constructor(
 
                     val defaultCurrency = preferences?.defaultCurrency ?: "USD"
                     val currentDateFilter = _uiState.value.selectedDateFilter
+                    val currentWalletFilter = _uiState.value.selectedWalletFilter
 
                     // Calculate available months and years from transactions
                     val availableMonths = getAvailableMonths(transactions)
                     val availableYears = getAvailableYears(transactions)
 
-                    logger.d("ReportViewModel", "Applying date filter: ${currentDateFilter.getDisplayText()}")
+                    logger.d("ReportViewModel", "Applying date filter: ${currentDateFilter.getDisplayText()}, wallet filter: ${currentWalletFilter.getDisplayText()}")
 
                     // Calculate portfolio composition by PhysicalForm (using historical reconstruction)
-                    val portfolioComposition = calculatePortfolioComposition(wallets, transactions, currentDateFilter)
+                    val portfolioComposition = calculatePortfolioComposition(wallets, transactions, currentDateFilter, currentWalletFilter)
                     val totalPortfolioValue = portfolioComposition.values.sum()
 
                     // Calculate physical wallet balances (using historical reconstruction)
-                    val physicalWalletBalances = calculatePhysicalWalletBalances(wallets, transactions, currentDateFilter)
+                    val physicalWalletBalances = calculatePhysicalWalletBalances(wallets, transactions, currentDateFilter, currentWalletFilter)
                     val totalPhysicalWalletValue = physicalWalletBalances.values.sum()
 
                     // Calculate logical wallet balances (using historical reconstruction)
-                    val logicalWalletBalances = calculateLogicalWalletBalances(wallets, transactions, currentDateFilter)
+                    val logicalWalletBalances = calculateLogicalWalletBalances(wallets, transactions, currentDateFilter, currentWalletFilter)
                     val totalLogicalWalletValue = logicalWalletBalances.values.sum()
 
                     // Calculate expense and income transactions by tag (using simple filtering)
-                    val expenseTransactionsByTag = calculateExpenseTransactionsByTag(transactions, currentDateFilter)
+                    val expenseTransactionsByTag = calculateExpenseTransactionsByTag(transactions, currentDateFilter, currentWalletFilter)
                     val totalExpensesByTag = expenseTransactionsByTag.values.sum()
-                    val incomeTransactionsByTag = calculateIncomeTransactionsByTag(transactions, currentDateFilter)
+                    val incomeTransactionsByTag = calculateIncomeTransactionsByTag(transactions, currentDateFilter, currentWalletFilter)
                     val totalIncomeByTag = incomeTransactionsByTag.values.sum()
 
                     logger.d("ReportViewModel", "Portfolio composition: $portfolioComposition, total: $totalPortfolioValue")
@@ -139,6 +143,7 @@ class ReportViewModel @Inject constructor(
                             wallets = wallets,
                             defaultCurrency = defaultCurrency,
                             selectedDateFilter = currentDateFilter,
+                            selectedWalletFilter = currentWalletFilter,
                             availableMonths = availableMonths,
                             availableYears = availableYears,
                             isLoading = false,
@@ -161,39 +166,45 @@ class ReportViewModel @Inject constructor(
     private fun calculatePortfolioComposition(
         wallets: List<Wallet>,
         transactions: List<Transaction>,
-        dateFilter: DateFilterPeriod
+        dateFilter: DateFilterPeriod,
+        walletFilter: WalletFilter
     ): Map<PhysicalForm, Double> {
         // Use historical reconstruction to get balances for the period (cumulative up to endDate)
         val (_, endDate) = dateFilter.getDateRange()
-        return BalanceReconstructionUtils.reconstructPortfolioComposition(wallets, transactions, endDate)
+        return BalanceReconstructionUtils.reconstructPortfolioComposition(wallets, transactions, endDate, walletFilter)
     }
-    
+
     private fun calculatePhysicalWalletBalances(
         wallets: List<Wallet>,
         transactions: List<Transaction>,
-        dateFilter: DateFilterPeriod
+        dateFilter: DateFilterPeriod,
+        walletFilter: WalletFilter
     ): Map<String, Double> {
         // Use historical reconstruction to get balances for the period (cumulative up to endDate)
         val (_, endDate) = dateFilter.getDateRange()
-        return BalanceReconstructionUtils.reconstructPhysicalWalletBalances(wallets, transactions, endDate)
+        return BalanceReconstructionUtils.reconstructPhysicalWalletBalances(wallets, transactions, endDate, walletFilter)
     }
-    
+
     private fun calculateLogicalWalletBalances(
         wallets: List<Wallet>,
         transactions: List<Transaction>,
-        dateFilter: DateFilterPeriod
+        dateFilter: DateFilterPeriod,
+        walletFilter: WalletFilter
     ): Map<String, Double> {
         // Use historical reconstruction to get balances for the period (cumulative up to endDate)
         val (_, endDate) = dateFilter.getDateRange()
-        return BalanceReconstructionUtils.reconstructLogicalWalletBalances(wallets, transactions, endDate)
+        return BalanceReconstructionUtils.reconstructLogicalWalletBalances(wallets, transactions, endDate, walletFilter)
     }
     
     private fun calculateExpenseTransactionsByTag(
         transactions: List<Transaction>,
-        dateFilter: DateFilterPeriod
+        dateFilter: DateFilterPeriod,
+        walletFilter: WalletFilter
     ): Map<String, Double> {
         // Use simple filtering to get transactions in the period
-        val filteredTransactions = DateFilterUtils.filterTransactionsByDate(transactions, dateFilter)
+        val dateFilteredTransactions = DateFilterUtils.filterTransactionsByDate(transactions, dateFilter)
+        // Then filter by wallet
+        val filteredTransactions = WalletFilterUtils.filterTransactionsByWallet(dateFilteredTransactions, walletFilter)
         val tagAmounts = mutableMapOf<String, Double>()
 
         filteredTransactions.filter { it.type == TransactionType.EXPENSE }.forEach { transaction ->
@@ -220,10 +231,13 @@ class ReportViewModel @Inject constructor(
     
     private fun calculateIncomeTransactionsByTag(
         transactions: List<Transaction>,
-        dateFilter: DateFilterPeriod
+        dateFilter: DateFilterPeriod,
+        walletFilter: WalletFilter
     ): Map<String, Double> {
         // Use simple filtering to get transactions in the period
-        val filteredTransactions = DateFilterUtils.filterTransactionsByDate(transactions, dateFilter)
+        val dateFilteredTransactions = DateFilterUtils.filterTransactionsByDate(transactions, dateFilter)
+        // Then filter by wallet
+        val filteredTransactions = WalletFilterUtils.filterTransactionsByWallet(dateFilteredTransactions, walletFilter)
         val tagAmounts = mutableMapOf<String, Double>()
 
         filteredTransactions.filter { it.type == TransactionType.INCOME }.forEach { transaction ->
@@ -260,6 +274,13 @@ class ReportViewModel @Inject constructor(
     fun selectDateFilter(period: DateFilterPeriod) {
         logger.d("ReportViewModel", "Selecting date filter: ${period.getDisplayText()}")
         _uiState.update { it.copy(selectedDateFilter = period) }
+        // Reload data with new filter
+        loadPortfolioData()
+    }
+
+    fun selectWalletFilter(filter: WalletFilter) {
+        logger.d("ReportViewModel", "Selecting wallet filter: ${filter.getDisplayText()}")
+        _uiState.update { it.copy(selectedWalletFilter = filter) }
         // Reload data with new filter
         loadPortfolioData()
     }

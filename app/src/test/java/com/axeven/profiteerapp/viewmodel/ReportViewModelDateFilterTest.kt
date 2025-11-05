@@ -1171,4 +1171,238 @@ class ReportViewModelDateFilterTest {
         assertTrue(viewModel.uiState.value.portfolioComposition.isEmpty())
         assertTrue(viewModel.uiState.value.physicalWalletBalances.isEmpty())
     }
+
+    // ========== Wallet Filter Tests ==========
+
+    @Test
+    fun `initial state has walletFilter AllWallets`() {
+        val wallets = emptyList<Wallet>()
+        val transactions = emptyList<Transaction>()
+
+        whenever(walletRepository.getUserWallets("user1")).thenReturn(flowOf(wallets))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
+        whenever(userPreferencesRepository.getUserPreferences("user1")).thenReturn(flowOf(null))
+
+        viewModel = ReportViewModel(
+            authRepository, walletRepository, transactionRepository,
+            userPreferencesRepository, logger
+        )
+
+        // Initial state should have AllWallets filter
+        assertEquals(com.axeven.profiteerapp.data.model.WalletFilter.AllWallets, viewModel.uiState.value.selectedWalletFilter)
+    }
+
+    @Test
+    fun `updateWalletFilter with AllWallets updates state`() {
+        val wallets = listOf(createPhysicalWallet("w1", "Wallet 1", 1000.0))
+        val transactions = emptyList<Transaction>()
+
+        whenever(walletRepository.getUserWallets("user1")).thenReturn(flowOf(wallets))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
+        whenever(userPreferencesRepository.getUserPreferences("user1")).thenReturn(flowOf(null))
+
+        viewModel = ReportViewModel(
+            authRepository, walletRepository, transactionRepository,
+            userPreferencesRepository, logger
+        )
+        viewModel.loadPortfolioData()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.selectWalletFilter(com.axeven.profiteerapp.data.model.WalletFilter.AllWallets)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(com.axeven.profiteerapp.data.model.WalletFilter.AllWallets, viewModel.uiState.value.selectedWalletFilter)
+    }
+
+    @Test
+    fun `updateWalletFilter with SpecificWallet updates state`() {
+        val wallets = listOf(
+            createPhysicalWallet("w1", "Wallet 1", 1000.0),
+            createPhysicalWallet("w2", "Wallet 2", 500.0)
+        )
+        val transactions = emptyList<Transaction>()
+
+        whenever(walletRepository.getUserWallets("user1")).thenReturn(flowOf(wallets))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
+        whenever(userPreferencesRepository.getUserPreferences("user1")).thenReturn(flowOf(null))
+
+        viewModel = ReportViewModel(
+            authRepository, walletRepository, transactionRepository,
+            userPreferencesRepository, logger
+        )
+        viewModel.loadPortfolioData()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val specificFilter = com.axeven.profiteerapp.data.model.WalletFilter.SpecificWallet("w2", "Wallet 2")
+        viewModel.selectWalletFilter(specificFilter)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(specificFilter, viewModel.uiState.value.selectedWalletFilter)
+    }
+
+    @Test
+    fun `wallet filter persists when switching chart types`() {
+        val wallets = listOf(createPhysicalWallet("w1", "Wallet 1", 1000.0))
+        val transactions = emptyList<Transaction>()
+
+        whenever(walletRepository.getUserWallets("user1")).thenReturn(flowOf(wallets))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
+        whenever(userPreferencesRepository.getUserPreferences("user1")).thenReturn(flowOf(null))
+
+        viewModel = ReportViewModel(
+            authRepository, walletRepository, transactionRepository,
+            userPreferencesRepository, logger
+        )
+        viewModel.loadPortfolioData()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val specificFilter = com.axeven.profiteerapp.data.model.WalletFilter.SpecificWallet("w1", "Wallet 1")
+        viewModel.selectWalletFilter(specificFilter)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Switch chart types
+        viewModel.selectChartDataType(ChartDataType.PHYSICAL_WALLET_BALANCE)
+        viewModel.selectChartDataType(ChartDataType.EXPENSE_TRANSACTION_BY_TAG)
+        viewModel.selectChartDataType(ChartDataType.PORTFOLIO_ASSET_COMPOSITION)
+
+        // Filter should persist
+        assertEquals(specificFilter, viewModel.uiState.value.selectedWalletFilter)
+    }
+
+    @Test
+    fun `combined date and wallet filtering in portfolio chart data`() {
+        val wallets = listOf(
+            createPhysicalWallet("w1", "Cash", 0.0).copy(initialBalance = 0.0, createdAt = createDate(2025, 1, 1)),
+            createPhysicalWallet("w2", "Bank", 0.0).copy(initialBalance = 0.0, createdAt = createDate(2025, 1, 1))
+        )
+        val transactions = listOf(
+            createTransaction("t1", TransactionType.INCOME, 100.0,
+                createDate(2025, 10, 15), affectedWalletIds = listOf("w1")),
+            createTransaction("t2", TransactionType.INCOME, 200.0,
+                createDate(2025, 10, 20), affectedWalletIds = listOf("w2")),
+            createTransaction("t3", TransactionType.INCOME, 300.0,
+                createDate(2025, 11, 5), affectedWalletIds = listOf("w1")) // November
+        )
+
+        whenever(walletRepository.getUserWallets("user1")).thenReturn(flowOf(wallets))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
+        whenever(userPreferencesRepository.getUserPreferences("user1")).thenReturn(flowOf(null))
+
+        viewModel = ReportViewModel(
+            authRepository, walletRepository, transactionRepository,
+            userPreferencesRepository, logger
+        )
+        viewModel.loadPortfolioData()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Apply date filter (October only)
+        viewModel.selectDateFilter(DateFilterPeriod.Month(2025, 10))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Apply wallet filter (w1 only)
+        viewModel.selectWalletFilter(com.axeven.profiteerapp.data.model.WalletFilter.SpecificWallet("w1", "Cash"))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Should only show w1's balance from October (100)
+        val physicalBalances = viewModel.uiState.value.physicalWalletBalances
+        assertEquals(1, physicalBalances.size)
+        assertEquals(100.0, physicalBalances["Cash"]!!, 0.01)
+    }
+
+    @Test
+    fun `combined date and wallet filtering in tag chart data`() {
+        val wallets = listOf(
+            createPhysicalWallet("w1", "Cash", 0.0),
+            createPhysicalWallet("w2", "Bank", 0.0)
+        )
+        val transactions = listOf(
+            createTransaction("t1", TransactionType.EXPENSE, 50.0,
+                createDate(2025, 10, 15), tags = listOf("food"), affectedWalletIds = listOf("w1")),
+            createTransaction("t2", TransactionType.EXPENSE, 100.0,
+                createDate(2025, 10, 20), tags = listOf("food"), affectedWalletIds = listOf("w2")),
+            createTransaction("t3", TransactionType.EXPENSE, 75.0,
+                createDate(2025, 11, 5), tags = listOf("food"), affectedWalletIds = listOf("w1"))
+        )
+
+        whenever(walletRepository.getUserWallets("user1")).thenReturn(flowOf(wallets))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
+        whenever(userPreferencesRepository.getUserPreferences("user1")).thenReturn(flowOf(null))
+
+        viewModel = ReportViewModel(
+            authRepository, walletRepository, transactionRepository,
+            userPreferencesRepository, logger
+        )
+        viewModel.loadPortfolioData()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Apply date filter (October only)
+        viewModel.selectDateFilter(DateFilterPeriod.Month(2025, 10))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Apply wallet filter (w1 only)
+        viewModel.selectWalletFilter(com.axeven.profiteerapp.data.model.WalletFilter.SpecificWallet("w1", "Cash"))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Should only show w1's expenses from October (50)
+        val expensesByTag = viewModel.uiState.value.expenseTransactionsByTag
+        assertEquals(1, expensesByTag.size)
+        assertEquals(50.0, expensesByTag["food"]!!, 0.01)
+    }
+
+    @Test
+    fun `wallet filter with empty wallet list returns empty data`() {
+        val wallets = emptyList<Wallet>()
+        val transactions = listOf(
+            createTransaction("t1", TransactionType.INCOME, 100.0,
+                createDate(2025, 10, 15), affectedWalletIds = listOf("w1"))
+        )
+
+        whenever(walletRepository.getUserWallets("user1")).thenReturn(flowOf(wallets))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
+        whenever(userPreferencesRepository.getUserPreferences("user1")).thenReturn(flowOf(null))
+
+        viewModel = ReportViewModel(
+            authRepository, walletRepository, transactionRepository,
+            userPreferencesRepository, logger
+        )
+        viewModel.loadPortfolioData()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.selectWalletFilter(com.axeven.profiteerapp.data.model.WalletFilter.SpecificWallet("w1", "Wallet 1"))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Empty wallets should result in empty data
+        assertTrue(viewModel.uiState.value.portfolioComposition.isEmpty())
+        assertTrue(viewModel.uiState.value.physicalWalletBalances.isEmpty())
+    }
+
+    @Test
+    fun `wallet filter with wallet not in list returns empty data`() {
+        val wallets = listOf(
+            createPhysicalWallet("w1", "Wallet 1", 1000.0)
+        )
+        val transactions = listOf(
+            createTransaction("t1", TransactionType.INCOME, 100.0,
+                createDate(2025, 10, 15), affectedWalletIds = listOf("w1"))
+        )
+
+        whenever(walletRepository.getUserWallets("user1")).thenReturn(flowOf(wallets))
+        whenever(transactionRepository.getUserTransactionsForCalculations("user1")).thenReturn(flowOf(transactions))
+        whenever(userPreferencesRepository.getUserPreferences("user1")).thenReturn(flowOf(null))
+
+        viewModel = ReportViewModel(
+            authRepository, walletRepository, transactionRepository,
+            userPreferencesRepository, logger
+        )
+        viewModel.loadPortfolioData()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Filter by wallet that doesn't exist
+        viewModel.selectWalletFilter(com.axeven.profiteerapp.data.model.WalletFilter.SpecificWallet("w999", "Non-existent"))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Should return empty data
+        assertTrue(viewModel.uiState.value.portfolioComposition.isEmpty())
+        assertTrue(viewModel.uiState.value.physicalWalletBalances.isEmpty())
+    }
 }

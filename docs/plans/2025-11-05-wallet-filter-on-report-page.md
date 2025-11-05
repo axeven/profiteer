@@ -1,7 +1,7 @@
 # Wallet Filter on Report Page
 
 **Created**: 2025-11-05
-**Status**: In Progress - Phase 2 Complete ✅
+**Status**: In Progress - Phase 3 Complete ✅
 **Approach**: Test-Driven Development (TDD)
 
 ## Overview
@@ -156,29 +156,31 @@ data class ReportsUiState(
 - [x] Fix edge case with empty wallets list
 - [x] **Run tests (expect passes)**
 
-### Phase 3: ViewModel Integration (TDD)
+### Phase 3: ViewModel Integration (TDD) ✅
 
-#### Step 3.1: Update ReportsViewModel Tests
-- [ ] Update `ReportsViewModelTest.kt`
-- [ ] Test initial state has `walletFilter = WalletFilter.AllWallets`
-- [ ] Test `updateWalletFilter(WalletFilter.AllWallets)` updates state
-- [ ] Test `updateWalletFilter(SpecificWallet)` updates state
-- [ ] Test wallet filter persists when switching chart types
-- [ ] Test combined date + wallet filtering in portfolio chart data
-- [ ] Test combined date + wallet filtering in tag chart data
-- [ ] Test wallet filter with empty wallet list
-- [ ] Test wallet filter with wallet not in list (edge case)
-- [ ] **Run tests (expect failures)**
+#### Step 3.1: Update ReportsViewModel Tests ✅
+- [x] Update `ReportViewModelDateFilterTest.kt`
+- [x] Test initial state has `walletFilter = WalletFilter.AllWallets`
+- [x] Test `selectWalletFilter(WalletFilter.AllWallets)` updates state
+- [x] Test `selectWalletFilter(SpecificWallet)` updates state
+- [x] Test wallet filter persists when switching chart types
+- [x] Test combined date + wallet filtering in portfolio chart data
+- [x] Test combined date + wallet filtering in tag chart data
+- [x] Test wallet filter with empty wallet list
+- [x] Test wallet filter with wallet not in list (edge case)
+- [x] **Run tests (expect failures)**
 
-#### Step 3.2: Update ReportsViewModel
-- [ ] Add `walletFilter: WalletFilter` to `ReportsUiState`
-- [ ] Add `updateWalletFilter(WalletFilter)` function
-- [ ] Update `portfolioChartData` to apply wallet filter via `BalanceReconstructionUtils`
-- [ ] Update `walletDistributionData` to apply wallet filter
-- [ ] Update `tagExpenseData` to apply wallet filter via `WalletFilterUtils`
-- [ ] Update `tagIncomeData` to apply wallet filter via `WalletFilterUtils`
-- [ ] Ensure filter persists across chart type changes
-- [ ] **Run tests (expect passes)**
+#### Step 3.2: Update ReportsViewModel ✅
+- [x] Add `selectedWalletFilter: WalletFilter` to `ReportUiState`
+- [x] Add `selectWalletFilter(WalletFilter)` function
+- [x] Update `calculatePortfolioComposition` to apply wallet filter via `BalanceReconstructionUtils`
+- [x] Update `calculatePhysicalWalletBalances` to apply wallet filter
+- [x] Update `calculateLogicalWalletBalances` to apply wallet filter
+- [x] Update `calculateExpenseTransactionsByTag` to apply wallet filter via `WalletFilterUtils`
+- [x] Update `calculateIncomeTransactionsByTag` to apply wallet filter via `WalletFilterUtils`
+- [x] Ensure filter persists across chart type changes
+- [x] Update logging to include wallet filter information
+- [x] **Run tests (expect passes)**
 
 ### Phase 4: UI Components (TDD)
 
