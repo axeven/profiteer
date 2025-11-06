@@ -29,6 +29,7 @@ import com.axeven.profiteerapp.data.model.PhysicalForm
 import com.axeven.profiteerapp.data.model.DateFilterPeriod
 import com.axeven.profiteerapp.utils.NumberFormatter
 import com.axeven.profiteerapp.utils.TagFormatter
+import com.axeven.profiteerapp.utils.ChartTitleUtils
 import com.axeven.profiteerapp.ui.components.MonthYearPickerDialog
 import com.axeven.profiteerapp.ui.components.WalletFilterPickerDialog
 import com.axeven.profiteerapp.data.model.WalletFilter
@@ -343,33 +344,17 @@ fun SimplePortfolioAssetCard(
                 ChartDataType.INCOME_TRANSACTION_BY_TAG -> incomeTransactionsByTagData.isNotEmpty() && totalIncomeByTag > 0
             }
 
-            // Build filter suffix for labels (combining date and wallet)
-            val filterParts = mutableListOf<String>()
-            if (selectedDateFilter != DateFilterPeriod.AllTime) {
-                filterParts.add(selectedDateFilter.getDisplayText())
-            }
-            if (selectedWalletFilter is WalletFilter.SpecificWallet) {
-                filterParts.add(selectedWalletFilter.walletName)
-            }
-            val filterSuffix = if (filterParts.isNotEmpty()) {
-                " (${filterParts.joinToString(", ")})"
-            } else {
-                ""
-            }
+            // Generate chart title using helper function
+            val chartTitle = ChartTitleUtils.getChartTitle(
+                chartType = selectedDataType,
+                dateFilter = selectedDateFilter,
+                walletFilter = selectedWalletFilter,
+                totalValue = totalValue,
+                defaultCurrency = defaultCurrency
+            )
 
             Text(
-                text = when (selectedDataType) {
-                    ChartDataType.PORTFOLIO_ASSET_COMPOSITION ->
-                        "Total Portfolio Value$filterSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
-                    ChartDataType.PHYSICAL_WALLET_BALANCE ->
-                        "Total Physical Wallet Value$filterSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
-                    ChartDataType.LOGICAL_WALLET_BALANCE ->
-                        "Total Logical Wallet Value$filterSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
-                    ChartDataType.EXPENSE_TRANSACTION_BY_TAG ->
-                        "Total Expense Amount$filterSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
-                    ChartDataType.INCOME_TRANSACTION_BY_TAG ->
-                        "Total Income Amount$filterSuffix: ${NumberFormatter.formatCurrency(totalValue, defaultCurrency, showSymbol = true)}"
-                },
+                text = chartTitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

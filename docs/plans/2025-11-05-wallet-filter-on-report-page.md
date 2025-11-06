@@ -1,7 +1,7 @@
 # Wallet Filter on Report Page
 
 **Created**: 2025-11-05
-**Status**: In Progress - Phase 5 Complete ✅
+**Status**: In Progress - Phase 6 Complete ✅
 **Approach**: Test-Driven Development (TDD)
 
 ## Overview
@@ -246,20 +246,20 @@ data class ReportsUiState(
 - [x] Ensure proper spacing and alignment with date filter chip (8.dp spacing)
 - [x] **Run tests (expect passes)** (1296 tests pass, code compiles successfully)
 
-### Phase 6: Chart Label Updates
+### Phase 6: Chart Label Updates ✅
 
-#### Step 6.1: Update Chart Title Logic Tests
-- [ ] Test portfolio chart title with AllWallets shows "Portfolio Over Time"
-- [ ] Test portfolio chart title with SpecificWallet shows "Cash Wallet Over Time"
-- [ ] Test tag expense chart title with SpecificWallet shows "Expense by Tag (Cash Wallet)"
-- [ ] Test combined date + wallet filter in titles
-- [ ] **Run tests (expect failures)**
+#### Step 6.1: Update Chart Title Logic Tests ✅
+- [x] Test portfolio chart title with AllWallets shows "Portfolio Over Time" - ChartTitleUtilsTest.kt
+- [x] Test portfolio chart title with SpecificWallet shows "Cash Wallet Over Time" - ChartTitleUtilsTest.kt
+- [x] Test tag expense chart title with SpecificWallet shows "Expense by Tag (Cash Wallet)" - ChartTitleUtilsTest.kt
+- [x] Test combined date + wallet filter in titles - ChartTitleUtilsTest.kt
+- [x] **Run tests (expect failures)** - Tests failed as expected (ChartTitleUtils didn't exist)
 
-#### Step 6.2: Implement Chart Title Logic
-- [ ] Create helper function `getChartTitle(ChartType, DateFilterPeriod, WalletFilter): String`
-- [ ] Update all chart title usages in ReportsScreen
-- [ ] Ensure titles are concise and informative
-- [ ] **Run tests (expect passes)**
+#### Step 6.2: Implement Chart Title Logic ✅
+- [x] Create helper function `getChartTitle(ChartType, DateFilterPeriod, WalletFilter): String` - ChartTitleUtils.kt
+- [x] Update all chart title usages in ReportsScreen - ReportScreenSimple.kt:347-360
+- [x] Ensure titles are concise and informative - 19 tests verify title format
+- [x] **Run tests (expect passes)** - All 19 tests pass, 1315 total tests (2 pre-existing failures)
 
 ### Phase 7: Integration Testing
 
