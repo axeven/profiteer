@@ -30,7 +30,11 @@ fun WalletFilterChip(
         selected = currentFilter != WalletFilter.AllWallets,
         onClick = onClick,
         label = {
-            Text(text = currentFilter.getDisplayText())
+            Text(
+                text = currentFilter.getDisplayText(),
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
         },
         leadingIcon = {
             Icon(
