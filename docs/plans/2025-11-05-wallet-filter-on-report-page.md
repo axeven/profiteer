@@ -1,7 +1,7 @@
 # Wallet Filter on Report Page
 
 **Created**: 2025-11-05
-**Status**: In Progress - Phase 6 Complete ✅
+**Status**: In Progress - Phase 7 Complete ✅
 **Approach**: Test-Driven Development (TDD)
 
 ## Overview
@@ -261,17 +261,17 @@ data class ReportsUiState(
 - [x] Ensure titles are concise and informative - 19 tests verify title format
 - [x] **Run tests (expect passes)** - All 19 tests pass, 1315 total tests (2 pre-existing failures)
 
-### Phase 7: Integration Testing
+### Phase 7: Integration Testing ✅
 
-#### Step 7.1: Create Integration Tests
-- [ ] Create `WalletFilterIntegrationTest.kt`
-- [ ] Test selecting wallet filter affects all chart types
-- [ ] Test combining date filter + wallet filter
-- [ ] Test switching between wallets updates charts immediately
-- [ ] Test resetting to "All Wallets" restores full data
-- [ ] Test wallet filter with no matching transactions shows empty state
-- [ ] Test wallet filter persists after screen rotation (if applicable)
-- [ ] **Run tests (expect passes)**
+#### Step 7.1: Create Integration Tests ✅
+- [x] Create `WalletFilterIntegrationTest.kt` - 13 comprehensive integration tests
+- [x] Test selecting wallet filter affects all chart types - Physical/Logical wallet charts, Expense/Income tag charts
+- [x] Test combining date filter + wallet filter - Combined filtering for wallets and tags
+- [x] Test switching between wallets updates charts immediately - Verified immediate updates
+- [x] Test resetting to "All Wallets" restores full data - Verified reset behavior
+- [x] Test wallet filter with no matching transactions shows empty state - Verified empty state handling
+- [x] Test wallet filter persists across operations - Verified persistence when changing chart types and date filters
+- [x] **Run tests (expect passes)** - All 13 tests pass successfully
 
 ### Phase 8: Edge Case Handling
 
