@@ -3,9 +3,36 @@ package com.axeven.profiteerapp.data.model
 /**
  * Represents a wallet filter for portfolio reports.
  *
- * This sealed class defines two types of wallet filters:
- * - AllWallets: No filtering, shows all wallets
- * - SpecificWallet: Filters data for a specific wallet by ID
+ * This sealed class defines two types of wallet filters that can be applied
+ * to transactions and wallet balances in the Reports screen:
+ * - **AllWallets**: No filtering, shows data from all wallets (default)
+ * - **SpecificWallet**: Filters data to show only transactions and balances for a specific wallet
+ *
+ * ## Usage:
+ * ```kotlin
+ * // Show all wallets (no filter)
+ * val filter = WalletFilter.AllWallets
+ *
+ * // Filter by specific wallet
+ * val filter = WalletFilter.SpecificWallet(
+ *     walletId = "wallet-123",
+ *     walletName = "Cash Wallet"
+ * )
+ *
+ * // Get display text
+ * val displayText = filter.getDisplayText() // "All Wallets" or "Cash Wallet"
+ * ```
+ *
+ * ## Integration with Reports:
+ * The wallet filter works alongside date filters to provide granular transaction analysis:
+ * - Filters transactions based on `affectedWalletIds` field
+ * - Filters wallet balances using historical reconstruction
+ * - Persists across chart type changes
+ * - Resets gracefully if selected wallet is deleted
+ *
+ * @see com.axeven.profiteerapp.utils.WalletFilterUtils for filtering utility functions
+ * @see com.axeven.profiteerapp.utils.BalanceReconstructionUtils for historical balance reconstruction
+ * @see com.axeven.profiteerapp.viewmodel.ReportViewModel for usage in ViewModel
  */
 sealed class WalletFilter {
 

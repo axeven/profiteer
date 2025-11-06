@@ -12,7 +12,35 @@ import com.axeven.profiteerapp.data.model.WalletFilter
  * - View data for a specific wallet (SpecificWallet filter)
  *
  * Transaction filtering uses the `affectedWalletIds` field to determine which
- * transactions involve a specific wallet.
+ * transactions involve a specific wallet. This handles transactions affecting
+ * multiple wallets correctly (e.g., transfers between wallets).
+ *
+ * ## Usage Example:
+ * ```kotlin
+ * // Filter transactions for a specific wallet
+ * val cashWalletFilter = WalletFilter.SpecificWallet("w1", "Cash Wallet")
+ * val filteredTransactions = WalletFilterUtils.filterTransactionsByWallet(
+ *     transactions = allTransactions,
+ *     filter = cashWalletFilter
+ * )
+ * // Returns only transactions where "w1" appears in affectedWalletIds
+ *
+ * // Filter wallets list
+ * val filteredWallets = WalletFilterUtils.filterWalletsByWalletFilter(
+ *     wallets = allWallets,
+ *     filter = cashWalletFilter
+ * )
+ * // Returns only the wallet with id "w1"
+ * ```
+ *
+ * ## Important Notes:
+ * - Transactions with empty `affectedWalletIds` are excluded from SpecificWallet filtering
+ * - Multi-wallet transactions (e.g., transfers) appear in filter if ANY affected wallet matches
+ * - All functions return empty lists rather than null for safety
+ *
+ * @see WalletFilter for filter types
+ * @see Transaction.affectedWalletIds for the field used in filtering
+ * @see BalanceReconstructionUtils for wallet balance filtering with historical reconstruction
  */
 object WalletFilterUtils {
 

@@ -766,6 +766,37 @@ For complete implementation details, see: `docs/plans/2025-10-30-wallet-dropdown
 - **Testing**: 101 automated tests covering all filtering scenarios
 - **Documentation**: See `docs/plans/2025-10-26-report-date-filter.md` for complete implementation plan
 
+## Report Wallet Filtering (2025-11-06)
+- Added wallet filtering capability to Portfolio Reports screen
+- Works alongside existing date filter for granular transaction analysis
+- **Filtering Strategy**:
+  - **Historical Reconstruction** (Portfolio/Wallet charts): Shows balances for selected wallet using historical reconstruction
+  - **Transaction Filtering** (Tag charts): Shows only transactions affecting selected wallet via `affectedWalletIds`
+- **UI Components**:
+  - `WalletFilterPickerDialog` - Material 3 dialog for selecting All Wallets or specific wallet
+  - `WalletFilterChip` - Filter chip showing current wallet selection with account icon
+- **Models & Utilities**:
+  - `WalletFilter` - Sealed class (AllWallets, SpecificWallet) in `data/model/WalletFilter.kt`
+  - `WalletFilterUtils` - Transaction and wallet filtering in `utils/WalletFilterUtils.kt`
+  - `ChartTitleUtils` - Chart title generation with filter info in `utils/ChartTitleUtils.kt`
+  - `BalanceReconstructionUtils` - Updated to support wallet filtering
+- **Key Features**:
+  - Filter persists when switching chart types and date filters
+  - Combined date + wallet filtering (both filters apply simultaneously)
+  - Wallet list alphabetically sorted using `WalletSortingUtils`
+  - Filter-aware chart titles (e.g., "Total Portfolio Value (October 2025, Cash Wallet)")
+  - Filter-aware empty states with context-specific suggestions
+  - Zero-balance wallets included in filter dropdown
+  - Text overflow handling for long wallet names (ellipsis)
+- **Implementation Details**:
+  - Uses `affectedWalletIds` field for transaction filtering
+  - Handles multi-wallet transactions (e.g., transfers) correctly
+  - Transactions with empty `affectedWalletIds` excluded from specific wallet filter
+  - System gracefully handles wallet deletion while filter active
+  - Efficient rendering with LazyColumn for 50+ wallets
+- **Testing**: 47 automated tests (13 integration + 15 edge case + 19 chart title tests)
+- **Documentation**: See `docs/plans/2025-11-05-wallet-filter-on-report-page.md` for complete implementation plan
+
 # Development Best Practices
 
 1. **Always check README.md** for comprehensive project context

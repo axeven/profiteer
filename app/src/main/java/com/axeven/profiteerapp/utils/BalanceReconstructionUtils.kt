@@ -14,12 +14,44 @@ import kotlin.math.abs
  * This class provides functions to reconstruct wallet balances as they were at a specific
  * point in time by chronologically replaying all transactions up to that date.
  *
- * Key features:
+ * ## Key Features:
  * - All wallets start at balance 0.0
  * - Transactions are replayed in chronological order by transactionDate
  * - Transactions with null transactionDate are excluded
  * - Wallets with zero balance are excluded from results
  * - For AllTime (endDate = null), returns current wallet balances
+ * - **Supports wallet filtering** to reconstruct balances for specific wallets only
+ *
+ * ## Wallet Filter Integration:
+ * All reconstruction functions support `WalletFilter` parameter for filtering:
+ * - **AllWallets** (default): Reconstructs balances for all wallets
+ * - **SpecificWallet**: Reconstructs balance only for the specified wallet
+ *
+ * This enables the Reports screen to show historical balances filtered by wallet,
+ * combined with date filtering for precise portfolio analysis.
+ *
+ * ## Usage Example:
+ * ```kotlin
+ * // Reconstruct all wallets at specific date
+ * val allBalances = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
+ *     wallets = allWallets,
+ *     transactions = allTransactions,
+ *     endDate = Date(2025, 10, 31),
+ *     walletFilter = WalletFilter.AllWallets
+ * )
+ *
+ * // Reconstruct only specific wallet
+ * val cashWalletBalance = BalanceReconstructionUtils.reconstructWalletBalancesAtDate(
+ *     wallets = allWallets,
+ *     transactions = allTransactions,
+ *     endDate = Date(2025, 10, 31),
+ *     walletFilter = WalletFilter.SpecificWallet("w1", "Cash Wallet")
+ * )
+ * ```
+ *
+ * @see WalletFilter for filter types
+ * @see WalletFilterUtils for transaction filtering utilities
+ * @see DateFilterPeriod for date filtering options
  */
 object BalanceReconstructionUtils {
 
