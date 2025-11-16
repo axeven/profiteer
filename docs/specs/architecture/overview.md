@@ -1,4 +1,10 @@
-# Profiteer Architecture Documentation
+# Architecture Overview
+
+**Status**: ✅ Implemented
+**Last Updated**: 2025-11-16
+**Type**: Architecture Specification
+
+---
 
 This document provides a comprehensive overview of the software architecture for Profiteer, a sophisticated personal finance management Android application built with modern development practices.
 
@@ -114,7 +120,7 @@ Profiteer implements a unified tagging system that replaced the traditional cate
 ```
 View (Jetpack Compose UI)
     ↓
-ViewModel (Business Logic + State Management)
+ ViewModel (Business Logic + State Management)
     ↓
 Repository (Data Abstraction Layer)
     ↓
@@ -301,7 +307,7 @@ Authentication Flow
 
 ### Enhanced Transaction Validation
 - **Amount Validation**: All transaction amounts must be positive numbers (> 0)
-- **Transfer Constraints**: 
+- **Transfer Constraints**:
   - Source and destination wallets must have identical currency
   - Source and destination must be the same wallet type (Physical or Logical)
   - Cannot transfer from a wallet to itself
@@ -388,7 +394,7 @@ Authentication Flow
 ### Authentication Security
 - **Google Play Services Integration**: Proper ProGuard rules for release builds
 - **Exception Handling**: Comprehensive error handling for authentication failures
-- **Security Configuration**: 
+- **Security Configuration**:
   - google-services.json for Firebase project configuration
   - OAuth 2.0 client configuration for Google Sign-in
   - Production-ready authentication flow with error recovery
@@ -399,107 +405,14 @@ Authentication Flow
 - **Client-side Error Handling**: Secure error messages without sensitive data exposure
 - **Session Security**: Automatic token refresh and secure session management
 
-## Extensibility & Future Architecture
+## Related Specifications
 
-### Planned Feature Extensions
-- **Advanced Analytics Dashboard**:
-  - Spending trend analysis with historical comparisons
-  - Category-based expense distribution charts
-  - Monthly/quarterly/yearly financial reports
-  - Budget vs. actual spending analysis
-- **Enhanced Transaction Features**:
-  - Recurring transaction scheduling
-  - Transaction templates for common operations
-  - Bulk transaction import/export
-  - Receipt attachment and OCR integration
-- **Notification & Alert System**:
-  - Balance threshold notifications
-  - Spending limit alerts
-  - Monthly financial summary emails
-  - Budget deviation warnings
-- **Data Export & Reporting**:
-  - CSV/Excel export functionality
-  - PDF financial reports generation
-  - Integration with accounting software
-  - Tax preparation data export
+- [Domain Models](../domain/) - Detailed wallet, transaction, currency specifications
+- [Technical Specifications](../technical/) - Firebase, state management, logging
+- [Screen Specifications](../screens/) - UI/UX specifications for each screen
+- [Feature Specifications](../features/) - Individual feature requirements
 
-### Architecture Extensibility Design
-- **Modular MVVM Structure**: Clean separation enables independent feature development
-- **Repository Pattern**: Data source abstraction supports multiple backends
-- **Hilt Dependency Injection**: Easy addition of new dependencies and services
-- **Compose UI Framework**: Rapid UI development with reusable components
-- **StateFlow Architecture**: Reactive state management scales with feature complexity
-- **Firebase Backend**: Cloud infrastructure supports advanced features without architecture changes
+---
 
-### Integration Points
-- **Third-party Services**: Architecture supports external API integration
-- **Cloud Functions**: Server-side processing capabilities for complex operations
-- **Push Notifications**: Firebase Cloud Messaging integration ready
-- **Analytics Integration**: Firebase Analytics and custom metrics support
-- **Backup & Sync**: Cloud backup functionality with user data export options
-
-## Development & Deployment Architecture
-
-### Comprehensive Testing Strategy
-- **Unit Testing Framework**:
-  - ViewModels and business logic validation (`src/test/`)
-  - Repository layer with mocked dependencies
-  - Utility class testing (NumberFormatter, WalletValidator)
-  - Currency conversion logic verification
-- **Integration Testing**:
-  - Repository-Firebase integration tests
-  - Authentication flow testing
-  - Real-time listener functionality validation
-- **UI Testing**:
-  - Jetpack Compose testing utilities
-  - User interaction flow validation
-  - Screen navigation testing
-  - Form validation and error state testing
-- **Security Testing**:
-  - Firestore security rules validation
-  - Authentication boundary testing
-  - Data isolation verification
-
-### Build System & Configuration
-- **Android Gradle Build System**:
-  - Version Catalogs for dependency management (`gradle/libs.versions.toml`)
-  - Multi-module support for future scalability
-  - Build variant configuration (debug/release)
-- **Firebase Integration**:
-  - `google-services.json` configuration
-  - Firebase project Native Mode requirements
-  - Authentication provider setup
-- **Release Configuration**:
-  - ProGuard rules for Google Play Services compatibility
-  - APK signing configuration
-  - Optimization settings for production deployment
-
-### Continuous Integration & Deployment
-- **Build Automation**:
-  - Gradle commands for all build scenarios
-  - Automated testing on build
-  - Lint checking and code quality validation
-- **Development Workflow**:
-  - Feature branch development model
-  - Code review requirements
-  - Automated testing before merge
-- **Quality Assurance**:
-  - Static code analysis integration
-  - Performance monitoring setup
-  - Crash reporting configuration
-
-### Code Quality & Maintainability
-- **Architecture Guidelines**:
-  - MVVM pattern enforcement
-  - Repository pattern consistency
-  - Dependency injection best practices
-- **Code Standards**:
-  - Kotlin coding conventions
-  - Compose UI best practices
-  - Documentation requirements
-- **Error Handling**:
-  - Comprehensive exception handling
-  - User-friendly error messages
-  - Logging and debugging support
-
-This architecture provides a robust foundation for a sophisticated personal finance management system with built-in scalability, maintainability, and extensibility for future enhancements.
+**Implementation Guidelines**: See [docs/guides/](../../guides/) for implementation patterns
+**Last Reviewed**: 2025-11-16

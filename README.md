@@ -207,23 +207,41 @@ cd Profiteer
 
 ## 📚 Documentation
 
-Comprehensive documentation is available in the `docs/` directory:
+**Start Here**: [Documentation Hub](docs/README.md) - Complete guide to all documentation
 
-- **[Architecture](docs/architecture.md)** - Detailed system architecture and design decisions
-- **[Database Schema](docs/database-schema.md)** - Complete Firestore schema documentation
-- **[Feature Requirements](docs/feature-requirements.md)** - Detailed feature specifications
-- **[Implementation Status](docs/implementation-status.md)** - Current development status
+Comprehensive documentation is available in the `docs/` directory organized by purpose:
 
-### Concept Documentation
-- **[Wallets](docs/concepts/wallets.md)** - Wallet system design and implementation
-- **[Transactions](docs/concepts/transactions.md)** - Transaction management and validation
-- **[Currencies](docs/concepts/currencies.md)** - Multi-currency support and conversion
+### For Developers
 
-### Page Documentation  
-- **[Homepage](docs/pages/homepage.md)** - Home screen functionality
-- **[Wallet List](docs/pages/wallet_list_page.md)** - Wallet management interface
-- **[Transaction Pages](docs/pages/transaction_list_page.md)** - Transaction management screens
-- **[Settings](docs/pages/settings_page.md)** - Configuration and preferences
+- **[AI Agent Guide](docs/AI_AGENT_GUIDE.md)** - AI development workflow (Propose → Plan → Implement)
+- **[Architecture Overview](docs/specs/architecture/overview.md)** - System architecture and design patterns
+- **[Database Schema](docs/specs/technical/database-schema.md)** - Complete Firestore schema
+- **[Development Guidelines](docs/guides/)** - How-to guides for Firebase, state management, navigation, logging
+
+### Feature Specifications
+
+- **[Dual Wallet System](docs/specs/features/dual-wallet-system.md)** - Physical/Logical wallet architecture
+- **[Multi-Currency Support](docs/specs/features/multi-currency-support.md)** - Currency types and conversion
+- **[Tag System](docs/specs/features/tag-system.md)** - Tag normalization and formatting
+
+### Domain Models
+
+- **[Wallets](docs/specs/domain/wallets.md)** - Wallet types, rules, and relationships
+- **[Transactions](docs/specs/domain/transactions.md)** - Transaction types and validation
+- **[Currencies](docs/specs/domain/currencies.md)** - Currency management and rates
+
+### Screen Specifications
+
+- **[Home Screen](docs/specs/screens/home-screen.md)** - Dashboard with transaction summary
+- **[Wallet List](docs/specs/screens/wallet-list-screen.md)** - Wallet management interface
+- **[Transaction List](docs/specs/screens/transaction-list-screen.md)** - Filtered transaction browsing
+- **[Reports Screen](docs/specs/screens/reports-screen.md)** - Portfolio analytics and charts
+
+### Planning & History
+
+- **[ROADMAP](docs/ROADMAP.md)** - Future features and priorities
+- **[CHANGELOG](docs/CHANGELOG.md)** - Historical changes and releases
+- **[Implementation Plans](docs/plans/)** - TDD-style checklists for feature development
 
 ## 🔧 Recent Improvements
 

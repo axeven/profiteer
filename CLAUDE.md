@@ -2,1006 +2,280 @@
 
 This file provides specific guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-# Project Context
+## Project Context
 
-For comprehensive project information, architecture details, and feature documentation, see **[README.md](README.md)** and the **[docs/](docs/)** directory.
+For comprehensive project information, see **[README.md](README.md)** and **[docs/](docs/)** directory.
 
 **Quick Summary**: Profiteer is a personal finance Android app built with Kotlin, Jetpack Compose, MVVM architecture, Firebase Auth, and Firestore, featuring a dual-wallet system with multi-currency support.
 
-# Build Commands
+---
 
-## Development
+## Build Commands
+
+### Development
 - `./gradlew build` - Build the project
 - `./gradlew assembleDebug` - Build debug APK
-- `./gradlew assembleRelease` - Build release APK
-- `./gradlew installDebug` - Install debug build on connected device
+- `./gradlew testDebugUnitTest` - Run debug unit tests
 
-## Testing
-
-Use the following commands to run tests
-
-- `./gradlew test` - Run unit tests
-- `./gradlew connectedAndroidTest` - Run instrumented tests on connected device/emulator
-- `./gradlew testDebugUnitTest` - Run debug unit tests specifically
-
-# Testing requirements
-
-- All code changes MUST include tests - No code should be committed without corresponding test coverage
-- Test both happy path and error scenarios
-- Use descriptive test names that clearly explain the scenario being tested
-- Mock external dependencies appropriately
-- Test error handling and edge cases
-- Run tests before committing
-- Ensure tests are deterministic - Tests should pass consistently regardless of execution order
-
-# Code Quality
+### Code Quality
 - `./gradlew lint` - Run Android lint checks
-- `./gradlew lintDebug` - Run lint on debug build variant
+- `./gradlew test` - Run all unit tests
 
-# Development Guidelines
+---
 
-## Code Quality & Testing
-- **ALWAYS** run lint and tests before committing changes
-- When implementing new features, add corresponding unit tests
-- Use Compose testing utilities for UI tests (`androidx.compose.ui.test`)
-- Follow existing code patterns and naming conventions
+## Testing Requirements
+
+- **All code changes MUST include tests** - No code without test coverage
+- Test both happy path and error scenarios
+- Use descriptive test names
+- Mock external dependencies appropriately
+- Run tests before committing
+
+---
 
 ## Architecture Guidelines
-- Follow MVVM pattern with Repository pattern for data access
-- Use Hilt for dependency injection
-- Implement reactive programming with StateFlow and Compose State
-- Place business logic in ViewModels, not in UI components
 
-## Navigation Architecture
+### Core Patterns
+- **MVVM** with Repository pattern for data access
+- **Hilt** for dependency injection
+- **StateFlow** and Compose State for reactive programming
+- **Place business logic in ViewModels**, not in UI components
 
-**Pattern**: Stack-based navigation using custom `NavigationStack` class
+### Navigation
+- **Pattern**: Stack-based navigation using `NavigationStack` class
+- **Location**: `app/src/main/java/com/axeven/profiteerapp/navigation/NavigationStack.kt`
+- **Key Operations**: `push()`, `pop()`, `canGoBack()`, `peekPrevious()`
+- **Documentation**: See [Navigation Guidelines](docs/guides/navigation.md)
 
-### NavigationStack Implementation
-
-The app uses a centralized navigation stack to manage screen history and back button behavior.
-
-**Location**: `app/src/main/java/com/axeven/profiteerapp/navigation/NavigationStack.kt`
-
-**Key Features**:
-- Stack-based screen history (replaces manual `previousScreen` tracking)
-- Automatic Compose recomposition via `SnapshotStateList`
-- Integration with Android `BackHandler` for physical back button
-- Minimum stack size of 1 (HOME always at bottom)
-- API 24+ compatible
-
-**Usage Example**:
-```kotlin
-// Initialize in MainActivity
-val navigationStack = remember { NavigationStack(AppScreen.HOME) }
-val currentScreen = navigationStack.current
-
-// Forward navigation
-navigationStack.push(AppScreen.SETTINGS)
-
-// Back navigation (handled by BackHandler)
-BackHandler(enabled = navigationStack.canGoBack()) {
-    navigationStack.pop()
-}
-```
-
-### Back Button Behavior
-
-**Physical Back Button**:
-- **On HOME screen** (stack size = 1): Minimizes app (default Android behavior)
-- **On other screens**: Navigates to previous screen by popping stack
-- **On REAUTH screen**: BLOCKED for security (cannot escape re-authentication)
-
-**BackHandler Integration** (MainActivity.kt):
-```kotlin
-val canNavigateBack = navigationStack.canGoBack() &&
-                      currentScreen != AppScreen.REAUTH &&
-                      authState is AuthState.Authenticated
-
-BackHandler(enabled = canNavigateBack) {
-    val previousScreen = navigationStack.pop()
-    // Handle screen-specific cleanup
-    // Trigger home refresh if returning to HOME
-}
-```
-
-**Screen State Cleanup**:
-When navigating back, the following state variables are cleared:
-- `CREATE_TRANSACTION`: Clear `initialTransactionType`, `selectedWalletId`
-- `EDIT_TRANSACTION`: Clear `selectedTransaction`
-- `WALLET_DETAIL`: Clear `selectedWalletId`
-
-### UI Back Button Implementation
-
-**TopAppBar Back Arrow**: All screens with TopAppBar display a back arrow icon (←) that triggers navigation. This provides an intuitive UI alternative to the physical back button.
-
-**Implementation Pattern** (MainActivity.kt:78-91):
-```kotlin
-// Helper function to create consistent back navigation callbacks
-val createBackNavigationCallback: () -> Unit = {
-    if (navigationStack.canGoBack()) {
-        navigationStack.pop()
-    }
-}
-
-// Usage in screen cases
-AppScreen.SETTINGS -> {
-    SettingsScreen(
-        onNavigateBack = createBackNavigationCallback
-    )
-}
-```
-
-**Key Points**:
-- UI back button calls the same `navigationStack.pop()` as physical back button
-- Helper function eliminates code duplication across 8 screens
-- Safety check with `canGoBack()` prevents invalid pops
-- Screens receive callback via composition parameter
-- Maintains separation of concerns (MainActivity owns navigation)
-- Both UI and physical back buttons work consistently
-
-**Affected Screens**: Settings, CreateTransaction, EditTransaction, WalletDetail, WalletList, TransactionList, Reports, DiscrepancyDebug
-
-**Testing**: See `TopLeftBackButtonTest.kt` (10 tests) and `docs/plans/2025-10-28-manual-testing-guide.md`
-
-### Navigation Logging
-
-All navigation events are logged with the `Navigation` tag for debugging:
-```
-Forward: HOME → SETTINGS (stack size: 2)
-Back pressed: SETTINGS → HOME (stack size: 1)
-REAUTH triggered: pushed REAUTH screen (stack size: 3)
-```
-
-Filter logcat: `adb logcat -s Navigation`
-
-### Navigation Stack Operations
-
-| Operation | Behavior | Example |
-|-----------|----------|---------|
-| `push(screen)` | Add screen to stack | `navigationStack.push(AppScreen.WALLET_LIST)` |
-| `pop()` | Remove top screen, return previous | `val prev = navigationStack.pop()` |
-| `canGoBack()` | Check if back is possible | `if (navigationStack.canGoBack()) { ... }` |
-| `peekPrevious()` | View previous without popping | `val prev = navigationStack.peekPrevious()` |
-| `clear(resetTo)` | Reset stack to specific screen | `navigationStack.clear(AppScreen.HOME)` |
-| `getStackTrace()` | Get full stack for debugging | `val trace = navigationStack.getStackTrace()` |
-
-### Testing
-
-- **Unit Tests**:
-  - `NavigationStackTest.kt` (39 tests, 100% coverage)
-  - `TopLeftBackButtonTest.kt` (10 tests, UI back button behavior)
-- **Integration Tests**: `BackNavigationTest.kt` (11 tests)
-- **UI Tests**: `BackButtonUiTest.kt` (14 tests)
-- **Manual Tests**:
-  - `docs/plans/2025-10-26-back-button-manual-testing-checklist.md` (Physical back button)
-  - `docs/plans/2025-10-28-manual-testing-guide.md` (UI back button)
-
-### Implementation Details
-
-- **NavigationStack Implementation**:
-  - Full implementation documented in `docs/plans/2025-10-25-back-button.md`
-  - Date: 2025-10-25 to 2025-10-26
-  - State Variables Removed: 1 (`previousScreen` manual tracking)
-  - Conditional Logic Reduced: 80% reduction in back navigation logic
-
-- **UI Back Button Fix**:
-  - Full implementation documented in `docs/plans/2025-10-28-fix-back-button.md`
-  - Date: 2025-10-28
-  - Issue: Empty `onNavigateBack` callbacks caused non-functional UI back buttons
-  - Solution: Added `createBackNavigationCallback` helper function
-  - Screens Fixed: 8 (Settings, CreateTransaction, EditTransaction, WalletDetail, WalletList, TransactionList, Reports, DiscrepancyDebug)
-  - Code Duplication Reduced: 8 inline lambdas → 1 reusable function
-
-## Key Development Notes
+### Key Development Notes
 - **Target SDK**: 36, **Min SDK**: 24, **Java**: 11
 - Uses Gradle Version Catalogs (`gradle/libs.versions.toml`)
 - Firebase must be in **Native Mode** (not Datastore Mode)
-- Requires `google-services.json` in `app/` directory
-- Web Client ID configuration required in `AuthRepository.kt`
 
-# Firebase Requirements
+---
 
-## Critical Setup Requirements
-- **Firestore Database**: Must be Native Mode for real-time listeners
-- **Authentication**: Google Sign-in with proper SHA-1 fingerprints configured
-- **Document ID Mapping**: Manual mapping required for proper model instantiation
-- **Security Rules**: User data isolation enforced through Firestore rules
+## Firebase Requirements
 
-## Firestore Security Rules & Query Requirements
+### Critical Setup
+- **Firestore**: Must be Native Mode for real-time listeners
+- **Authentication**: Google Sign-in with SHA-1 fingerprints configured
+- **Security Rules**: User data isolation enforced
 
-**CRITICAL**: All Firestore queries MUST comply with security rules to prevent permission errors.
+### 🚨 CRITICAL: Firestore Security Pattern
 
-### Current Security Rules
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // All collections require userId filter for data isolation
-    match /transactions/{transactionId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-    }
-    match /wallets/{walletId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-    }
-    match /user_preferences/{prefId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-    }
-    match /currency_rates/{rateId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-    }
-  }
-}
-```
+**Every Firestore query MUST include `userId` filter as FIRST condition:**
 
-### Mandatory Query Pattern
-
-**🚨 SECURITY REQUIREMENT**: Every Firestore query MUST include a `userId` filter as the FIRST condition.
-
-#### ✅ Correct Pattern:
 ```kotlin
-// ALWAYS start with userId filter
+// ✅ CORRECT
 collection
   .whereEqualTo("userId", userId)
   .whereEqualTo("otherField", value)
   .get()
-```
 
-#### ❌ FORBIDDEN Pattern:
-```kotlin
-// NEVER query without userId filter - this will cause permission errors
+// ❌ FORBIDDEN
 collection
   .whereEqualTo("walletId", walletId)  // Missing userId!
   .get()
 ```
 
-### Repository Implementation Rules
+**Checklist Before Writing ANY Firestore Query:**
+- [ ] Function accepts `userId: String` parameter
+- [ ] `.whereEqualTo("userId", userId)` is FIRST filter
+- [ ] All callers pass correct userId
 
-1. **All Repository Methods**: Must accept `userId` as parameter when querying
-2. **Function Signatures**: Include `userId: String` parameter for all query methods
-3. **Compound Queries**: Always use `userId` as the first filter condition
-4. **Array Queries**: Use `.whereEqualTo("userId", userId)` before `.whereArrayContains()`
+**Documentation**: See [Firebase Security Guidelines](docs/guides/firebase-security.md)
 
-#### Example Implementations:
-```kotlin
-// ✅ Correct Implementation
-fun getWalletTransactions(walletId: String, userId: String): Flow<List<Transaction>> = callbackFlow {
-  transactionsCollection
-    .whereEqualTo("userId", userId)        // Required first!
-    .whereEqualTo("walletId", walletId)
-    .addSnapshotListener { ... }
-}
+### Repository Error Handling
 
-// ✅ Correct Array Query
-fun getAffectedTransactions(walletId: String, userId: String): Flow<List<Transaction>> = callbackFlow {
-  transactionsCollection
-    .whereEqualTo("userId", userId)              // Required first!
-    .whereArrayContains("affectedWalletIds", walletId)
-    .addSnapshotListener { ... }
-}
-```
-
-### Security Validation Checklist
-
-Before implementing any new Firestore query:
-- [ ] Does the function accept `userId: String` parameter?
-- [ ] Is `.whereEqualTo("userId", userId)` the FIRST filter condition?
-- [ ] Are all Repository callers passing the correct userId?
-- [ ] Does the query follow the established security pattern?
-
-### Common Security Violations
-
-1. **Missing userId Filter**:
-   ```kotlin
-   // ❌ This will fail with PERMISSION_DENIED
-   .whereEqualTo("sourceWalletId", walletId)
-   ```
-
-2. **Wrong Filter Order**:
-   ```kotlin
-   // ❌ userId should be first (may impact index performance)
-   .whereEqualTo("walletId", walletId)
-   .whereEqualTo("userId", userId)
-   ```
-
-3. **Missing userId Parameter**:
-   ```kotlin
-   // ❌ Function doesn't accept userId
-   fun getTransactions(walletId: String): Flow<List<Transaction>>
-   ```
-
-### Error Messages to Watch For
-
-If you see these Firebase errors, check for missing userId filters:
-- `PERMISSION_DENIED: Missing or insufficient permissions`
-- `Error in [query type] query` in TransactionRepository logs
-
-**Remember**: Security rules are enforced on every query. One missing userId filter will break the entire query.
-
-## Repository Error Handling
-
-**CRITICAL**: Repositories must NEVER depend on UI layer (ViewModels). Use domain error types instead.
-
-### Required Pattern
-
-All repository snapshot listeners must handle errors using `RepositoryError` domain types:
+**🚨 CRITICAL: Repositories NEVER depend on ViewModels**
 
 ```kotlin
-@Singleton
+// ✅ CORRECT: Use domain error types
 class MyRepository @Inject constructor(
-    private val firestore: FirebaseFirestore,
-    private val logger: Logger  // ✅ Logger is allowed
-    // ❌ NEVER inject SharedErrorViewModel or any ViewModel
-) {
-    fun getUserData(userId: String): Flow<List<Data>> = callbackFlow {
-        val listener = collection
-            .whereEqualTo("userId", userId)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    // Convert Firebase error to domain error
-                    val errorInfo = FirestoreErrorHandler.handleSnapshotError(
-                        error,
-                        "getUserData"
-                    )
-
-                    // Create RepositoryError from errorInfo
-                    val repositoryError = RepositoryError.FirestoreListener(
-                        operation = errorInfo.operation,
-                        userMessage = errorInfo.userMessage,
-                        shouldRetry = errorInfo.shouldRetry,
-                        requiresReauth = errorInfo.requiresReauth,
-                        isOffline = errorInfo.isOffline,
-                        cause = error
-                    )
-
-                    // Close Flow with typed exception
-                    close(repositoryError)
-                    return@addSnapshotListener
-                }
-
-                // Handle successful snapshot
-                trySend(parseData(snapshot))
-            }
-
-        awaitClose { listener.remove() }
-    }
-}
-```
-
-### Error Type Hierarchy
-
-Use these domain error types from `data/model/RepositoryError.kt`:
-
-- `RepositoryError.FirestoreListener` - Real-time listener errors (most common)
-- `RepositoryError.FirestoreCrud` - CRUD operation errors
-- `RepositoryError.NetworkError` - Connectivity issues
-- `RepositoryError.AuthenticationError` - Auth/permission errors
-- `RepositoryError.DataValidationError` - Parsing failures
-- `RepositoryError.ResourceNotFound` - Missing resources
-- `RepositoryError.CompositeError` - Multi-query aggregation
-- `RepositoryError.UnknownError` - Catch-all
-
-### ViewModel Integration
-
-ViewModels catch and handle RepositoryError exceptions using utility functions:
-
-```kotlin
-@HiltViewModel
-class MyViewModel @Inject constructor(
-    private val repository: MyRepository,
-    private val logger: Logger
-) : ViewModel() {
-
-    fun loadData() {
-        viewModelScope.launch {
-            try {
-                repository.getUserData(userId).collect { data ->
-                    _uiState.update { it.copy(data = data, isLoading = false) }
-                }
-            } catch (e: Exception) {
-                // Use error handling utilities
-                val errorInfo = e.toErrorInfo()
-                logger.w("MyViewModel", "Error loading data: ${errorInfo.message}")
-
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = errorInfo.message
-                    )
-                }
-            }
-        }
-    }
-}
-```
-
-### Error Handling Utilities
-
-Use extension functions from `viewmodel/ErrorHandlingUtils.kt`:
-
-- `Throwable.toUserMessage()` - Extract user-friendly message
-- `Throwable.isCriticalError()` - Check if requires auth/critical handling
-- `Throwable.isRetryable()` - Check if operation can be retried
-- `Throwable.isOfflineError()` - Check if network-related
-- `Throwable.toErrorInfo()` - Get structured error information
-
-### Anti-Patterns
-
-```kotlin
-// ❌ FORBIDDEN: Repository calling UI layer
-class MyRepository @Inject constructor(
-    private val sharedErrorViewModel: SharedErrorViewModel  // NEVER DO THIS
+    private val logger: Logger  // ✅ Allowed
 ) {
     fun getData() = callbackFlow {
         addSnapshotListener { snapshot, error ->
             if (error != null) {
-                sharedErrorViewModel.showError(error.message)  // WRONG!
-                return@addSnapshotListener
+                close(RepositoryError.FirestoreListener(...))  // ✅ Domain error
             }
         }
     }
 }
 
-// ✅ CORRECT: Repository using domain errors
+// ❌ FORBIDDEN: Depend on ViewModels
 class MyRepository @Inject constructor(
-    private val logger: Logger
-) {
-    fun getData() = callbackFlow {
-        addSnapshotListener { snapshot, error ->
-            if (error != null) {
-                close(RepositoryError.FirestoreListener(...))  // RIGHT!
-                return@addSnapshotListener
-            }
-        }
-    }
-}
+    private val sharedErrorViewModel: SharedErrorViewModel  // ❌ NEVER!
+)
 ```
 
-### Testing Requirements
+**Documentation**: See [Repository Error Handling](docs/guides/repository-error-handling.md)
 
-- Repositories must have NO UI dependencies in constructor
-- Use `verifyNoUIDependencies()` from test helpers to enforce
-- Test error scenarios return correct `RepositoryError` types
-- ViewModels must test error handling with RepositoryError exceptions
+---
 
-For detailed error handling patterns, see:
-- [Repository Error Mapping](docs/repository-error-mapping.md)
-- [Repository Refactoring Plan](docs/plans/2025-10-17-repository-layer-mixing-concerns.md)
+## Code Organization
 
-# Code Organization
-
-## Package Structure
 ```
 com.axeven.profiteerapp/
 ├── data/              # Data layer (models, repositories, DI)
 ├── ui/               # UI components (Jetpack Compose screens)
-├── utils/            # Utility classes (NumberFormatter, validators)
+├── utils/            # Utility classes (formatters, validators)
 └── viewmodel/        # ViewModels for business logic
 ```
 
-## Key Files
-- **MainActivity.kt** - Single activity hosting all Compose screens
-- **Theme system** - `ui/theme/` (Color.kt, Theme.kt, Type.kt)
-- **Models** - `data/model/` (Wallet.kt, Transaction.kt, CurrencyRate.kt)
+---
 
-# Business Logic & Validation
+## Business Logic & Validation
 
-## Critical Business Rules
-- **Balance Integrity**: Sum of Logical wallet balances must equal sum of Physical wallet balances
+### Critical Business Rules
+- **Balance Integrity**: Logical wallet balances = Physical wallet balances (sum)
 - **Transfer Validation**: Same wallet type AND same currency required
 - **Tag System**: Multiple tags per transaction, auto-completion after 3+ characters
 - **Currency Conversion**: Default rates → Monthly rates → Warning system
 
-## Tag Normalization (Implemented 2025-10-19)
+### Tag System
+- **Storage**: Lowercase normalized (`"food"`, `"travel"`)
+- **Display**: Camel case formatted (`"Food"`, `"Travel"`)
+- **Utilities**: `TagNormalizer` (storage), `TagFormatter` (display)
+- **Documentation**: See [Tag System](docs/specs/features/tag-system.md)
 
-**All tags are automatically normalized to ensure consistency:**
+### Wallet Sorting
+- **Pattern**: Alphabetical sorting using `WalletSortingUtils`
+- **Simple dropdowns**: `sortAlphabetically()` - single wallet type
+- **Transfer dropdowns**: `sortByTypeAndName()` - mixed types
+- **Documentation**: See [Wallet Dropdown Ordering](docs/plans/2025-10-30-wallet-dropdown-ordering.md)
 
-### Normalization Rules
-1. **Case-Insensitive**: All tags converted to lowercase ("Food" → "food", "TRAVEL" → "travel")
-2. **Whitespace Trimming**: Leading/trailing whitespace removed (" food " → "food")
-3. **Duplicate Removal**: Case-insensitive duplicates removed ("food, Food, FOOD" → "food")
-4. **Reserved Keyword Filtering**: "Untagged" keyword filtered out (case-insensitive)
-5. **Blank Tag Filtering**: Empty and whitespace-only tags removed
+### Report Filtering
+- **Date Filtering**: Month/Year via `DateFilterPeriod`, `DateFilterUtils`
+- **Wallet Filtering**: Per-wallet via `WalletFilter`, `WalletFilterUtils`
+- **Chart Titles**: Generated by `ChartTitleUtils`
+- **Documentation**: See implementation plans in `docs/plans/`
 
-### Implementation Details
-- **Utility Class**: `TagNormalizer` in `app/src/main/java/com/axeven/profiteerapp/utils/TagNormalizer.kt`
-- **Applied At**:
-  - Transaction creation (CreateTransactionUiState)
-  - Transaction editing (EditTransactionUiState)
-  - Tag loading from Firestore (fromExistingTransaction)
-  - Tag autocomplete suggestions (TransactionViewModel)
-  - Data migration (TagMigration)
+### Data Model Evolution
+- **Transactions**: `affectedWalletIds` (modern) + `walletId` (legacy compatibility)
+- **Tags**: `tags` array field + `category` field (backward compatibility)
 
-### User Experience
-- Tags are normalized automatically on input
-- Autocomplete is case-insensitive (typing "foo" suggests "food")
-- No duplicate tags in suggestion lists
-- Consistent tag display across all screens
+---
 
-### Data Migration
-- **Migration Utility**: `TagMigration` in `app/src/main/java/com/axeven/profiteerapp/data/migration/TagMigration.kt`
-- **Trigger**: Can be run via `TagMigration.migrateTransactionTags(userId)`
-- **Status Flag**: `UserPreferences.tagsMigrationCompleted` tracks migration state
-- **Idempotent**: Safe to run multiple times, skips already-normalized tags
+## State Management
 
-### Testing
-- 176 comprehensive tests covering all normalization scenarios
-- See: `docs/plans/2025-10-19-tag-improvement.md` for implementation details
+**🚨 REQUIRED: Use consolidated state pattern**
 
-## Tag Display Formatting (Implemented 2025-10-20)
-
-**All tags are displayed in camel case for improved readability:**
-
-### Format Specification
-- **Storage Format**: Lowercase (e.g., "food", "travel", "grocery shopping")
-- **Display Format**: Camel case (e.g., "Food", "Travel", "Grocery Shopping")
-- **Formatting Utility**: `TagFormatter.formatTags()` in UI layer only
-- **No Data Migration**: Storage unchanged, formatting applied on-the-fly
-
-### Implementation Details
-- **Utility Class**: `TagFormatter` in `app/src/main/java/com/axeven/profiteerapp/utils/TagFormatter.kt`
-- **Applied At**: All UI composables that display tags
-  - HomeScreen transaction items (`HomeScreen.kt`)
-  - CreateTransactionScreen autocomplete suggestions (`CreateTransactionScreen.kt`)
-  - EditTransactionScreen autocomplete (shares `TagInputField` component)
-  - TransactionListScreen filter dropdown (`TransactionListScreen.kt`)
-- **Not Applied At**: Storage layer, normalization, filtering (remains case-insensitive)
-
-### Formatting Rules
-1. **Single Words**: First letter capitalized ("food" → "Food")
-2. **Multi-Word Tags**: Each word capitalized ("grocery shopping" → "Grocery Shopping")
-3. **Hyphenated Words**: Each segment capitalized ("food-related" → "Food-Related")
-4. **Special Characters**: Preserved in position ("food&drink" → "Food&drink")
-5. **Numbers**: Preserved in position ("groceries2024" → "Groceries2024")
-6. **Empty Tags**: Display "Untagged" label
-
-### User Experience
-- **Visual Improvement**: Tags more readable and professional-looking
-- **Consistent Display**: All screens show identical camel case formatting
-- **Case-Insensitive Operations**: Filtering and matching still work regardless of case
-- **Separation of Concerns**: Display formatting separate from storage normalization
-
-### Architecture Pattern
-```
-Storage (Firestore)          UI State (ViewModel)         Display (Composable)
-["food", "travel"]    →      ["food", "travel"]    →      ["Food", "Travel"]
-     ↑                             ↑                             ↑
-  Normalized                   Normalized                   Formatted
-  (TagNormalizer)              (unchanged)               (TagFormatter)
-```
-
-### Testing
-- 160+ comprehensive tests covering all formatting scenarios
-- Test files:
-  - `TagFormatterTest.kt` - 68 unit tests for core formatting logic
-  - `HomeScreenTest.kt` - 17 tests for transaction item display
-  - `CreateTransactionScreenTagFormattingTest.kt` - 24 tests for autocomplete
-  - `EditTransactionScreenTagFormattingTest.kt` - 24 tests for edit mode
-  - `TransactionListScreenTagFormattingTest.kt` - 27 tests for filter dropdown
-- See: `docs/plans/2025-10-20-camel-case-tags.md` for implementation details
-
-## Wallet Dropdown Ordering (Implemented 2025-10-30)
-
-**All wallet dropdowns display in alphabetical order for improved user experience:**
-
-### Sorting Strategy
-
-- **Simple Dropdowns**: Alphabetical by wallet name (case-insensitive)
-  - Physical wallet dropdowns in Income/Expense transactions
-  - Logical wallet dropdowns in Income/Expense transactions
-  - Physical wallet filters in TransactionListScreen
-  - Logical wallet filters in TransactionListScreen
-
-- **Transfer Dropdowns**: Type grouping + alphabetical within each group
-  - Source wallet dropdown: Physical wallets first (alphabetical), then Logical wallets (alphabetical)
-  - Destination wallet dropdown: Same grouping, excludes selected source wallet
-
-### Implementation Details
-
-- **Utility Class**: `WalletSortingUtils` in `app/src/main/java/com/axeven/profiteerapp/utils/WalletSortingUtils.kt`
-- **Functions**:
-  - `sortAlphabetically(wallets)` - Simple alphabetical sorting (case-insensitive)
-  - `sortByTypeAndName(wallets, physicalFirst = true)` - Type grouping + alphabetical sorting
-- **Applied At**: UI layer only (after wallet type filtering)
-  - CreateTransactionScreen wallet pickers (4 dropdowns)
-  - EditTransactionScreen wallet pickers (4 dropdowns)
-  - TransactionListScreen wallet filters (2 dropdowns)
-- **Not Applied At**: Repository layer (wallets still stored by creation date)
-
-### Usage Guidelines
-
-**When to use `sortAlphabetically()`:**
 ```kotlin
-// For single wallet type dropdowns (Physical OR Logical)
-val physicalWallets = WalletSortingUtils.sortAlphabetically(
-    viewModelUiState.wallets.filter { it.walletType == "Physical" }
-)
+// ✅ CORRECT: Consolidated state
+data class ScreenUiState(
+    val dialogStates: DialogStates = DialogStates(),
+    val formData: FormData = FormData(),
+    val validationErrors: ValidationErrors = ValidationErrors()
+) {
+    val isFormValid: Boolean = /* derive from state */
 
-val logicalWallets = WalletSortingUtils.sortAlphabetically(
-    viewModelUiState.wallets.filter { it.walletType == "Logical" }
-)
+    fun updateField(value: String): ScreenUiState {
+        val newState = copy(formData = formData.copy(field = value))
+        return newState.copy(validationErrors = validate(newState))
+    }
+}
+
+// ❌ FORBIDDEN: Scattered state
+var showDialog by remember { mutableStateOf(false) }
+var titleText by remember { mutableStateOf("") }
 ```
 
-**When to use `sortByTypeAndName()`:**
+**Documentation**: See [State Management Guidelines](docs/guides/state-management.md)
+
+---
+
+## Logging
+
+**🚨 REQUIRED: Use custom Logger, NEVER `android.util.Log`**
+
 ```kotlin
-// For mixed wallet type dropdowns (Physical AND Logical)
-val sourceWallets = WalletSortingUtils.sortByTypeAndName(
-    viewModelUiState.wallets
-)
-
-// Destination excludes source wallet
-val destinationWallets = WalletSortingUtils.sortByTypeAndName(
-    viewModelUiState.wallets.filter { it.id != selectedSourceWallet?.id }
-)
+@HiltViewModel
+class MyViewModel @Inject constructor(
+    private val logger: Logger  // ✅ Inject Logger
+) : ViewModel() {
+    fun performOperation() {
+        logger.d("MyViewModel", "Starting operation")
+        logger.e("MyViewModel", "Operation failed", exception)
+    }
+}
 ```
 
-### Sorting Behavior
+**Levels**: `d()` (debug), `i()` (info), `w()` (warning), `e()` (error)
+**Documentation**: See [Logging Guidelines](docs/guides/logging.md)
 
-1. **Case-Insensitive**: "apple" and "Apple" are treated identically
-2. **Unicode Ordering**: Special characters (!@#) and numbers (0-9) sort before letters
-3. **Immutability**: Original wallet list is never modified
-4. **Stable Sorting**: Wallets with identical names maintain relative order
-5. **Type Grouping**: Physical wallets appear before Logical wallets in transfer screens
+---
 
-### Testing Requirements
+## Development Best Practices
 
-- **Unit Tests**: 26 tests for WalletSortingUtils (100% coverage)
-  - `WalletSortingUtilsTest.kt` - Core sorting logic tests
-- **Screen Tests**: 55 tests for screen-level sorting integration
-  - `CreateTransactionScreenWalletOrderingTest.kt` - 17 tests
-  - `EditTransactionScreenWalletOrderingTest.kt` - 18 tests
-  - `TransactionListScreenWalletOrderingTest.kt` - 20 tests
-- **Integration Tests**: 5 tests for cross-screen consistency
-  - `WalletDropdownOrderingIntegrationTest.kt` - End-to-end integration tests
-- **Manual Testing**: 40+ manual test scenarios
-  - See: `docs/plans/2025-10-30-wallet-dropdown-manual-testing-results.md`
-
-### User Experience Benefits
-
-- **Predictability**: Users can easily find wallets in consistent alphabetical order
-- **Scalability**: Alphabetical ordering works well even with 50+ wallets
-- **Consistency**: Same ordering pattern across all screens
-- **Reduced Cognitive Load**: No need to remember creation order
-
-### Architecture Pattern
-
-```
-Repository (Data Layer)     ViewModel (Business Logic)    UI (Presentation Layer)
-Wallets by createdAt  →     Wallets unchanged       →     Wallets alphabetically sorted
-     ↑                           ↑                              ↑
-  FirestoreDB              Cache/LiveData               WalletSortingUtils
-```
-
-For complete implementation details, see: `docs/plans/2025-10-30-wallet-dropdown-ordering.md`
-
-## Data Model Evolution
-- **Transactions**: Use `affectedWalletIds` (modern) alongside `walletId` (legacy) for backward compatibility
-- **Tags**: Use `tags` array field, maintain `category` field for backward compatibility
-- **Default Values**: "Untagged" for transactions without tags/categories (filtered during normalization)
-
-# Known Issues & Solutions
-
-## Google Play Services
-- Non-critical SecurityException warnings in logcat are expected
-- Handled in ProGuard rules (`app/proguard-rules.pro`) and `AuthRepository.kt`
-
-## Currency Conversion
-- System prioritizes default rates, falls back to monthly rates
-- Inverse rate calculation when direct rates unavailable
-- User warnings displayed when conversion rates missing
-
-# IMPORTANT AI Behavior Rules
-- NEVER ASSUME OR GUESS - When in doubt, ask for clarification
-- Never hallucinate libraries or functions – only use known, verified libraries
-- Always confirm file paths and module names exist before referencing them in code or tests.
-- Never delete or overwrite existing code unless explicitly instructed to or if part of a task from TASK.md.
-- Keep CLAUDE.md updated when adding new patterns or dependencies
-- Test your code - No feature is complete without tests
-- Document your decisions - Future developers (including yourself) will thank you
-  
-# Testing Strategy
-
-- **Unit Tests**: Focus on ViewModels, repositories, and business logic
-- **Integration Tests**: Test Firebase integration and data flow
-- **UI Tests**: Use Compose testing utilities for screen interactions
-- **Validation**: Test business rules and edge cases thoroughly
-
-# Documentation & Explainability
-- Update README.md when new features are added, dependencies change, or setup steps are modified.
-- Comment non-obvious code and ensure everything is understandable to a mid-level developer.
-- When writing complex logic, add an inline # Reason: comment explaining the why, not just the what.
-- Every module should have a docstring explaining its purpose
-- Public functions must have complete docstrings
-
-## Plan Documentation Maintenance
-- **CRITICAL**: When implementing features/changes based on a plan document (e.g., files in `docs/plans/`), ALWAYS update the plan document upon completion
-- Mark completed tasks with ✅ and update progress metrics
-- Document actual implementation approaches vs. planned approaches
-- Update status sections to reflect current progress
-- This ensures documentation stays accurate and serves as a reliable project history
-
-# Recent Changes to Be Aware Of
-
-## Transaction System Updates
-- Merged category and tag concepts into unified tagging system
-- Enhanced transfer validation (wallet type + currency matching)
-- Simplified wallet selection (one Physical + one Logical per transaction)
-
-## Wallet Management Updates
-- Added dedicated wallet list page with Physical/Logical separation
-- Implemented unallocated balance tracking and warnings
-- Enhanced navigation between home screen and wallet management
-
-## UI/UX Improvements
-- Consistent tag display across all screens
-- Real-time validation with clear error messages
-- Material 3 design system integration
-
-## Report Date Filtering (2025-10-26)
-- Added month/year filtering to Portfolio Reports screen
-- **Two filtering strategies**:
-  - **Historical Reconstruction** (Portfolio/Wallet charts): Shows balances as they were at end of selected period by replaying transactions
-  - **Simple Filtering** (Tag-based charts): Shows only transactions from selected period
-- **UI Components**:
-  - `MonthYearPickerDialog` - Material 3 dialog for selecting All Time, Month, or Year
-  - `ReportFilterChip` - Filter chip showing current period with calendar icon
-- **Models & Utilities**:
-  - `DateFilterPeriod` - Sealed class (AllTime, Month, Year) in `data/model/DateFilterPeriod.kt`
-  - `DateFilterUtils` - Simple transaction filtering in `utils/DateFilterUtils.kt`
-  - `BalanceReconstructionUtils` - Historical balance reconstruction in `utils/BalanceReconstructionUtils.kt`
-- **Key Features**:
-  - Filter persists when switching chart types
-  - Period-aware total labels (e.g., "Total Expense Amount (October 2025)")
-  - Filter-aware empty states with helpful suggestions
-  - Only shows periods with transaction data in picker
-- **Implementation Details**:
-  - Uses `transactionDate` field (NOT `createdAt`) for all filtering
-  - Excludes transactions with null `transactionDate`
-  - Date range filtering (startDate to endDate), not just up to endDate
-  - Includes wallet if it has ANY transaction in period (even before wallet creation)
-  - Excludes zero-balance wallets (except logical can have negative)
-- **Testing**: 101 automated tests covering all filtering scenarios
-- **Documentation**: See `docs/plans/2025-10-26-report-date-filter.md` for complete implementation plan
-
-## Report Wallet Filtering (2025-11-06)
-- Added wallet filtering capability to Portfolio Reports screen
-- Works alongside existing date filter for granular transaction analysis
-- **Filtering Strategy**:
-  - **Historical Reconstruction** (Portfolio/Wallet charts): Shows balances for selected wallet using historical reconstruction
-  - **Transaction Filtering** (Tag charts): Shows only transactions affecting selected wallet via `affectedWalletIds`
-- **UI Components**:
-  - `WalletFilterPickerDialog` - Material 3 dialog for selecting All Wallets or specific wallet
-  - `WalletFilterChip` - Filter chip showing current wallet selection with account icon
-- **Models & Utilities**:
-  - `WalletFilter` - Sealed class (AllWallets, SpecificWallet) in `data/model/WalletFilter.kt`
-  - `WalletFilterUtils` - Transaction and wallet filtering in `utils/WalletFilterUtils.kt`
-  - `ChartTitleUtils` - Chart title generation with filter info in `utils/ChartTitleUtils.kt`
-  - `BalanceReconstructionUtils` - Updated to support wallet filtering
-- **Key Features**:
-  - Filter persists when switching chart types and date filters
-  - Combined date + wallet filtering (both filters apply simultaneously)
-  - Wallet list alphabetically sorted using `WalletSortingUtils`
-  - Filter-aware chart titles (e.g., "Total Portfolio Value (October 2025, Cash Wallet)")
-  - Filter-aware empty states with context-specific suggestions
-  - Zero-balance wallets included in filter dropdown
-  - Text overflow handling for long wallet names (ellipsis)
-- **Implementation Details**:
-  - Uses `affectedWalletIds` field for transaction filtering
-  - Handles multi-wallet transactions (e.g., transfers) correctly
-  - Transactions with empty `affectedWalletIds` excluded from specific wallet filter
-  - System gracefully handles wallet deletion while filter active
-  - Efficient rendering with LazyColumn for 50+ wallets
-- **Testing**: 47 automated tests (13 integration + 15 edge case + 19 chart title tests)
-- **Documentation**: See `docs/plans/2025-11-05-wallet-filter-on-report-page.md` for complete implementation plan
-
-# Development Best Practices
-
-1. **Always check README.md** for comprehensive project context
+1. **Check README.md** for comprehensive project context
 2. **Run tests** before committing any changes
 3. **Follow existing patterns** for consistency
 4. **Validate business rules** in all new implementations
 5. **Use proper error handling** especially for Firebase operations
 6. **Maintain backward compatibility** when modifying data models
-7. **Test currency conversion** logic thoroughly
-8. **Verify balance integrity** in wallet and transaction operations
-9. **Use proper logging practices** following the established logging framework
-10. **Follow consolidated state management patterns** for all Jetpack Compose screens
-11. **🚨 CRITICAL: Follow Firebase security patterns** - All Firestore queries MUST include userId filters (see Firebase Security section above)
-12. **🚨 CRITICAL: Follow repository error handling patterns** - Repositories must NEVER inject ViewModels, use RepositoryError domain types (see Repository Error Handling section above)
+7. **Verify balance integrity** in wallet/transaction operations
+8. **🚨 Follow Firebase security patterns** - userId filters mandatory
+9. **🚨 Follow repository patterns** - No ViewModel dependencies
+10. **🚨 Use consolidated state** - No scattered `mutableStateOf`
+11. **🚨 Use Logger injection** - Never `android.util.Log`
 
-# State Management Guidelines
+---
 
-## Consolidated State Pattern
+## AI Behavior Rules
 
-**REQUIRED**: All Jetpack Compose screens must use consolidated state management instead of scattered `mutableStateOf` variables.
+- **NEVER ASSUME OR GUESS** - When in doubt, ask for clarification
+- Never hallucinate libraries or functions – only use verified libraries
+- Always confirm file paths exist before referencing them
+- Never delete/overwrite code unless explicitly instructed
+- Keep CLAUDE.md updated when adding new patterns
+- **Test your code** - No feature is complete without tests
+- **Document your decisions** - Update plan docs upon completion
 
-### Core Principles
+---
 
-- **Single Source of Truth**: Replace multiple `mutableStateOf` variables with one consolidated state object
-- **Immutable Updates**: All state changes return new state objects using data class `copy()`
-- **Automatic Validation**: State objects include built-in validation and derived properties
-- **Dialog Management**: Enforce business rules like "only one dialog open at a time"
+## Documentation & Explainability
 
-### Implementation Pattern
+- Update README.md when features/dependencies/setup changes
+- Comment non-obvious code for mid-level developer understanding
+- Add `# Reason:` comments for complex logic (explain why, not what)
+- Every module should have a docstring
+- Public functions must have complete docstrings
 
-```kotlin
-// ✅ Required: Consolidated state pattern
-data class ScreenUiState(
-    val dialogStates: ScreenDialogStates = ScreenDialogStates(),
-    val formData: ScreenFormData = ScreenFormData(),
-    val validationErrors: ValidationErrors = ValidationErrors()
-) {
-    val isFormValid: Boolean
-        get() = formData.requiredField.isNotBlank() &&
-                validationErrors.isEmpty()
+### Plan Documentation Maintenance
+**CRITICAL**: When implementing from plan docs (`docs/plans/`):
+- Mark completed tasks with ✅
+- Update progress metrics
+- Document actual vs. planned approaches
+- Update status sections
 
-    fun updateField(value: String): ScreenUiState {
-        val newState = copy(formData = formData.copy(requiredField = value))
-        return newState.copy(validationErrors = validateState(newState))
-    }
+---
 
-    fun openDialog(type: DialogType): ScreenUiState {
-        return copy(dialogStates = DialogStates.single(type))
-    }
-}
+## Quick Reference: Key Documentation
 
-@Composable
-fun MyScreen() {
-    var uiState by remember { mutableStateOf(ScreenUiState()) }
+| Topic | Documentation |
+|-------|---------------|
+| **Documentation Hub** | [docs/README.md](docs/README.md) - Start here for all documentation |
+| **AI Workflow** | [AI Agent Guide](docs/AI_AGENT_GUIDE.md) - Propose → Plan → Implement workflow |
+| **Proposal Format** | [Proposal Format](docs/specs/PROPOSAL_FORMAT.md) - How to propose changes inline |
+| **Navigation** | [Navigation Guidelines](docs/guides/navigation.md) |
+| **Firebase Security** | [Firebase Security](docs/guides/firebase-security.md) |
+| **Repository Errors** | [Error Handling](docs/guides/repository-error-handling.md) |
+| **State Management** | [State Management](docs/guides/state-management.md) |
+| **Logging** | [Logging Guidelines](docs/guides/logging.md) |
+| **Tag System** | [Tag System Spec](docs/specs/features/tag-system.md) |
+| **All Specifications** | [docs/specs/](docs/specs/) - Source of truth for features |
+| **Implementation Plans** | [docs/plans/](docs/plans/) - TDD implementation checklists |
 
-    TextField(
-        value = uiState.formData.requiredField,
-        onValueChange = { uiState = uiState.updateField(it) }
-    )
-}
-```
+---
 
-### Anti-Patterns (Forbidden)
+## 🚨 CRITICAL SECURITY CHECKLIST
 
-```kotlin
-// ❌ NEVER use scattered state variables
-@Composable
-fun MyScreen() {
-    var showDialog by remember { mutableStateOf(false) }
-    var titleText by remember { mutableStateOf("") }
-    var isValid by remember { mutableStateOf(false) }
+**Before writing ANY Firestore query:**
 
-    // Manual validation scattered in UI
-    LaunchedEffect(titleText) {
-        isValid = titleText.isNotBlank()
-    }
-}
-```
+1. ✅ Does function accept `userId: String` parameter?
+2. ✅ Is `.whereEqualTo("userId", userId)` the FIRST filter?
+3. ✅ Are all callers passing correct userId?
+4. ✅ Does query follow security pattern in [Firebase Security Guidelines](docs/guides/firebase-security.md)?
 
-### Testing Requirements
-
-All state objects MUST have comprehensive unit tests:
-
-```kotlin
-class ScreenUiStateTest {
-    @Test
-    fun `should update state immutably`() {
-        val original = ScreenUiState()
-        val updated = original.updateField("test")
-
-        assertNotSame(original, updated)
-        assertEquals("", original.formData.requiredField)
-        assertEquals("test", updated.formData.requiredField)
-    }
-
-    @Test
-    fun `should validate automatically on update`() {
-        val state = ScreenUiState().updateField("valid input")
-        assertTrue(state.isFormValid)
-    }
-}
-```
-
-### Documentation
-
-For comprehensive guidance, see:
-- [State Management Guidelines](docs/STATE_MANAGEMENT_GUIDELINES.md) - Complete patterns and examples
-- [State Migration Checklist](docs/STATE_MIGRATION_CHECKLIST.md) - Step-by-step migration guide
-
-### Migration Requirements
-
-When updating existing screens:
-1. Follow the [State Migration Checklist](docs/STATE_MIGRATION_CHECKLIST.md)
-2. Create comprehensive tests for the new state model
-3. Ensure UI behavior remains identical
-4. Verify performance improvements or maintenance
-
-# Logging Guidelines
-
-## Quick Reference
-
-The project uses a custom logging framework with automatic data sanitization and build-variant optimization. **Never use `android.util.Log` directly.**
-
-### Basic Usage
-
-```kotlin
-@HiltViewModel
-class MyViewModel @Inject constructor(
-    private val logger: Logger,
-    // ... other dependencies
-) : ViewModel() {
-
-    fun performOperation() {
-        logger.d("MyViewModel", "Starting operation")
-        try {
-            // Business logic
-            logger.i("MyViewModel", "Operation completed successfully")
-        } catch (e: Exception) {
-            logger.e("MyViewModel", "Operation failed", e)
-        }
-    }
-}
-```
-
-### Logging Levels
-
-- **Debug (d)**: Development only, removed in release builds
-- **Info (i)**: Development only, removed in release builds
-- **Warning (w)**: All builds, preserved for monitoring
-- **Error (e)**: All builds, sent to Firebase Crashlytics
-
-### Automatic Security Features
-
-- **Data Sanitization**: Emails, amounts, IDs automatically sanitized
-- **Privacy Protection**: No sensitive data in production logs
-- **Performance Optimization**: Debug/info logs removed in release builds
-- **Analytics Integration**: Critical errors tracked in Crashlytics
-
-### Required Dependencies
-
-All ViewModels, Repositories, and Services **must** inject Logger:
-
-```kotlin
-@Inject constructor(
-    private val logger: Logger,
-    // ... other dependencies
-)
-```
-
-### Forbidden Patterns
-
-```kotlin
-// ❌ NEVER use these:
-android.util.Log.d("TAG", "message")
-System.out.println("debug message")
-println("debug info")
-
-// ✅ Always use:
-logger.d("TAG", "message")
-```
-
-### Error Handling Pattern
-
-```kotlin
-try {
-    // risky operation
-} catch (e: SpecificException) {
-    logger.w("MyClass", "Recoverable error: ${e.message}")
-    // handle gracefully
-} catch (e: Exception) {
-    logger.e("MyClass", "Critical error occurred", e)
-    // handle or rethrow
-}
-```
-
-For complete documentation, see [LOGGING_GUIDELINES.md](docs/LOGGING_GUIDELINES.md).
-
-# 🚨 CRITICAL SECURITY REMINDER
-
-**BEFORE WRITING ANY FIRESTORE QUERY:**
-
-1. ✅ **Check the Firebase Security section above** for mandatory userId filter requirements
-2. ✅ **Use the template** from `docs/FIRESTORE_QUERY_TEMPLATE.kt`
-3. ✅ **Always include userId parameter** in Repository method signatures
-4. ✅ **Always filter by userId FIRST** in every Firestore query
-5. ✅ **Reference security docs** at `docs/FIREBASE_SECURITY_GUIDELINES.md`
-
-**Security violations will cause PERMISSION_DENIED errors and break the app!**
+**Security violations cause PERMISSION_DENIED errors!**
